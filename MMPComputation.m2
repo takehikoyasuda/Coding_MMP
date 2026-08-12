@@ -234,8 +234,13 @@ canonicalScaledNefDataInternal = (R,K,H,a,t) -> (
     negativeCurveWitness := null;
     scan(trialMultipliers,m -> if multiplier === null then (
         candidateDivisor := m*L;
-        candidateBaseLocus := trim baseLocus candidateDivisor;
-        candidateBPF := candidateBaseLocus == ideal 1_R;
+        candidateBaseLocus := null;
+        candidateBPF := false;
+        if useNegativeCurveShortcut then (
+            candidateBaseLocus = trim baseLocus candidateDivisor;
+            candidateBPF = candidateBaseLocus == ideal 1_R;
+            )
+        else candidateBPF = isBasePointFreeDivisor candidateDivisor;
         multipliersTested = append(multipliersTested,m);
         if useNegativeCurveShortcut and not candidateBPF and m < guaranteedMultiplier then
             negativeCurveWitness = negativeBaseLocusCurveData(L,candidateBaseLocus);
