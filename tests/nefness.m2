@@ -18,6 +18,24 @@ assert(negative#"witnessT" == 1/2);
 threshold = canonicalScaledNefData(R,1,4);
 assert(threshold#"nef");
 assert(threshold#"basePointFree");
+thresholdData = canonicalNefThresholdData(R,1);
+assert(thresholdData#"conclusive");
+assert(thresholdData#"threshold" == 4);
+assert(thresholdData#"lowerBound" < 4);
+assert(thresholdData#"upperBound" >= 4);
+assert(canonicalNefThreshold(R,1) == 4);
+boundedThreshold = canonicalNefThresholdData(R,1,ThresholdSearchLimit=>1);
+assert(not boundedThreshold#"conclusive");
+assert(boundedThreshold#"phase" == "upper bound");
+pointContraction = canonicalContractionData(R,1);
+assert(pointContraction#"conclusive");
+assert(pointContraction#"threshold" == 4);
+assert(pointContraction#"targetDimension" == 0);
+assert(pointContraction#"contractionType" == "fibration");
+assert(pointContraction#"isFibreType");
+assert(not pointContraction#"isBirational");
+assert(pointContraction#"dimensionDrop" == 3);
+assert(pointContraction#"steinFactorizationType" == "trivial point target");
 
 -- On P(1,1,1,2), the construction uses O(2), not the generally noninvertible
 -- O(1), and its complete linear system is base-point-free.
@@ -40,5 +58,7 @@ assert(isCanonicalNef(Q,1));
 
 print "OK effective nef multipliers: m(3,1)=1920 and m(3,2)=1536.";
 print "OK P3: K is non-nef, detected by the t=1/2 perturbation.";
+print "OK P3: the computed nef threshold is lambda=4.";
+print "OK P3: the threshold divisor gives the contraction to a point.";
 print "OK P(1,1,1,2): the constructed ample Cartier degree is 2.";
 print "OK quintic threefold: K=0 is certified nef at the first iteration.";

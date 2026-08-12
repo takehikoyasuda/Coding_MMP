@@ -28,7 +28,10 @@ The source repositories had the following local state at import time:
 | Graph of the connected-fibre map | `directSteinGraph` | corrected kernel construction; standard tests pass |
 | Relative canonical model / flip | `computeFlip` | prototype; all 13 tests and four examples pass |
 | Nefness of the canonical divisor | `canonicalNefData`, `isCanonicalNef` | initial implementation; P3 and quintic regressions pass |
-| Threshold and extremal contraction | none in this repository | not implemented |
+| Nef threshold | `canonicalNefThresholdData`, `canonicalNefThreshold` | initial implementation; P3 regression passes |
+| Extremal contraction | `canonicalContractionAtThresholdData`, `canonicalContractionData` | initial implementation; P3 point and Segre P1xP2 fibre contractions pass |
+| Contraction type | `contractionTypeData` and classification fields on contraction results | P3/point and Segre are fibre type; blow-up of a line is birational |
+| Relative canonical model | `relativeCanonicalModelFromBaseData`, `relativeCanonicalModelData` | P3 identity and projective toric flip regressions pass |
 | Top-level threefold MMP loop | none in this repository | not implemented |
 
 ## Stein graph correction

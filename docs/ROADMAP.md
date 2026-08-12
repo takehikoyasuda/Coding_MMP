@@ -39,14 +39,18 @@ Completed:
 1. Represent normal monograded threefold input and graph morphisms uniformly.
 2. **Implemented:** construct the weighted ample Cartier divisor and decide
    canonical-divisor nefness by the paper's parallel base-point-free searches.
-3. Compute the nef threshold.
-4. Construct the induced morphism and pass it through corrected Stein
-   factorization to obtain the contraction.
+3. **Implemented:** compute the nef threshold by dyadic bracketing and the
+   finite rational candidate search.
+4. **Implemented:** construct the complete-linear-system graph and pass it
+   through corrected Stein factorization to obtain the contraction.
 
 ## Milestone 4: implement the MMP driver
 
-1. Distinguish fibre type from birational contractions by dimension.
-2. Compute the relative canonical model for birational steps.
+1. **Implemented:** distinguish fibre type from birational contractions by
+   source and connected-fibre target dimensions.
+2. **Implemented:** compute the relative canonical model for birational steps,
+   returning the target itself in the Cartier case and otherwise using the
+   relative canonical algebra / flip computation.
 3. Use corrected Stein factorization to test whether that model is an
    isomorphism.
 4. Record divisorial, flipping, and mixed steps without losing graph data.

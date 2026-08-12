@@ -58,12 +58,24 @@ The first contraction-stage API is implemented in `MMPComputation.m2`:
 needsPackage("MMPComputation", FileName => "MMPComputation.m2");
 result = canonicalNefData(R, a)
 answer = isCanonicalNef(R, a)
+thresholdData = canonicalNefThresholdData(R, a)
+lambda = canonicalNefThreshold(R, a)
+contraction = canonicalContractionData(R, a)
 ```
 
 Here `R` presents a normal log terminal projective threefold and `a` is a
 positive integer for which `a*K_X` is Cartier. The implementation follows the
 paper's parallel search using reflexive pluricanonical divisors and effective
-base-point-free tests of positive perturbations.
+base-point-free tests of positive perturbations.  When the canonical divisor
+is not nef, the threshold API implements the paper's dyadic bracketing and
+finite rational candidate search.
+The contraction API constructs the complete-linear-system graph at the
+threshold and computes its connected-fibre part with Stein factorization.  Its
+result records source and target dimensions, dimension drop, and whether the
+contraction is birational or of fibre type.
+For a birational result, `relativeCanonicalModelData(contraction)` computes the
+next model over the contraction target, using the identity model when the
+canonical algebra is already trivial and `FlipComputation` otherwise.
 
 ## License
 
