@@ -34,20 +34,19 @@ The current development environment uses Macaulay2 1.26.06.
 | `docs/ROADMAP.md` | implementation order for the full MMP |
 | `scripts/test-upstreams.sh` | reproducible baseline test runner |
 
-## Important status warning
+## Stein graph status
 
-The pinned Stein package does **not** yet implement the graph construction in
-the pinned paper revision. Its `directSteinGraph` uses a known incorrect
-bigrading and must not be used as a mathematical result. The paper now computes
-the graph as the kernel of
+The Stein development branch now implements the graph construction in the
+pinned paper revision as the kernel of
 
 ```text
 B tensor C^[k]  -->  R_gamma.
 ```
 
-Updating the Stein implementation and its regression tests is the first coding
-milestone. See `docs/IMPLEMENTATION-STATUS.md` for the precise boundary between
-trusted and experimental functionality.
+The output ring contains the source and Stein coordinates, but not the original
+target coordinates. New dimension regressions detect the extra scaling
+parameter produced by the old construction. See `docs/IMPLEMENTATION-STATUS.md`
+for the verification scope and remaining review items.
 
 ## License
 

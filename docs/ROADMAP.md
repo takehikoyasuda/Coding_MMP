@@ -4,14 +4,21 @@ The implementation order follows dependency order in the paper.
 
 ## Milestone 1: synchronize Stein factorization with the paper
 
-1. Replace or retire the current `directSteinGraph` implementation.
-2. Implement the kernel map `B tensor C^[k] -> R_gamma` from the pinned paper.
-3. Add dimension assertions that fail on the old identity, square, and cube
-   outputs.
-4. Check bihomogeneity, both projections, `g o h = f`, and independence of the
-   admissible localization element.
-5. Keep the expensive component-based construction only as a small reference
-   implementation if it remains useful.
+Completed:
+
+1. Replaced the old `directSteinGraph` construction.
+2. Implemented the kernel map `B tensor C^[k] -> R_gamma` from the pinned paper.
+3. Added dimension assertions that fail on the old identity, square, and cube
+   outputs, and extended them to weighted and higher-dimensional examples.
+4. Rebuilt the package manual and technical note with the revised construction.
+
+Remaining review:
+
+1. Strengthen automatic checks of both graph projections and `g o h = f`.
+2. Add explicit independence tests for different admissible localization
+   elements.
+3. Decide whether the expensive component-based construction is useful as a
+   small reference implementation.
 
 ## Milestone 2: stabilize the flip package
 
