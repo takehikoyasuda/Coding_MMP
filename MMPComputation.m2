@@ -52,6 +52,10 @@ export {
     "MMPMaxSteps"
     }
 
+weilDivisorsPackage := needsPackage "WeilDivisors";
+weilDivisorToModule := value(
+    weilDivisorsPackage#"private dictionary"#"divisorToModule");
+
 -- Lemma 3.5 of the paper: if X is presented in a weighted projective space
 -- with coordinate weights c_i and l=lcm(c_i), then O_X(l) is ample and
 -- invertible.  A nonzero coordinate power of weighted degree l supplies an
@@ -97,6 +101,66 @@ isBasePointFreeDivisor = method()
 isBasePointFreeDivisor BasicDivisor := D -> (
     R := ring D;
     trim baseLocus D == ideal 1_R
+    )
+
+-- Search the projective components of a base locus for a curve on which D
+-- has negative degree.  Components of dimension greater than one are cut by
+-- deterministic coordinate hyperplanes until curves remain.  For a Cartier
+-- divisor, the constant difference
+--
+--   HP(O(D)|_C) - HP(O_C)
+--
+-- is deg(D|_C).  A negative value is therefore an unconditional non-nef
+-- certificate; failure to find one says nothing and the effective theorem
+-- test must continue.
+negativeBaseLocusCurveData = (D,B) -> (
+    R := ring D;
+    S := ambient R;
+    if degreeLength S != 1
+        or any(flatten entries vars S,x -> degree x != {1}) then return null;
+    irrelevant := ideal vars R;
+    projectiveBaseLocus := trim saturate(B,irrelevant);
+    if projectiveBaseLocus == ideal 1_R then return null;
+    components := minimalPrimes projectiveBaseLocus;
+    coordinates := flatten entries vars R;
+    curves := {};
+    scan(components,P -> (
+        pieces := {P};
+        while any(pieces,Q -> dim(R/Q)-1 > 1) do (
+            nextPieces := {};
+            scan(pieces,Q -> (
+                componentDimension := dim(R/Q)-1;
+                if componentDimension <= 1 then
+                    nextPieces = append(nextPieces,Q)
+                else (
+                    cuttingCoordinate := first select(coordinates,x -> x % Q != 0);
+                    cutIdeal := trim saturate(Q+ideal cuttingCoordinate,irrelevant);
+                    nextPieces = join(nextPieces,minimalPrimes cutIdeal);
+                    );
+                ));
+            pieces = unique nextPieces;
+            );
+        curves = join(curves,select(pieces,Q -> dim(R/Q)-1 == 1));
+        ));
+    witness := null;
+    scan(unique curves,C -> if witness === null then (
+        curveModule := coker gens C;
+        restriction := (weilDivisorToModule D) ** curveModule;
+        regularityBound := max(regularity curveModule,regularity restriction);
+        degree0 := hilbertFunction(regularityBound,restriction)
+            - hilbertFunction(regularityBound,curveModule);
+        degree1 := hilbertFunction(regularityBound+1,restriction)
+            - hilbertFunction(regularityBound+1,curveModule);
+        if degree0 == degree1 and degree0 < 0 then
+            witness = new HashTable from {
+                "curveIdeal" => C,
+                "intersection" => degree0,
+                "hilbertPolynomialDifference" =>
+                    hilbertPolynomial restriction-hilbertPolynomial curveModule,
+                "baseLocus" => projectiveBaseLocus
+                };
+        ));
+    witness
     )
 
 -- Normalize integration-layer and Stein graph tables to the GraphMorphism
@@ -149,16 +213,48 @@ canonicalScaledNefDataInternal = (R,K,H,a,t) -> (
     d := dim R - 1;
     N := a*q;
     L := q*a*K + a*p*H;
-    m := effectiveNefMultiplier(d,N);
-    testDivisor := m*L;
-    bpf := isBasePointFreeDivisor testDivisor;
+    guaranteedMultiplier := effectiveNefMultiplier(d,N);
+    -- A base-point-free positive multiple already proves that L is nef, so
+    -- try the inexpensive small multiples before constructing the usually
+    -- enormous effective-theorem multiple.  Failure at a small multiple is
+    -- not a non-nef certificate; only the guaranteed multiplier has that
+    -- implication under the hypotheses of Proposition 3.1.
+    trialBound := min(8,guaranteedMultiplier);
+    trialMultipliers := toList(1..trialBound);
+    if guaranteedMultiplier > trialBound then
+        trialMultipliers = append(trialMultipliers,guaranteedMultiplier);
+    multipliersTested := {};
+    multiplier := null;
+    testDivisor := null;
+    bpf := false;
+    negativeCurveWitness := null;
+    scan(trialMultipliers,m -> if multiplier === null then (
+        candidateDivisor := m*L;
+        candidateBaseLocus := trim baseLocus candidateDivisor;
+        candidateBPF := candidateBaseLocus == ideal 1_R;
+        multipliersTested = append(multipliersTested,m);
+        if not candidateBPF and m < guaranteedMultiplier then
+            negativeCurveWitness = negativeBaseLocusCurveData(L,candidateBaseLocus);
+        if candidateBPF or negativeCurveWitness =!= null
+            or m == guaranteedMultiplier then (
+            multiplier = m;
+            testDivisor = candidateDivisor;
+            bpf = candidateBPF;
+            );
+        ));
     new HashTable from {
         "nef" => bpf,
         "t" => t,
         "dimension" => d,
         "indexMultiple" => a,
         "N" => N,
-        "multiplier" => m,
+        "multiplier" => multiplier,
+        "guaranteedMultiplier" => guaranteedMultiplier,
+        "multipliersTested" => multipliersTested,
+        "certificateType" => if bpf then "base-point-free multiple"
+            else if negativeCurveWitness =!= null then "negative curve intersection"
+            else "effective base-point-free theorem",
+        "negativeCurveWitness" => negativeCurveWitness,
         "cartierDivisor" => L,
         "testDivisor" => testDivisor,
         "basePointFree" => bpf
@@ -1292,6 +1388,12 @@ Node
     decide whether K_X+tH is nef for positive rational t
   Usage
     result = canonicalScaledNefData(R,a,t)
+  Description
+    Text
+      Test small positive multiples first.  A base-point-free multiple proves
+      nefness; a negative intersection with a curve obtained from its base
+      locus proves non-nefness.  If neither short certificate is found, use the
+      effective base-point-free multiplier from Proposition 3.1.
   SeeAlso
     effectiveNefMultiplier
     weightedAmpleDivisorData
