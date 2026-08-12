@@ -32,6 +32,7 @@ export {
     "relativeCanonicalModelFromBaseData",
     "relativeCanonicalModelData",
     "relativeCanonicalModelIsomorphismData",
+    "relativeModelInverseRationalMapData",
     "contractionGraphSmallnessData",
     "contractionSmallnessData",
     "mmpStepRecordData",
@@ -529,6 +530,78 @@ relativeCanonicalModelIsomorphismData HashTable := model -> (
         }
     )
 
+-- The inverse rational map from the base of a nonidentity relative model to
+-- the model itself.  If Z=Proj_W Rees(I), its fibre coordinates are the
+-- generators of I.  Substituting those generators into the Segre monomials
+-- used by b2mToGraphMorphism gives homogeneous coordinates for W -->> Z.
+relativeModelInverseRationalMapData = method()
+relativeModelInverseRationalMapData HashTable := model -> (
+    if not model#?"conclusive" or not model#"conclusive" then
+        error "relativeModelInverseRationalMapData: expected a conclusive model";
+    if not model#?"isIdentity" or model#"isIdentity" then
+        error "relativeModelInverseRationalMapData: expected a nonidentity relative model";
+    if not model#?"relativeModelProjection" or not model#?"relativeModelGraph" then
+        error "relativeModelInverseRationalMapData: missing projection or graph data";
+    P := model#"relativeModelProjection";
+    G := model#"relativeModelGraph";
+    if not instance(P,B2MProjection) or not instance(G,GraphMorphism) then
+        error "relativeModelInverseRationalMapData: expected B2M and graph data";
+    baseRing := model#"baseRing";
+    modelRing := model#"relativeModelRing";
+    us := P#fiberVariables;
+    xs := P#baseVariables;
+    if any(us,u -> (degree u)#1 != 0) then
+        error "relativeModelInverseRationalMapData: weighted fibre coordinates are unsupported";
+    ds := apply(us,u -> (degree u)#0);
+    cs := apply(xs,x -> (degree x)#1);
+    HB := segreHilbertBasis(ds,cs);
+    projectionToBase := map(baseRing,P#ambientRing,
+        toList(#us:0_baseRing) | gens baseRing);
+    idealGenerators := apply(first entries gens P#blownUpIdeal,
+        f -> projectionToBase f);
+    baseVariables := flatten entries vars baseRing;
+    coordinateImages := apply(HB,v ->
+        product apply(#us,j -> idealGenerators#j^(v#j))
+        * product apply(#xs,i -> baseVariables#i^(v#(#us+i))));
+    if #coordinateImages != numgens ambient modelRing then
+        error "relativeModelInverseRationalMapData: Segre coordinates do not match the model ring";
+    coordinateMap := map(baseRing,ambient modelRing,coordinateImages);
+    modelRelationsVanish := coordinateMap(ideal modelRing) == ideal 0_baseRing;
+    graphSubstitution := map(baseRing,G#ambientRing,
+        coordinateImages | baseVariables);
+    graphRelationsVanish := graphSubstitution(G#definingIdeal) == ideal 0_baseRing;
+    if not modelRelationsVanish or not graphRelationsVanish then
+        error "relativeModelInverseRationalMapData: inverse coordinates fail the graph equations";
+    imageDegrees := apply(coordinateImages,f -> (degree f)#0);
+    modelDegrees := apply(flatten entries vars modelRing,z -> (degree z)#0);
+    degreeScales := unique apply(#coordinateImages,i ->
+        imageDegrees#i // modelDegrees#i);
+    if #degreeScales != 1 or any(#coordinateImages,i ->
+        imageDegrees#i != first(degreeScales)*modelDegrees#i) then
+        error "relativeModelInverseRationalMapData: inverse coordinates have incompatible degrees";
+    coordinateBaseIdeal := ideal coordinateImages;
+    irrelevant := ideal baseVariables;
+    expectedBaseIdeal := ideal idealGenerators;
+    baseLocusCertified := saturate(radical coordinateBaseIdeal,irrelevant)
+        == saturate(radical expectedBaseIdeal,irrelevant);
+    if not baseLocusCertified then
+        error "relativeModelInverseRationalMapData: could not certify the indeterminacy locus";
+    new HashTable from {
+        "sourceRing" => baseRing,
+        "targetRing" => modelRing,
+        "coordinateImages" => coordinateImages,
+        "coordinateMap" => coordinateMap,
+        "degreeScale" => first degreeScales,
+        "baseIdeal" => coordinateBaseIdeal,
+        "expectedBaseIdeal" => expectedBaseIdeal,
+        "baseLocusCertified" => true,
+        "modelRelationsVanish" => true,
+        "graphRelationsVanish" => true,
+        "graphSubstitution" => graphSubstitution,
+        "certificate" => "substitution of the Rees ideal generators into the Segre graph coordinates"
+        }
+    )
+
 contractionGraphSmallnessInternal = (P,J,ns,sourceDimension) -> (
     if ring J =!= P then
         error "contractionGraphSmallnessData: graph ideal belongs to the wrong ring";
@@ -613,6 +686,7 @@ mmpStepRecordData HashTable := o -> contraction -> (
             "contractionGraph" => contraction#"contractionGraph",
             "relativeModelData" => null,
             "relativeModelGraph" => null,
+            "inverseRelativeModelData" => null,
             "inverseRelativeModelRequired" => false,
             "nextRing" => null
             };
@@ -636,6 +710,8 @@ mmpStepRecordData (HashTable,HashTable) := o -> (contraction,model) -> (
             small = smallnessData#"isSmall";
             );
     identity := model#"isIdentity";
+    inverseData := if identity then null
+        else relativeModelInverseRationalMapData model;
     stepType := if identity then "divisorial"
         else if small === true then "flipping"
         else if small === false then "mixed"
@@ -650,6 +726,7 @@ mmpStepRecordData (HashTable,HashTable) := o -> (contraction,model) -> (
         "contractionGraph" => contraction#"contractionGraph",
         "relativeModelData" => model,
         "relativeModelGraph" => model#"relativeModelGraph",
+        "inverseRelativeModelData" => inverseData,
         "inverseRelativeModelRequired" => not identity,
         "nextRing" => model#"relativeModelRing"
         }
@@ -902,6 +979,27 @@ Node
     find the Cartier index of the canonical divisor
   Usage
     result = canonicalIndexData R
+
+Node
+  Key
+    relativeModelInverseRationalMapData
+    (relativeModelInverseRationalMapData,HashTable)
+  Headline
+    recover the rational inverse of a relative-model projection
+  Usage
+    result = relativeModelInverseRationalMapData model
+  Description
+    Text
+      For a nonidentity relative canonical model $Z \longrightarrow W$
+      constructed as a Rees Proj, substitute the Rees-ideal generators for the
+      fibre variables in the Segre coordinates.  The result records homogeneous
+      coordinates for $W \dashrightarrow Z$, verifies the model and graph
+      equations, and certifies that their base locus is the Rees centre after
+      saturation.  The current graph conversion requires unweighted fibre
+      coordinates.
+  SeeAlso
+    relativeCanonicalModelData
+    mmpStepRecordData
 
 Node
   Key

@@ -53,10 +53,14 @@ Completed:
    relative canonical algebra / flip computation.
 3. **Implemented:** test whether the relative canonical model is an
    isomorphism using invertibility of its canonical blow-up ideal.
-4. **Implemented:** compute the exceptional-locus codimension from the support
+4. **Implemented:** recover explicit homogeneous coordinates for the rational
+   inverse of a nonidentity relative-model projection by substituting its Rees
+   generators into the Segre coordinates, and certify the graph equations and
+   indeterminacy locus.
+5. **Implemented:** compute the exceptional-locus codimension from the support
    of the second exterior power of relative differentials and record
    divisorial, flipping, and mixed steps without losing either graph.
-5. **Implemented:** the top-level driver iterates birational models and stops
+6. **Implemented:** the top-level driver iterates birational models and stops
    at a nef canonical divisor or a Mori fibre space.  A certified
    `Bl_L(P3) -> P3` divisorial prefix is retained while the continued driver
    reaches the contraction `P3 -> point`.

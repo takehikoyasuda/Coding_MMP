@@ -33,6 +33,7 @@ The source repositories had the following local state at import time:
 | Contraction type | `contractionTypeData` and classification fields on contraction results | P3/point and Segre are fibre type; blow-up of a line is birational |
 | Relative canonical model | `relativeCanonicalModelFromBaseData`, `relativeCanonicalModelData` | P3 identity and projective toric flip regressions pass |
 | Relative-model isomorphism | `relativeCanonicalModelIsomorphismData` | certified by the saturated non-locally-free locus of the canonical blow-up ideal |
+| Inverse relative-model rational map | `relativeModelInverseRationalMapData` | explicit Segre/Rees coordinates; toric flip equations and base locus certified |
 | Contraction smallness | `contractionGraphSmallnessData`, `contractionSmallnessData` | exterior-power criterion audited; blow-up divisor, ODP small resolution, and identity regressions pass |
 | MMP step records | `mmpStepRecordData` | graph-preserving divisorial/flipping/mixed records with automatic smallness |
 | Top-level threefold MMP loop | `threefoldMMPData` | P3 Mori-fibre, quintic minimal-model, and certified Bl_L(P3) birational-continuation regressions pass |

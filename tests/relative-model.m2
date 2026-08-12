@@ -23,6 +23,8 @@ identityStep = mmpStepRecordData(identityContraction,identityModel);
 assert(identityStep#"stepType" == "divisorial");
 assert(identityStep#"stepTypeConclusive");
 assert(not identityStep#"inverseRelativeModelRequired");
+assert(identityStep#"inverseRelativeModelData" === null);
+assert(try (relativeModelInverseRationalMapData identityModel; false) else true);
 
 -- The projective toric circuit target is not Q-Gorenstein.  Its relative
 -- canonical model is the independently verified flip in FlipComputation.
@@ -45,6 +47,16 @@ assert(instance(flipModel#"relativeModelGraph",GraphMorphism));
 assert(instance(flipModel#"relativeModelProjection",B2MProjection));
 assert(dim(flipModel#"relativeModelRing")-1 == 3);
 assert(dim(flipModel#"relativeModelGraph"#totalRing)-2 == 3);
+inverseModel = relativeModelInverseRationalMapData flipModel;
+assert(inverseModel#"sourceRing" === W);
+assert(inverseModel#"targetRing" === flipModel#"relativeModelRing");
+assert(#inverseModel#"coordinateImages" == 12);
+assert(inverseModel#"degreeScale" == 2);
+assert(inverseModel#"modelRelationsVanish");
+assert(inverseModel#"graphRelationsVanish");
+assert(inverseModel#"baseLocusCertified");
+assert(saturate(radical inverseModel#"baseIdeal",ideal vars W)
+    == saturate(radical ideal(W_4,W_3),ideal vars W));
 
 nontrivialContraction = new HashTable from {
     "conclusive" => true,
@@ -63,6 +75,7 @@ assert(not unknownStep#"stepTypeConclusive");
 assert(flippingStep#"contractionGraph" == "retained contraction graph");
 assert(flippingStep#"relativeModelGraph" === flipModel#"relativeModelGraph");
 assert(flippingStep#"inverseRelativeModelRequired");
+assert(flippingStep#"inverseRelativeModelData"#"baseLocusCertified");
 
 fibreContraction = new HashTable from {
     "conclusive" => true,
@@ -72,5 +85,6 @@ assert(try (relativeCanonicalModelData fibreContraction; false) else true);
 
 print "OK relative model: Q-Cartier P3 target returns the identity model.";
 print "OK relative model: non-Q-Gorenstein toric target returns the known flip graph.";
+print "OK inverse map: Rees generators give certified rational coordinates for the toric flip.";
 print "OK relative model: fibre-type contractions are rejected before flip computation.";
 print "OK step records: divisorial, flipping, mixed, and unresolved subtypes retain both graphs.";

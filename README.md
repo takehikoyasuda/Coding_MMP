@@ -84,6 +84,10 @@ computed from the codimension of the support of the second exterior power of
 relative differentials; an explicit certificate can also be supplied.  The
 [smallness criterion](docs/SMALLNESS-CRITERION.md) records its assumptions,
 justification, and independent regressions.
+For a nonidentity relative model,
+`relativeModelInverseRationalMapData(model)` gives explicit homogeneous
+coordinates for the rational inverse of its projection, and certifies them
+against both the model and graph equations and the Rees-center base locus.
 The end-to-end entry point is `threefoldMMPData(R,a)`.  It returns the recorded
 graph sequence and terminates at either a minimal model or a Mori fibre space.
 `threefoldMMPData(R,a,steps)` resumes from a current model while preserving an
