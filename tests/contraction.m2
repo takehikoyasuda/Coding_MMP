@@ -80,6 +80,16 @@ assert(not divisorialSmallness#"isSmall");
 assert(divisorialSmallness#"exceptionalDimension" == 2);
 assert(divisorialSmallness#"exceptionalCodimension" == 1);
 
+-- The standard small resolution of a projective ordinary double point has an
+-- exceptional curve, hence codimension two in its threefold source.
+ODP = QQ[o0,o1,o2,o3,o4]/ideal(o0*o1-o2*o3);
+smallGraph = b2mToGraphMorphism bigradedReesProjection ideal(o0,o2);
+smallness = contractionGraphSmallnessData smallGraph;
+assert(smallness#"isSmall");
+assert(not smallness#"exceptionalLocusEmpty");
+assert(smallness#"exceptionalDimension" == 1);
+assert(smallness#"exceptionalCodimension" == 2);
+
 -- The diagonal graph of P1->P1 has empty exceptional locus and is small.
 ID = QQ[i0,i1,j0,j1,
     Degrees=>{{1,0},{1,0},{0,1},{0,1}}];
@@ -88,8 +98,9 @@ identityGraph = new HashTable from {
     "graphIdeal" => ideal(i0*j1-i1*j0),
     "sourceVariableCount" => 2
     };
-smallness = contractionGraphSmallnessData identityGraph;
-assert(smallness#"isSmall");
-assert(smallness#"exceptionalLocusEmpty");
+identitySmallness = contractionGraphSmallnessData identityGraph;
+assert(identitySmallness#"isSmall");
+assert(identitySmallness#"exceptionalLocusEmpty");
 
-print "OK smallness: blow-up divisor has codimension 1; identity graph has empty exceptional locus.";
+print "OK smallness: blow-up divisor has codimension 1; ODP exceptional curve has codimension 2.";
+print "OK smallness: identity graph has empty exceptional locus.";

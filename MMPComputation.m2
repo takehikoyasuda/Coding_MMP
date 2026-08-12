@@ -536,10 +536,15 @@ contractionGraphSmallnessInternal = (P,J,ns,sourceDimension) -> (
         error "contractionGraphSmallnessData: invalid source variable count";
     G := P/J;
     relativeJacobian := submatrix(jacobian J,toList(0..ns-1),);
-    relativeDifferentials := coker sub(relativeJacobian,G);
+    relativeDifferentials := prune coker sub(relativeJacobian,G);
     if rank relativeDifferentials != 1 then
         error "contractionGraphSmallnessData: expected generic relative cone dimension one";
-    rankJumpIdeal := fittingIdeal(1,relativeDifferentials);
+    -- On the integral graph, a generic-rank-one module is locally free of rank
+    -- one exactly where its second exterior power vanishes.  Its annihilator
+    -- therefore cuts out the same rank-jump support as Fitt_1, without forming
+    -- the usually enormous maximal minors of a presentation.
+    rankJumpModule := exteriorPower(2,relativeDifferentials);
+    rankJumpIdeal := ann rankJumpModule;
     graphVars := flatten entries vars G;
     sourceIrrelevant := ideal take(graphVars,ns);
     targetIrrelevant := ideal drop(graphVars,ns);
@@ -556,9 +561,11 @@ contractionGraphSmallnessInternal = (P,J,ns,sourceDimension) -> (
         "exceptionalCodimension" => exceptionalCodimension,
         "exceptionalLocusEmpty" => empty,
         "relativeDifferentials" => relativeDifferentials,
+        "rankJumpModule" => rankJumpModule,
         "rankJumpIdeal" => rankJumpIdeal,
         "exceptionalIdeal" => exceptionalIdeal,
-        "criterion" => "codimension of the relative-differential rank-jump locus"
+        "criterion" => "codimension of support of exterior^2 of relative differentials",
+        "assumptions" => "integral separable birational graph between normal projective varieties"
         }
     )
 
@@ -884,10 +891,11 @@ Node
   Description
     Text
       The affine cone over a birational biprojective graph has generic relative
-      differential rank one, coming from source scaling.  The first Fitting
-      ideal cuts out its rank-jump locus.  After biprojective saturation, the
-      contraction is small precisely when that locus has codimension at least
-      two in the source.
+      differential rank one, coming from source scaling.  The support of its
+      second exterior power is the rank-jump locus.  After biprojective
+      saturation, the contraction is small precisely when that locus has
+      codimension at least two in the source.  The graph is assumed integral
+      and the birational extension separable.
 
 Node
   Key

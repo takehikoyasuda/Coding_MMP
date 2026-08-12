@@ -53,9 +53,9 @@ Completed:
    relative canonical algebra / flip computation.
 3. **Implemented:** test whether the relative canonical model is an
    isomorphism using invertibility of its canonical blow-up ideal.
-4. **Implemented:** compute the exceptional-locus codimension from the
-   relative-differential rank-jump locus and record divisorial, flipping, and
-   mixed steps without losing either graph.
+4. **Implemented:** compute the exceptional-locus codimension from the support
+   of the second exterior power of relative differentials and record
+   divisorial, flipping, and mixed steps without losing either graph.
 5. **Implemented:** the top-level driver iterates birational models and stops
    at a nef canonical divisor or a Mori fibre space.
 

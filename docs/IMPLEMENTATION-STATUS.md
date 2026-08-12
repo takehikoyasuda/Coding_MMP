@@ -33,7 +33,7 @@ The source repositories had the following local state at import time:
 | Contraction type | `contractionTypeData` and classification fields on contraction results | P3/point and Segre are fibre type; blow-up of a line is birational |
 | Relative canonical model | `relativeCanonicalModelFromBaseData`, `relativeCanonicalModelData` | P3 identity and projective toric flip regressions pass |
 | Relative-model isomorphism | `relativeCanonicalModelIsomorphismData` | certified by the saturated non-locally-free locus of the canonical blow-up ideal |
-| Contraction smallness | `contractionGraphSmallnessData`, `contractionSmallnessData` | blow-up divisor and identity-graph regressions pass; ODP is a slow benchmark |
+| Contraction smallness | `contractionGraphSmallnessData`, `contractionSmallnessData` | exterior-power criterion audited; blow-up divisor, ODP small resolution, and identity regressions pass |
 | MMP step records | `mmpStepRecordData` | graph-preserving divisorial/flipping/mixed records with automatic smallness |
 | Top-level threefold MMP loop | `threefoldMMPData` | P3 Mori-fibre and quintic minimal-model end-to-end regressions pass |
 
@@ -80,3 +80,6 @@ make test-upstreams
 
 The integration-layer suite is `make test-core`; `make test` runs it together
 with both upstream suites.
+
+The assumptions and justification for automatic contraction-smallness
+classification are recorded in [SMALLNESS-CRITERION.md](SMALLNESS-CRITERION.md).

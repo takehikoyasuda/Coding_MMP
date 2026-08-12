@@ -80,8 +80,10 @@ canonical algebra is already trivial and `FlipComputation` otherwise.
 the identity, certified by the locally-free locus of its blow-up ideal.
 `mmpStepRecordData` retains both morphism graphs and records fibre, divisorial,
 flipping, or mixed step metadata.  The original contraction's smallness is
-computed from the codimension of the relative-differential rank-jump locus; an
-explicit certificate can also be supplied.
+computed from the codimension of the support of the second exterior power of
+relative differentials; an explicit certificate can also be supplied.  The
+[smallness criterion](docs/SMALLNESS-CRITERION.md) records its assumptions,
+justification, and independent regressions.
 The end-to-end entry point is `threefoldMMPData(R,a)`.  It returns the recorded
 graph sequence and terminates at either a minimal model or a Mori fibre space.
 
