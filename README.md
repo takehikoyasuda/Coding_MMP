@@ -78,6 +78,9 @@ next model over the contraction target, using the identity model when the
 canonical algebra is already trivial and `FlipComputation` otherwise.
 `relativeCanonicalModelIsomorphismData(model)` records whether that model is
 the identity, certified by the locally-free locus of its blow-up ideal.
+`mmpStepRecordData` retains both morphism graphs and records fibre, divisorial,
+flipping, or mixed step metadata; flipping versus mixed currently accepts an
+explicit smallness certificate for the original contraction.
 
 ## License
 

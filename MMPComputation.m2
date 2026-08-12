@@ -32,6 +32,7 @@ export {
     "relativeCanonicalModelFromBaseData",
     "relativeCanonicalModelData",
     "relativeCanonicalModelIsomorphismData",
+    "mmpStepRecordData",
     "canonicalNefData",
     "isCanonicalNef",
     "NefSearchLimit",
@@ -39,7 +40,8 @@ export {
     "ContractionMultipleLimit",
     "RelativeCanonicalMultipliers",
     "RelativeCanonicalMaxSteps",
-    "RelativeCanonicalVerbose"
+    "RelativeCanonicalVerbose",
+    "ContractionIsSmall"
     }
 
 -- Lemma 3.5 of the paper: if X is presented in a weighted projective space
@@ -521,6 +523,56 @@ relativeCanonicalModelIsomorphismData HashTable := model -> (
         }
     )
 
+-- Record one MMP step without discarding either graph.  A nonidentity relative
+-- model is flipping when the original contraction is small and mixed when it
+-- is not; until that independent smallness test is supplied, retain the honest
+-- combined classification.
+mmpStepRecordData = method(Options => {ContractionIsSmall => null})
+mmpStepRecordData HashTable := o -> contraction -> (
+    if not contraction#?"conclusive" or not contraction#"conclusive" then
+        error "mmpStepRecordData: expected a conclusive contraction";
+    if contraction#?"isFibreType" and contraction#"isFibreType" then
+        return new HashTable from {
+            "stepType" => "fibration",
+            "terminal" => true,
+            "contractionData" => contraction,
+            "contractionGraph" => contraction#"contractionGraph",
+            "relativeModelData" => null,
+            "relativeModelGraph" => null,
+            "inverseRelativeModelRequired" => false,
+            "nextRing" => null
+            };
+    error "mmpStepRecordData: a birational contraction also requires relative model data"
+    )
+mmpStepRecordData (HashTable,HashTable) := o -> (contraction,model) -> (
+    if not contraction#?"conclusive" or not contraction#"conclusive" then
+        error "mmpStepRecordData: expected a conclusive contraction";
+    if not contraction#?"isBirational" or not contraction#"isBirational" then
+        error "mmpStepRecordData: expected a birational contraction";
+    if not model#?"conclusive" or not model#"conclusive" then
+        error "mmpStepRecordData: expected a conclusive relative model";
+    small := o.ContractionIsSmall;
+    if small =!= null and not instance(small,Boolean) then
+        error "mmpStepRecordData: ContractionIsSmall must be null or Boolean";
+    identity := model#"isIdentity";
+    stepType := if identity then "divisorial"
+        else if small === true then "flipping"
+        else if small === false then "mixed"
+        else "flipping-or-mixed";
+    new HashTable from {
+        "stepType" => stepType,
+        "terminal" => false,
+        "stepTypeConclusive" => identity or small =!= null,
+        "contractionIsSmall" => small,
+        "contractionData" => contraction,
+        "contractionGraph" => contraction#"contractionGraph",
+        "relativeModelData" => model,
+        "relativeModelGraph" => model#"relativeModelGraph",
+        "inverseRelativeModelRequired" => not identity,
+        "nextRing" => model#"relativeModelRing"
+        }
+    )
+
 -- Proposition 3.8 for threefolds.  Run the two terminating searches in
 -- parallel: global generation of a reflexive pluricanonical sheaf proves nef,
 -- while failure of nefness for K_X+2^{-j}H proves non-nef.  NefSearchLimit is
@@ -597,6 +649,23 @@ Node
       Takehiko Yasuda, {em An algorithm for the minimal model program in
       dimension three}.  The first implemented stage is the canonical-divisor
       nefness test of Proposition 3.8.
+
+Node
+  Key
+    mmpStepRecordData
+    (mmpStepRecordData,HashTable)
+    (mmpStepRecordData,HashTable,HashTable)
+  Headline
+    record a graph-preserving MMP step
+  Usage
+    record = mmpStepRecordData contraction
+    record = mmpStepRecordData(contraction,model)
+  Description
+    Text
+      Fibre-type and divisorial steps are determined directly.  A nonidentity
+      relative model is recorded as flipping or mixed when the smallness of the
+      original contraction is supplied, and otherwise as flipping-or-mixed.
+      Both the contraction graph and relative-model graph remain in the record.
 
 Node
   Key
@@ -806,6 +875,12 @@ Node
     NefSearchLimit
   Headline
     optional iteration bound for the canonical-nefness search
+
+Node
+  Key
+    ContractionIsSmall
+  Headline
+    supply a smallness certificate when recording an MMP step
 
 Node
   Key

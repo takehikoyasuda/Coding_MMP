@@ -15,9 +15,14 @@ assert(identityCheck#"isIsomorphism");
 identityContraction = new HashTable from {
     "conclusive" => true,
     "isBirational" => true,
+    "contractionGraph" => "identity contraction graph",
     "steinAlgebraData" => new HashTable from {"ring" => P3}
     };
 assert((relativeCanonicalModelData identityContraction)#"isIdentity");
+identityStep = mmpStepRecordData(identityContraction,identityModel);
+assert(identityStep#"stepType" == "divisorial");
+assert(identityStep#"stepTypeConclusive");
+assert(not identityStep#"inverseRelativeModelRequired");
 
 -- The projective toric circuit target is not Q-Gorenstein.  Its relative
 -- canonical model is the independently verified flip in FlipComputation.
@@ -41,6 +46,24 @@ assert(instance(flipModel#"relativeModelProjection",B2MProjection));
 assert(dim(flipModel#"relativeModelRing")-1 == 3);
 assert(dim(flipModel#"relativeModelGraph"#totalRing)-2 == 3);
 
+nontrivialContraction = new HashTable from {
+    "conclusive" => true,
+    "isBirational" => true,
+    "contractionGraph" => "retained contraction graph"
+    };
+flippingStep = mmpStepRecordData(
+    nontrivialContraction,flipModel,ContractionIsSmall=>true);
+mixedStep = mmpStepRecordData(
+    nontrivialContraction,flipModel,ContractionIsSmall=>false);
+unknownStep = mmpStepRecordData(nontrivialContraction,flipModel);
+assert(flippingStep#"stepType" == "flipping");
+assert(mixedStep#"stepType" == "mixed");
+assert(unknownStep#"stepType" == "flipping-or-mixed");
+assert(not unknownStep#"stepTypeConclusive");
+assert(flippingStep#"contractionGraph" == "retained contraction graph");
+assert(flippingStep#"relativeModelGraph" === flipModel#"relativeModelGraph");
+assert(flippingStep#"inverseRelativeModelRequired");
+
 fibreContraction = new HashTable from {
     "conclusive" => true,
     "isBirational" => false
@@ -50,3 +73,4 @@ assert(try (relativeCanonicalModelData fibreContraction; false) else true);
 print "OK relative model: Q-Cartier P3 target returns the identity model.";
 print "OK relative model: non-Q-Gorenstein toric target returns the known flip graph.";
 print "OK relative model: fibre-type contractions are rejected before flip computation.";
+print "OK step records: divisorial, flipping, mixed, and unresolved subtypes retain both graphs.";
