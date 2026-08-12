@@ -60,6 +60,30 @@ assert(inverseModel#"baseLocusCertified");
 assert(saturate(radical inverseModel#"baseIdeal",ideal vars W)
     == saturate(radical ideal(W_4,W_3),ideal vars W));
 
+-- The same toric target with grading l=(3,2,1) has canonical ideal generators
+-- of degrees 2 and 3.  Its Rees fibre block is skew, so the generalized
+-- diagonal construction (slope two) is required for both graph and inverse.
+weightedEll = {3,2,1};
+weightedDegrees = apply(HB,h -> sum apply(3,k -> h#k*weightedEll#k));
+assert(weightedDegrees == {2,5,3,6,7});
+WS0 = QQ[wy_1..wy_(#HB),Degrees=>weightedDegrees];
+WI0 = ker map(L,WS0,apply(HB,
+    h -> t1^(h#0)*t2^(h#1)*t3^(h#2)));
+WS = QQ[wy_1..wy_(#HB),ww,Degrees=>weightedDegrees|{1}];
+WW = WS/sub(WI0,WS);
+weightedFlipModel = relativeCanonicalModelFromBaseData(
+    WW,RelativeCanonicalMultipliers=>{1});
+assert(not weightedFlipModel#"isIdentity");
+assert(instance(weightedFlipModel#"relativeModelGraph",GraphMorphism));
+weightedProjection = weightedFlipModel#"relativeModelProjection";
+assert(apply(weightedProjection#fiberVariables,degree) == {{1,0},{1,1}});
+weightedInverse = relativeModelInverseRationalMapData weightedFlipModel;
+assert(weightedInverse#"diagonalData"#"diagonalSlope" == 2);
+assert(weightedInverse#"diagonalData"#"transformedFiberWeights" == {2,1});
+assert(weightedInverse#"modelRelationsVanish");
+assert(weightedInverse#"graphRelationsVanish");
+assert(weightedInverse#"baseLocusCertified");
+
 nontrivialContraction = new HashTable from {
     "conclusive" => true,
     "isBirational" => true,
@@ -89,5 +113,6 @@ assert(try (relativeCanonicalModelData fibreContraction; false) else true);
 print "OK relative model: Q-Cartier P3 target returns the identity model.";
 print "OK relative model: non-Q-Gorenstein toric target returns the known flip graph.";
 print "OK inverse map: Rees generators give certified rational coordinates for the toric flip.";
+print "OK weighted flip: skew Rees degrees use a certified positive diagonal.";
 print "OK relative model: fibre-type contractions are rejected before flip computation.";
 print "OK step records: divisorial, flipping, and mixed subtypes retain normalized graphs.";

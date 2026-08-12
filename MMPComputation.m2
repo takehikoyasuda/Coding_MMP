@@ -604,11 +604,8 @@ relativeModelInverseRationalMapData HashTable := model -> (
     modelRing := model#"relativeModelRing";
     us := P#fiberVariables;
     xs := P#baseVariables;
-    if any(us,u -> (degree u)#1 != 0) then
-        error "relativeModelInverseRationalMapData: weighted fibre coordinates are unsupported";
-    ds := apply(us,u -> (degree u)#0);
-    cs := apply(xs,x -> (degree x)#1);
-    HB := segreHilbertBasis(ds,cs);
+    diagonalData := b2mDiagonalData P;
+    HB := diagonalData#"hilbertBasis";
     projectionToBase := map(baseRing,P#ambientRing,
         toList(#us:0_baseRing) | gens baseRing);
     idealGenerators := apply(first entries gens P#blownUpIdeal,
@@ -646,6 +643,7 @@ relativeModelInverseRationalMapData HashTable := model -> (
         "coordinateImages" => coordinateImages,
         "coordinateMap" => coordinateMap,
         "degreeScale" => first degreeScales,
+        "diagonalData" => diagonalData,
         "baseIdeal" => coordinateBaseIdeal,
         "expectedBaseIdeal" => expectedBaseIdeal,
         "baseLocusCertified" => true,
@@ -1070,8 +1068,8 @@ Node
       fibre variables in the Segre coordinates.  The result records homogeneous
       coordinates for $W \dashrightarrow Z$, verifies the model and graph
       equations, and certifies that their base locus is the Rees centre after
-      saturation.  The current graph conversion requires unweighted fibre
-      coordinates.
+      saturation.  Skew weighted fibre coordinates use the positive diagonal
+      selected by @TO b2mDiagonalData@.
   SeeAlso
     relativeCanonicalModelData
     mmpStepRecordData

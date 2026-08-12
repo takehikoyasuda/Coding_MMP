@@ -8,7 +8,7 @@ Baseline recorded on 2026-08-12 with Macaulay2 1.26.06.
 | --- | --- | --- |
 | Paper (`AlgoMMP`) | `dda50e7` | `revise/bigraded-degrees` |
 | `SteinFactorizationM2` | `321135a` | `fix/paper-stein-graph` |
-| `flip-computation` | `ac55f7e` | `fix/m2-1.26-weil-divisors` |
+| `flip-computation` | `ddfe5b9` | `fix/m2-1.26-weil-divisors` |
 
 The source repositories had the following local state at import time:
 
@@ -35,6 +35,7 @@ The source repositories had the following local state at import time:
 | Relative canonical model | `relativeCanonicalModelFromBaseData`, `relativeCanonicalModelData` | P3 identity and projective toric flip regressions pass |
 | Relative-model isomorphism | `relativeCanonicalModelIsomorphismData` | certified by the saturated non-locally-free locus of the canonical blow-up ideal |
 | Inverse relative-model rational map | `relativeModelInverseRationalMapData` | explicit Segre/Rees coordinates; toric flip equations and base locus certified |
+| Weighted relative-model graph | `b2mDiagonalData`, `b2mToGraphMorphism` | skew Rees degrees use an interior positive diagonal; weighted toric flip passes end to end |
 | Contraction smallness | `contractionGraphSmallnessData`, `contractionSmallnessData` | exterior-power criterion audited; blow-up divisor, ODP small resolution, and identity regressions pass |
 | MMP step records | `mmpStepRecordData` | graph-preserving divisorial/flipping/mixed records with automatic smallness |
 | Top-level threefold MMP loop | `threefoldMMPData` | P3 Mori-fibre, quintic minimal-model, and certified Bl_L(P3) birational-continuation regressions pass |

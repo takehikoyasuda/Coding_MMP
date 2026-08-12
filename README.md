@@ -90,6 +90,9 @@ For a nonidentity relative model,
 `relativeModelInverseRationalMapData(model)` gives explicit homogeneous
 coordinates for the rational inverse of its projection, and certifies them
 against both the model and graph equations and the Rees-center base locus.
+When Rees generators have different weighted degrees, `b2mDiagonalData`
+chooses an interior integral diagonal and converts the skew fibre grading to
+positive weights before constructing the same graph and inverse certificates.
 The end-to-end entry point is `threefoldMMPData(R,a)`.  It returns the recorded
 graph sequence and terminates at either a minimal model or a Mori fibre space.
 `threefoldMMPData(R,a,steps)` resumes from a current model while preserving an
