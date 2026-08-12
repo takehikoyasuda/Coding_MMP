@@ -27,7 +27,7 @@ The source repositories had the following local state at import time:
 | Stein coordinate algebra | `steinHomData`, `steinCoordinateAlgebra` | prototype; standard tests pass |
 | Graph of the connected-fibre map | `directSteinGraph` | corrected kernel construction; standard tests pass |
 | Relative canonical model / flip | `computeFlip` | prototype; all 13 tests and four examples pass |
-| Nefness of the canonical divisor | none in this repository | not implemented |
+| Nefness of the canonical divisor | `canonicalNefData`, `isCanonicalNef` | initial implementation; P3 and quintic regressions pass |
 | Threshold and extremal contraction | none in this repository | not implemented |
 | Top-level threefold MMP loop | none in this repository | not implemented |
 
@@ -71,3 +71,6 @@ Run the same baseline with:
 ```sh
 make test-upstreams
 ```
+
+The integration-layer suite is `make test-core`; `make test` runs it together
+with both upstream suites.

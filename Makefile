@@ -1,6 +1,9 @@
-.PHONY: test test-upstreams status
+.PHONY: test test-core test-upstreams status
 
-test: test-upstreams
+test: test-core test-upstreams
+
+test-core:
+	M2 --no-readline --stop -q tests/nefness.m2
 
 test-upstreams:
 	./scripts/test-upstreams.sh

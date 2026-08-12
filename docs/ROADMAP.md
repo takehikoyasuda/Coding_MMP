@@ -37,8 +37,9 @@ Completed:
 ## Milestone 3: implement contractions
 
 1. Represent normal monograded threefold input and graph morphisms uniformly.
-2. Implement the canonical-divisor nefness test.
-3. Construct an ample Cartier divisor and compute the nef threshold.
+2. **Implemented:** construct the weighted ample Cartier divisor and decide
+   canonical-divisor nefness by the paper's parallel base-point-free searches.
+3. Compute the nef threshold.
 4. Construct the induced morphism and pass it through corrected Stein
    factorization to obtain the contraction.
 

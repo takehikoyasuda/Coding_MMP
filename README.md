@@ -30,6 +30,8 @@ The current development environment uses Macaulay2 1.26.06.
 | `references/AlgoMMP` | pinned paper revision |
 | `third_party/SteinFactorizationM2` | bigraded Hom and Stein-factorization prototype |
 | `third_party/flip-computation` | relative canonical model / flip prototype |
+| `MMPComputation.m2` | integration package for nefness and contraction algorithms |
+| `tests/` | integration-layer regression tests |
 | `docs/IMPLEMENTATION-STATUS.md` | trusted scope, known failures, and paper-to-code map |
 | `docs/ROADMAP.md` | implementation order for the full MMP |
 | `scripts/test-upstreams.sh` | reproducible baseline test runner |
@@ -47,6 +49,21 @@ The output ring contains the source and Stein coordinates, but not the original
 target coordinates. New dimension regressions detect the extra scaling
 parameter produced by the old construction. See `docs/IMPLEMENTATION-STATUS.md`
 for the verification scope and remaining review items.
+
+## MMP integration package
+
+The first contraction-stage API is implemented in `MMPComputation.m2`:
+
+```m2
+needsPackage("MMPComputation", FileName => "MMPComputation.m2");
+result = canonicalNefData(R, a)
+answer = isCanonicalNef(R, a)
+```
+
+Here `R` presents a normal log terminal projective threefold and `a` is a
+positive integer for which `a*K_X` is Cartier. The implementation follows the
+paper's parallel search using reflexive pluricanonical divisors and effective
+base-point-free tests of positive perturbations.
 
 ## License
 
