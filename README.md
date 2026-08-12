@@ -86,6 +86,9 @@ relative differentials; an explicit certificate can also be supplied.  The
 justification, and independent regressions.
 The end-to-end entry point is `threefoldMMPData(R,a)`.  It returns the recorded
 graph sequence and terminates at either a minimal model or a Mori fibre space.
+`threefoldMMPData(R,a,steps)` resumes from a current model while preserving an
+independently certified nonterminal prefix, which is useful for long computed
+birational steps and checkpointed runs.
 
 ## License
 

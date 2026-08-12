@@ -688,15 +688,35 @@ threefoldMMPData = method(Options => {
     RelativeCanonicalMultipliers => null,
     RelativeCanonicalMaxSteps => 4,
     RelativeCanonicalVerbose => false})
-threefoldMMPData (Ring,ZZ) := o -> (initialRing,initialIndex) -> (
+threefoldMMPData (Ring,ZZ) := o -> (initialRing,initialIndex) ->
+    threefoldMMPData(initialRing,initialIndex,{},
+        MMPMaxSteps=>o.MMPMaxSteps,
+        CanonicalIndexSearchLimit=>o.CanonicalIndexSearchLimit,
+        NefSearchLimit=>o.NefSearchLimit,
+        ThresholdSearchLimit=>o.ThresholdSearchLimit,
+        ContractionMultipleLimit=>o.ContractionMultipleLimit,
+        RelativeCanonicalMultipliers=>o.RelativeCanonicalMultipliers,
+        RelativeCanonicalMaxSteps=>o.RelativeCanonicalMaxSteps,
+        RelativeCanonicalVerbose=>o.RelativeCanonicalVerbose)
+threefoldMMPData (Ring,ZZ,List) := o -> (initialRing,initialIndex,initialSteps) -> (
     if initialIndex <= 0 then
         error "threefoldMMPData: the initial index multiple must be positive";
+    if any(initialSteps,entry -> not instance(entry,HashTable)) then
+        error "threefoldMMPData: initial steps must be hash tables";
+    if any(initialSteps,entry -> not entry#?"stepType" or not entry#?"terminal") then
+        error "threefoldMMPData: each initial step needs stepType and terminal fields";
+    if any(initialSteps,entry -> entry#"terminal") then
+        error "threefoldMMPData: cannot continue after a terminal initial step";
+    if any(initialSteps,entry -> not entry#?"nextRing") then
+        error "threefoldMMPData: each initial step needs a nextRing field";
+    if #initialSteps > 0 and (last initialSteps)#"nextRing" =!= initialRing then
+        error "threefoldMMPData: the last initial step does not lead to the current ring";
     maxSteps := o.MMPMaxSteps;
     if maxSteps =!= null and (not instance(maxSteps,ZZ) or maxSteps <= 0) then
         error "threefoldMMPData: MMPMaxSteps must be null or positive";
     currentRing := initialRing;
     currentIndex := initialIndex;
-    records := {};
+    records := initialSteps;
     iteration := 0;
     while maxSteps === null or iteration < maxSteps do (
         nefData := canonicalNefData(
@@ -859,16 +879,20 @@ Node
   Key
     threefoldMMPData
     (threefoldMMPData,Ring,ZZ)
+    (threefoldMMPData,Ring,ZZ,List)
   Headline
     run the three-dimensional minimal model program
   Usage
     result = threefoldMMPData(R,a)
+    result = threefoldMMPData(R,a,steps)
   Description
     Text
       Starting with a positive Cartier index multiple for $K_X$, iterate the
       nefness, threshold, contraction, relative-model, smallness, and index
       computations.  Return the graph-preserving step sequence and stop at a
-      minimal model or a Mori fibre space.
+      minimal model or a Mori fibre space.  The three-argument form continues
+      from a current model while retaining certified preceding nonterminal
+      step records; the last record must lead to the supplied current ring.
 
 Node
   Key

@@ -102,5 +102,33 @@ identitySmallness = contractionGraphSmallnessData identityGraph;
 assert(identitySmallness#"isSmall");
 assert(identitySmallness#"exceptionalLocusEmpty");
 
+-- Continue the top-level driver after the independently certified divisorial
+-- contraction Bl_L(P3)->P3.  The retained first graph is followed by the
+-- canonical contraction P3->point, so this exercises the birational state
+-- transition and the subsequent Mori-fibre termination in one driver result.
+P3Target = QQ[q0,q1,q2,q3];
+divisorialContraction = new HashTable from {
+    "conclusive" => true,
+    "isBirational" => true,
+    "contractionGraph" => directGraph,
+    "steinAlgebraData" => new HashTable from {"ring" => P3Target}
+    };
+divisorialModel = relativeCanonicalModelData divisorialContraction;
+divisorialStep = mmpStepRecordData(divisorialContraction,divisorialModel);
+assert(divisorialStep#"stepType" == "divisorial");
+assert(not divisorialStep#"contractionIsSmall");
+birationalMMP = threefoldMMPData(P3Target,1,{divisorialStep});
+assert(birationalMMP#"conclusive");
+assert(birationalMMP#"terminationType" == "Mori fibre space");
+assert(birationalMMP#"numberOfSteps" == 2);
+assert((birationalMMP#"steps")#0#"stepType" == "divisorial");
+assert((birationalMMP#"steps")#0#"contractionGraph" === directGraph);
+assert((birationalMMP#"steps")#1#"stepType" == "fibration");
+assert(try (threefoldMMPData(P3Target,1,{(birationalMMP#"steps")#1}); false)
+    else true);
+assert(try (threefoldMMPData(QQ[r0,r1,r2,r3],1,{divisorialStep}); false)
+    else true);
+
 print "OK smallness: blow-up divisor has codimension 1; ODP exceptional curve has codimension 2.";
 print "OK smallness: identity graph has empty exceptional locus.";
+print "OK birational MMP: Bl_L(P3)->P3 is retained before P3 terminates over a point.";

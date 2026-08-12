@@ -57,7 +57,9 @@ Completed:
    of the second exterior power of relative differentials and record
    divisorial, flipping, and mixed steps without losing either graph.
 5. **Implemented:** the top-level driver iterates birational models and stops
-   at a nef canonical divisor or a Mori fibre space.
+   at a nef canonical divisor or a Mori fibre space.  A certified
+   `Bl_L(P3) -> P3` divisorial prefix is retained while the continued driver
+   reaches the contraction `P3 -> point`.
 
 Every milestone should add worked examples whose expected geometry is known
 independently of the implementation.
