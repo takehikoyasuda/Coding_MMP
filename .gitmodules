@@ -1,0 +1,9 @@
+[submodule "references/AlgoMMP"]
+	path = references/AlgoMMP
+	url = https://github.com/takehikoyasuda/AlgoMMP.git
+[submodule "third_party/SteinFactorizationM2"]
+	path = third_party/SteinFactorizationM2
+	url = https://github.com/takehikoyasuda/SteinFactorizationM2.git
+[submodule "third_party/flip-computation"]
+	path = third_party/flip-computation
+	url = https://github.com/takehikoyasuda/flip-computation.git
