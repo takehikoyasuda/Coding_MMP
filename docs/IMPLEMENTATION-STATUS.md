@@ -8,7 +8,7 @@ Baseline recorded on 2026-08-12 with Macaulay2 1.26.06.
 | --- | --- | --- |
 | Paper (`AlgoMMP`) | `dda50e7` | `revise/bigraded-degrees` |
 | `SteinFactorizationM2` | `321135a` | `fix/paper-stein-graph` |
-| `flip-computation` | `28cefcc` | `main` |
+| `flip-computation` | `ac55f7e` | `fix/m2-1.26-weil-divisors` |
 
 The source repositories had the following local state at import time:
 
@@ -26,7 +26,7 @@ The source repositories had the following local state at import time:
 | Bigraded global Hom | `bigradedGlobalHomData` | prototype; standard tests pass |
 | Stein coordinate algebra | `steinHomData`, `steinCoordinateAlgebra` | prototype; standard tests pass |
 | Graph of the connected-fibre map | `directSteinGraph` | corrected kernel construction; standard tests pass |
-| Relative canonical model / flip | `computeFlip` | prototype; genuine toric examples exist |
+| Relative canonical model / flip | `computeFlip` | prototype; all 13 tests and four examples pass |
 | Nefness of the canonical divisor | none in this repository | not implemented |
 | Threshold and extremal contraction | none in this repository | not implemented |
 | Top-level threefold MMP loop | none in this repository | not implemented |
@@ -59,11 +59,12 @@ example give identical coordinate and graph ideals after renaming variables.
 - `SteinFactorizationM2`: its standard suite passes with dimension assertions
   that fail for the previous `directSteinGraph`. Package documentation examples
   and the LaTeX technical note also build successfully.
-- `flip-computation`: 12 of 13 package tests pass. Test 11
-  (`FlipComputation.m2:339-361`) fails on Macaulay2 1.26.06 at an assertion in
-  the weighted projective toric example. The package also reports that
-  `Divisor` has been renamed to `WeilDivisors`. This is an upstream baseline
-  failure, not an integration regression.
+- `flip-computation`: all 13 package tests pass on Macaulay2 1.26.06 after
+  migrating the package import from the legacy `Divisor` name to
+  `WeilDivisors`. The weighted toric test now checks the invariant
+  least-degree canonical embedding rather than a package-dependent canonical
+  divisor representative. All four worked examples, the package manual
+  examples, and the LaTeX technical note also build successfully.
 
 Run the same baseline with:
 

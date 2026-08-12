@@ -21,11 +21,18 @@ kernel construction is the algorithm in the pinned paper and the tested path.
 
 ## Milestone 2: stabilize the flip package
 
-1. Locate the exact assertion failing in weighted test 11 on M2 1.26.06.
-2. Migrate from the renamed `Divisor` package interface where necessary.
-3. Reconcile `computeFlip` with the pinned paper's current three-step
-   relative-canonical-model algorithm.
-4. Preserve the existing genuine toric and index-two regressions.
+Completed:
+
+1. Located the weighted test 11 failure: it asserted a particular canonical
+   divisor representative returned by the legacy `Divisor` package.
+2. Migrated the package and examples to `WeilDivisors`.
+3. Replaced the representative-dependent assertion with the invariant
+   least-degree canonical embedding used by the current paper and code.
+4. Reconciled `computeFlip` with the pinned paper's three-step
+   relative-canonical-model algorithm. Its multiplier schedule contains the
+   factorial sequence required in the paper while trying smaller divisors first.
+5. Preserved the genuine toric, projective, and index-two regressions; all 13
+   package tests and four worked examples pass on M2 1.26.06.
 
 ## Milestone 3: implement contractions
 
