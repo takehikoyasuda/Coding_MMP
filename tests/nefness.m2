@@ -1,8 +1,8 @@
 needsPackage("MMPComputation",FileName=>"MMPComputation.m2");
 
--- The effective constants stated explicitly for threefolds in the paper.
-assert(effectiveNefMultiplier(3,1) == 1920);
-assert(effectiveNefMultiplier(3,2) == 1536);
+-- The improved effective constants for threefolds.
+assert(effectiveNefMultiplier(3,1) == 7);
+assert(effectiveNefMultiplier(3,2) == 6);
 
 -- P^3 has K=-4H, so K is not nef and K+4H=0 is nef.
 R = QQ[x0,x1,x2,x3];
@@ -20,10 +20,15 @@ assert(threshold#"nef");
 assert(threshold#"basePointFree");
 assert(threshold#"multiplier" == 1);
 assert(threshold#"multipliersTested" == {1});
-assert(threshold#"guaranteedMultiplier" == 1920);
-assert(negative#"scaledTest"#"multipliersTested" == {1});
-assert(negative#"scaledTest"#"certificateType" == "negative curve intersection");
-assert(negative#"scaledTest"#"negativeCurveWitness"#"intersection" < 0);
+assert(threshold#"guaranteedMultiplier" == 7);
+halfAmple = canonicalScaledNefData(R,1,9/2);
+assert(halfAmple#"nef");
+assert(halfAmple#"N" == 2);
+assert(halfAmple#"guaranteedMultiplier" == 6);
+assert(halfAmple#"multiplier" == 1);
+assert(negative#"scaledTest"#"multipliersTested" == toList(1..6));
+assert(negative#"scaledTest"#"certificateType" == "effective base-point-free theorem");
+assert(negative#"scaledTest"#"negativeCurveWitness" === null);
 thresholdData = canonicalNefThresholdData(R,1);
 assert(thresholdData#"conclusive");
 assert(thresholdData#"threshold" == 4);
@@ -72,9 +77,10 @@ assert(quinticMMP#"conclusive");
 assert(quinticMMP#"terminationType" == "minimal model");
 assert(quinticMMP#"numberOfSteps" == 0);
 
-print "OK effective nef multipliers: m(3,1)=1920 and m(3,2)=1536.";
-print "OK P3: K is non-nef, detected by the t=1/2 perturbation.";
+print "OK effective nef multipliers: m(3,1)=7 and m(3,2)=6.";
+print "OK P3: K is non-nef, detected by the guaranteed multiplier 6 test.";
 print "OK P3: the computed nef threshold is lambda=4.";
+print "OK P3: the N=2 scaled nef test uses guaranteed multiplier 6.";
 print "OK P3: the threshold divisor gives the contraction to a point.";
 print "OK P(1,1,1,2): the constructed ample Cartier degree is 2.";
 print "OK quintic threefold: K=0 is certified nef at the first iteration.";

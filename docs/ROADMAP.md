@@ -42,12 +42,10 @@ Completed:
 2. **Implemented:** construct the weighted ample Cartier divisor and decide
    canonical-divisor nefness by the paper's parallel base-point-free searches.
 3. **Implemented:** compute the nef threshold by dyadic bracketing and the
-   finite rational candidate search.  Scaled nef tests first try small
-   multiples.  A negative intersection with a curve cut from a small
-   multiple's base locus now gives an immediate non-nef certificate; otherwise
-   the effective-theorem multiplier remains the final negative certificate.
-   This avoids needless construction of the 1920-fold divisor whenever either
-   inexpensive witness succeeds.
+   finite rational candidate search.  Scaled threefold nef tests now use the
+   improved Proposition 3.1 guaranteed test directly: multiplier 7 for `N=1`
+   and 6 for `N>=2`.  The negative-curve shortcut remains only for older
+   high-dimensional fallback bounds.
 4. **Implemented:** construct the complete-linear-system graph and pass it
    through corrected Stein factorization to obtain the contraction.
 

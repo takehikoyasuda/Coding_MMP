@@ -12,7 +12,7 @@ contraction = canonicalContractionAtThresholdData(X,1,3);
 assert(contraction#"conclusive");
 assert(contraction#"threshold" == 3);
 assert(contraction#"multiplier" == 1);
-assert(contraction#"guaranteedMultiplier" == 1920);
+assert(contraction#"guaranteedMultiplier" == 7);
 assert(contraction#"targetDimension" == 1);
 assert(contraction#"sourceDimension" == 3);
 assert(contraction#"dimensionDrop" == 2);

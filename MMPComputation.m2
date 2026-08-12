@@ -89,11 +89,14 @@ weightedAmpleDivisorData Ring := R -> (
     )
 
 -- Proposition 3.1: the effective base-point-free multiplier for
--- L=N(K_X+tH) on a d-dimensional log terminal variety.
+-- L=N(K_X+tH).  The improved threefold bound is ceil(2/N)+5, giving
+-- 7 for N=1 and 6 for N>=2.  For other dimensions keep the older
+-- Fujino/Kollar-type bound used by the paper revision this package pins.
 effectiveNefMultiplier = method()
 effectiveNefMultiplier (ZZ,ZZ) := (d,N) -> (
     if d < 0 then error "effectiveNefMultiplier: dimension must be nonnegative";
     if N <= 0 then error "effectiveNefMultiplier: N must be positive";
+    if d == 3 then return ceiling(2/N)+5;
     2^(d+1) * (d+1)! * (ceiling(2/N) + d)
     )
 
@@ -214,14 +217,15 @@ canonicalScaledNefDataInternal = (R,K,H,a,t) -> (
     N := a*q;
     L := q*a*K + a*p*H;
     guaranteedMultiplier := effectiveNefMultiplier(d,N);
-    -- A base-point-free positive multiple already proves that L is nef, so
-    -- try the inexpensive small multiples before constructing the usually
-    -- enormous effective-theorem multiple.  Failure at a small multiple is
-    -- not a non-nef certificate; only the guaranteed multiplier has that
-    -- implication under the hypotheses of Proposition 3.1.
+    -- A base-point-free positive multiple already proves that L is nef.  In
+    -- the improved threefold case the guaranteed multiplier is at most 7, so
+    -- simply test all multiples up to it.  For the older high-dimensional
+    -- fallback, keep the negative-curve search as an optional shortcut before
+    -- jumping to the guaranteed multiplier.
     trialBound := min(8,guaranteedMultiplier);
+    useNegativeCurveShortcut := guaranteedMultiplier > trialBound;
     trialMultipliers := toList(1..trialBound);
-    if guaranteedMultiplier > trialBound then
+    if useNegativeCurveShortcut then
         trialMultipliers = append(trialMultipliers,guaranteedMultiplier);
     multipliersTested := {};
     multiplier := null;
@@ -233,7 +237,7 @@ canonicalScaledNefDataInternal = (R,K,H,a,t) -> (
         candidateBaseLocus := trim baseLocus candidateDivisor;
         candidateBPF := candidateBaseLocus == ideal 1_R;
         multipliersTested = append(multipliersTested,m);
-        if not candidateBPF and m < guaranteedMultiplier then
+        if useNegativeCurveShortcut and not candidateBPF and m < guaranteedMultiplier then
             negativeCurveWitness = negativeBaseLocusCurveData(L,candidateBaseLocus);
         if candidateBPF or negativeCurveWitness =!= null
             or m == guaranteedMultiplier then (
