@@ -72,7 +72,9 @@ finite rational candidate search.
 The contraction API constructs the complete-linear-system graph at the
 threshold and computes its connected-fibre part with Stein factorization.  Its
 result records source and target dimensions, dimension drop, and whether the
-contraction is birational or of fibre type.
+contraction is birational or of fibre type.  All public contraction and
+relative-model graphs use the common `GraphMorphism` representation;
+`mmpGraphMorphism` adapts legacy integration or Stein graph tables.
 For a birational result, `relativeCanonicalModelData(contraction)` computes the
 next model over the contraction target, using the identity model when the
 canonical algebra is already trivial and `FlipComputation` otherwise.

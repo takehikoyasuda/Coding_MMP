@@ -4,6 +4,8 @@ needsPackage("Polyhedra");
 -- A Q-Cartier target has itself as its relative canonical model.  This is the
 -- branch used after an ordinary divisorial contraction.
 P3 = QQ[p0,p1,p2,p3];
+identityHyperplane = (weightedAmpleDivisorData P3)#"divisor";
+identityContractionGraph = (completeLinearSystemGraphData identityHyperplane)#"graph";
 identityModel = relativeCanonicalModelFromBaseData P3;
 assert(identityModel#"conclusive");
 assert(identityModel#"relativeModelType" == "identity");
@@ -15,7 +17,7 @@ assert(identityCheck#"isIsomorphism");
 identityContraction = new HashTable from {
     "conclusive" => true,
     "isBirational" => true,
-    "contractionGraph" => "identity contraction graph",
+    "contractionGraph" => identityContractionGraph,
     "steinAlgebraData" => new HashTable from {"ring" => P3}
     };
 assert((relativeCanonicalModelData identityContraction)#"isIdentity");
@@ -61,18 +63,19 @@ assert(saturate(radical inverseModel#"baseIdeal",ideal vars W)
 nontrivialContraction = new HashTable from {
     "conclusive" => true,
     "isBirational" => true,
-    "contractionGraph" => "retained contraction graph"
+    "contractionGraph" => flipModel#"relativeModelGraph"
     };
 flippingStep = mmpStepRecordData(
     nontrivialContraction,flipModel,ContractionIsSmall=>true);
 mixedStep = mmpStepRecordData(
     nontrivialContraction,flipModel,ContractionIsSmall=>false);
-unknownStep = mmpStepRecordData(nontrivialContraction,flipModel);
+automaticStep = mmpStepRecordData(nontrivialContraction,flipModel);
 assert(flippingStep#"stepType" == "flipping");
 assert(mixedStep#"stepType" == "mixed");
-assert(unknownStep#"stepType" == "flipping-or-mixed");
-assert(not unknownStep#"stepTypeConclusive");
-assert(flippingStep#"contractionGraph" == "retained contraction graph");
+assert(automaticStep#"stepType" == "flipping");
+assert(automaticStep#"stepTypeConclusive");
+assert(automaticStep#"contractionIsSmall");
+assert(flippingStep#"contractionGraph" === flipModel#"relativeModelGraph");
 assert(flippingStep#"relativeModelGraph" === flipModel#"relativeModelGraph");
 assert(flippingStep#"inverseRelativeModelRequired");
 assert(flippingStep#"inverseRelativeModelData"#"baseLocusCertified");
@@ -87,4 +90,4 @@ print "OK relative model: Q-Cartier P3 target returns the identity model.";
 print "OK relative model: non-Q-Gorenstein toric target returns the known flip graph.";
 print "OK inverse map: Rees generators give certified rational coordinates for the toric flip.";
 print "OK relative model: fibre-type contractions are rejected before flip computation.";
-print "OK step records: divisorial, flipping, mixed, and unresolved subtypes retain both graphs.";
+print "OK step records: divisorial, flipping, and mixed subtypes retain normalized graphs.";

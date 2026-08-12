@@ -36,7 +36,9 @@ Completed:
 
 ## Milestone 3: implement contractions
 
-1. Represent normal monograded threefold input and graph morphisms uniformly.
+1. **Implemented:** represent public contraction and relative-model graphs
+   uniformly as `GraphMorphism`, with an adapter for legacy integration and
+   Stein graph tables.
 2. **Implemented:** construct the weighted ample Cartier divisor and decide
    canonical-divisor nefness by the paper's parallel base-point-free searches.
 3. **Implemented:** compute the nef threshold by dyadic bracketing and the

@@ -23,9 +23,13 @@ assert(contraction#"steinFactorizationType" == "computed");
 assert(contraction#"steinHomData"#"certifiedBound");
 assert(contraction#"linearSystemGraph"#"targetVariableCount" == 2);
 assert(isPrime contraction#"linearSystemGraph"#"graphIdeal");
-assert(isPrime contraction#"contractionGraph"#"graphIdeal");
-assert(dim(contraction#"contractionGraph"#"jointRing"
-    /contraction#"contractionGraph"#"graphIdeal") == dim X+1);
+assert(instance(contraction#"linearSystemGraph"#"graph",GraphMorphism));
+assert(instance(contraction#"contractionGraph",GraphMorphism));
+assert(isPrime contraction#"contractionGraph"#definingIdeal);
+assert(dim(contraction#"contractionGraph"#totalRing) == dim X+1);
+assert(contraction#"contractionGraph"#sourceRing === X);
+assert(contraction#"contractionGraph"#baseCoordinateRing
+    === contraction#"steinAlgebraData"#"ring");
 
 print "OK Segre P1xP2: K+3H=O(1,0) gives the connected-fibre contraction to P1.";
 print "OK contraction graph: certified Stein bound, prime graph, expected dimension.";
@@ -70,11 +74,21 @@ directParametrization = map(DP,BD,{
     c3*du*dSourceScale,c3*dv*dSourceScale,
     c0*dTargetScale,c1*dTargetScale,c2*dTargetScale,c3*dTargetScale});
 directIdeal = kernel directParametrization;
-directGraph = new HashTable from {
+directSourcePolynomialRing = QQ[s00,s01,s10,s11,s20,s21,s30,s31];
+directTargetRing = QQ[q0,q1,q2,q3];
+directSourceElimination = eliminate(directIdeal,drop(flatten entries vars BD,8));
+directSourceMap = map(directSourcePolynomialRing,BD,
+    flatten entries vars directSourcePolynomialRing
+        | toList(4:0_directSourcePolynomialRing));
+directSourceRing = directSourcePolynomialRing/directSourceMap directSourceElimination;
+directGraphData = new HashTable from {
     "jointRing" => BD,
     "graphIdeal" => directIdeal,
-    "sourceVariableCount" => 8
+    "sourceVariableCount" => 8,
+    "sourceRing" => directSourceRing,
+    "targetRing" => directTargetRing
     };
+directGraph = mmpGraphMorphism directGraphData;
 divisorialSmallness = contractionGraphSmallnessData directGraph;
 assert(not divisorialSmallness#"isSmall");
 assert(divisorialSmallness#"exceptionalDimension" == 2);
@@ -101,12 +115,24 @@ identityGraph = new HashTable from {
 identitySmallness = contractionGraphSmallnessData identityGraph;
 assert(identitySmallness#"isSmall");
 assert(identitySmallness#"exceptionalLocusEmpty");
+identitySource = QQ[is0,is1];
+identityTarget = QQ[it0,it1];
+normalizedIdentityGraph = mmpGraphMorphism new HashTable from join(
+    pairs identityGraph,{
+        "sourceRing" => identitySource,
+        "targetRing" => identityTarget
+        });
+assert(instance(normalizedIdentityGraph,GraphMorphism));
+assert(normalizedIdentityGraph#ambientRing === ID);
+assert(normalizedIdentityGraph#definingIdeal === identityGraph#"graphIdeal");
+assert(#normalizedIdentityGraph#fiberVariables == 2);
+assert(#normalizedIdentityGraph#baseVariables == 2);
 
 -- Continue the top-level driver after the independently certified divisorial
 -- contraction Bl_L(P3)->P3.  The retained first graph is followed by the
 -- canonical contraction P3->point, so this exercises the birational state
 -- transition and the subsequent Mori-fibre termination in one driver result.
-P3Target = QQ[q0,q1,q2,q3];
+P3Target = directTargetRing;
 divisorialContraction = new HashTable from {
     "conclusive" => true,
     "isBirational" => true,

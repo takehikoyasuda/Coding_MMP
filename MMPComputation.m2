@@ -26,6 +26,7 @@ export {
     "canonicalNefThresholdData",
     "canonicalNefThreshold",
     "completeLinearSystemGraphData",
+    "mmpGraphMorphism",
     "contractionTypeData",
     "canonicalContractionAtThresholdData",
     "canonicalContractionData",
@@ -96,6 +97,48 @@ isBasePointFreeDivisor = method()
 isBasePointFreeDivisor BasicDivisor := D -> (
     R := ring D;
     trim baseLocus D == ideal 1_R
+    )
+
+-- Normalize integration-layer and Stein graph tables to the GraphMorphism
+-- representation used by FlipComputation.  Legacy tables remain accepted at
+-- package boundaries, but all newly returned MMP morphism graphs use this type.
+mmpGraphMorphism = method()
+mmpGraphMorphism GraphMorphism := graph -> graph
+mmpGraphMorphism HashTable := graph -> (
+    P := if graph#?"jointRing" then graph#"jointRing"
+        else if graph#?"productRing" then graph#"productRing"
+        else error "mmpGraphMorphism: missing joint or product ring";
+    if not graph#?"graphIdeal" or not graph#?"sourceVariableCount"
+        or not graph#?"sourceRing" or not graph#?"targetRing" then
+        error "mmpGraphMorphism: incomplete graph table";
+    J := graph#"graphIdeal";
+    if ring J =!= P then
+        error "mmpGraphMorphism: graph ideal belongs to the wrong ring";
+    ns := graph#"sourceVariableCount";
+    if ns <= 0 or ns >= numgens P then
+        error "mmpGraphMorphism: invalid source variable count";
+    sourceCoordinateRing := graph#"sourceRing";
+    targetCoordinateRing := graph#"targetRing";
+    if numgens ambient sourceCoordinateRing != ns then
+        error "mmpGraphMorphism: source coordinate count does not match its block";
+    if numgens ambient targetCoordinateRing != numgens(P)-ns then
+        error "mmpGraphMorphism: target coordinate count does not match its block";
+    if dim(P/J)-2 != dim(sourceCoordinateRing)-1 then
+        error "mmpGraphMorphism: graph and source dimensions do not match";
+    allVariables := flatten entries vars P;
+    sourceVariables := take(allVariables,ns);
+    targetVariables := drop(allVariables,ns);
+    new GraphMorphism from {
+        ambientRing => P,
+        definingIdeal => J,
+        totalRing => P/J,
+        sourceRing => sourceCoordinateRing,
+        baseCoordinateRing => targetCoordinateRing,
+        fiberVariables => sourceVariables,
+        baseVariables => targetVariables,
+        irrelevantIdeal => ideal flatten apply(sourceVariables,y ->
+            apply(targetVariables,x -> y*x))
+        }
     )
 
 canonicalScaledNefDataInternal = (R,K,H,a,t) -> (
@@ -294,11 +337,13 @@ completeLinearSystemGraphData BasicDivisor := D -> (
         join(apply(sourceVars,q -> sub(q,R)),
             apply(sectionImages,q -> q*graphParameter)));
     graphIdeal := kernel graphMap;
-    new HashTable from {
+    targetRing := (source sectionMap)/(kernel sectionMap);
+    graphData := new HashTable from {
         "productRing" => productRing,
         "graphIdeal" => graphIdeal,
         "graphMap" => graphMap,
         "sourceRing" => R,
+        "targetRing" => targetRing,
         "sourcePolynomialRing" => S,
         "sourceIdeal" => sourceIdeal,
         "sourceVariableCount" => #sourceVars,
@@ -308,7 +353,10 @@ completeLinearSystemGraphData BasicDivisor := D -> (
         "liftedSectionImages" => liftedImages,
         "basePointFree" => true,
         "graphConstruction" => "kernel of the Rees parametrization"
-        }
+        };
+    new HashTable from join(pairs graphData,{
+        "graph" => mmpGraphMorphism graphData
+        })
     )
 
 -- A connected-fibre contraction is birational exactly when source and target
@@ -384,14 +432,19 @@ canonicalContractionAtThresholdData (Ring,ZZ,QQ) := o -> (R,a,lambda) -> (
             "morphismDivisor" => morphismDivisor,
             "linearSystemGraph" => linearSystemGraph,
             "steinFactorizationType" => "trivial point target",
-            "contractionGraph" => linearSystemGraph,
+            "contractionGraph" => linearSystemGraph#"graph",
             "canonicalDivisor" => K,
             "ampleData" => ampleData
             },pairs contractionTypeData(dim R-1,0));
     homData := steinHomData(
         linearSystemGraph#"productRing",linearSystemGraph#"graphIdeal");
     algebraData := steinCoordinateAlgebra homData;
-    contractionGraph := directSteinGraph(homData,algebraData);
+    rawContractionGraph := directSteinGraph(homData,algebraData);
+    contractionGraphData := new HashTable from join(pairs rawContractionGraph,{
+        "sourceRing" => R,
+        "targetRing" => algebraData#"ring"
+        });
+    contractionGraph := mmpGraphMorphism contractionGraphData;
     targetDimension := dim(algebraData#"ring")-1;
     new HashTable from join({
         "conclusive" => true,
@@ -405,6 +458,7 @@ canonicalContractionAtThresholdData (Ring,ZZ,QQ) := o -> (R,a,lambda) -> (
         "steinHomData" => homData,
         "steinAlgebraData" => algebraData,
         "steinFactorizationType" => "computed",
+        "contractionGraphData" => contractionGraphData,
         "contractionGraph" => contractionGraph,
         "canonicalDivisor" => K,
         "ampleData" => ampleData
@@ -679,6 +733,9 @@ mmpStepRecordData HashTable := o -> contraction -> (
     if not contraction#?"conclusive" or not contraction#"conclusive" then
         error "mmpStepRecordData: expected a conclusive contraction";
     if contraction#?"isFibreType" and contraction#"isFibreType" then
+        if not contraction#?"contractionGraph"
+            or not instance(contraction#"contractionGraph",GraphMorphism) then
+            error "mmpStepRecordData: expected a GraphMorphism contraction graph";
         return new HashTable from {
             "stepType" => "fibration",
             "terminal" => true,
@@ -697,15 +754,16 @@ mmpStepRecordData (HashTable,HashTable) := o -> (contraction,model) -> (
         error "mmpStepRecordData: expected a conclusive contraction";
     if not contraction#?"isBirational" or not contraction#"isBirational" then
         error "mmpStepRecordData: expected a birational contraction";
+    if not contraction#?"contractionGraph"
+        or not instance(contraction#"contractionGraph",GraphMorphism) then
+        error "mmpStepRecordData: expected a GraphMorphism contraction graph";
     if not model#?"conclusive" or not model#"conclusive" then
         error "mmpStepRecordData: expected a conclusive relative model";
     small := o.ContractionIsSmall;
     if small =!= null and not instance(small,Boolean) then
         error "mmpStepRecordData: ContractionIsSmall must be null or Boolean";
     smallnessData := null;
-    if small === null and contraction#?"contractionGraph"
-        and (instance(contraction#"contractionGraph",HashTable)
-            or instance(contraction#"contractionGraph",GraphMorphism)) then (
+    if small === null then (
             smallnessData = contractionSmallnessData contraction;
             small = smallnessData#"isSmall";
             );
@@ -951,6 +1009,23 @@ Node
       Takehiko Yasuda, {em An algorithm for the minimal model program in
       dimension three}.  The first implemented stage is the canonical-divisor
       nefness test of Proposition 3.8.
+
+Node
+  Key
+    mmpGraphMorphism
+    (mmpGraphMorphism,GraphMorphism)
+    (mmpGraphMorphism,HashTable)
+  Headline
+    normalize a morphism graph to the common representation
+  Usage
+    normalized = mmpGraphMorphism graph
+  Description
+    Text
+      Return a @TO GraphMorphism@ unchanged, or adapt a legacy integration or
+      Stein graph table carrying its source and target coordinate rings.  New
+      contraction and relative-model results expose their public graphs in
+      this representation, while retaining raw computation tables separately
+      as certificates.
 
 Node
   Key

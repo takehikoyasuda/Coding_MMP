@@ -31,6 +31,7 @@ The source repositories had the following local state at import time:
 | Nef threshold | `canonicalNefThresholdData`, `canonicalNefThreshold` | initial implementation; P3 regression passes |
 | Extremal contraction | `canonicalContractionAtThresholdData`, `canonicalContractionData` | initial implementation; P3 point and Segre P1xP2 fibre contractions pass |
 | Contraction type | `contractionTypeData` and classification fields on contraction results | P3/point and Segre are fibre type; blow-up of a line is birational |
+| Graph representation | `mmpGraphMorphism`, `GraphMorphism` | complete-linear-system, Stein contraction, and relative-model graphs share one representation |
 | Relative canonical model | `relativeCanonicalModelFromBaseData`, `relativeCanonicalModelData` | P3 identity and projective toric flip regressions pass |
 | Relative-model isomorphism | `relativeCanonicalModelIsomorphismData` | certified by the saturated non-locally-free locus of the canonical blow-up ideal |
 | Inverse relative-model rational map | `relativeModelInverseRationalMapData` | explicit Segre/Rees coordinates; toric flip equations and base locus certified |

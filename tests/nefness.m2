@@ -36,6 +36,7 @@ assert(pointContraction#"isFibreType");
 assert(not pointContraction#"isBirational");
 assert(pointContraction#"dimensionDrop" == 3);
 assert(pointContraction#"steinFactorizationType" == "trivial point target");
+assert(instance(pointContraction#"contractionGraph",GraphMorphism));
 p3MMP = threefoldMMPData(R,1);
 assert(p3MMP#"conclusive");
 assert(p3MMP#"terminationType" == "Mori fibre space");
