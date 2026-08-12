@@ -35,6 +35,8 @@ export {
     "contractionGraphSmallnessData",
     "contractionSmallnessData",
     "mmpStepRecordData",
+    "canonicalIndexData",
+    "threefoldMMPData",
     "canonicalNefData",
     "isCanonicalNef",
     "NefSearchLimit",
@@ -43,7 +45,9 @@ export {
     "RelativeCanonicalMultipliers",
     "RelativeCanonicalMaxSteps",
     "RelativeCanonicalVerbose",
-    "ContractionIsSmall"
+    "ContractionIsSmall",
+    "CanonicalIndexSearchLimit",
+    "MMPMaxSteps"
     }
 
 -- Lemma 3.5 of the paper: if X is presented in a weighted projective space
@@ -644,6 +648,129 @@ mmpStepRecordData (HashTable,HashTable) := o -> (contraction,model) -> (
         }
     )
 
+canonicalIndexData = method(Options => {CanonicalIndexSearchLimit => null})
+canonicalIndexData Ring := o -> R -> (
+    limit := o.CanonicalIndexSearchLimit;
+    if limit =!= null and (not instance(limit,ZZ) or limit <= 0) then
+        error "canonicalIndexData: CanonicalIndexSearchLimit must be null or positive";
+    K := canonicalDivisor(R,IsGraded=>true);
+    i := 1;
+    while (limit === null or i <= limit)
+        and not isCartier(i*K,IsGraded=>true) do i = i+1;
+    if limit =!= null and i > limit then
+        return new HashTable from {
+            "conclusive" => false,
+            "index" => null,
+            "multiplesTested" => limit,
+            "canonicalDivisor" => K
+            };
+    new HashTable from {
+        "conclusive" => true,
+        "index" => i,
+        "multiplesTested" => i,
+        "canonicalDivisor" => K
+        }
+    )
+
+threefoldMMPData = method(Options => {
+    MMPMaxSteps => null,
+    CanonicalIndexSearchLimit => null,
+    NefSearchLimit => null,
+    ThresholdSearchLimit => null,
+    ContractionMultipleLimit => null,
+    RelativeCanonicalMultipliers => null,
+    RelativeCanonicalMaxSteps => 4,
+    RelativeCanonicalVerbose => false})
+threefoldMMPData (Ring,ZZ) := o -> (initialRing,initialIndex) -> (
+    if initialIndex <= 0 then
+        error "threefoldMMPData: the initial index multiple must be positive";
+    maxSteps := o.MMPMaxSteps;
+    if maxSteps =!= null and (not instance(maxSteps,ZZ) or maxSteps <= 0) then
+        error "threefoldMMPData: MMPMaxSteps must be null or positive";
+    currentRing := initialRing;
+    currentIndex := initialIndex;
+    records := {};
+    iteration := 0;
+    while maxSteps === null or iteration < maxSteps do (
+        nefData := canonicalNefData(
+            currentRing,currentIndex,NefSearchLimit=>o.NefSearchLimit);
+        if not nefData#"conclusive" then
+            return new HashTable from {
+                "conclusive" => false,
+                "phase" => "nefness",
+                "currentRing" => currentRing,
+                "currentIndex" => currentIndex,
+                "steps" => records,
+                "nefData" => nefData
+                };
+        if nefData#"nef" then
+            return new HashTable from {
+                "conclusive" => true,
+                "terminationType" => "minimal model",
+                "finalRing" => currentRing,
+                "finalIndex" => currentIndex,
+                "steps" => records,
+                "numberOfSteps" => #records,
+                "finalNefData" => nefData
+                };
+        contraction := canonicalContractionData(
+            currentRing,currentIndex,
+            ThresholdSearchLimit=>o.ThresholdSearchLimit,
+            ContractionMultipleLimit=>o.ContractionMultipleLimit);
+        if not contraction#"conclusive" then
+            return new HashTable from {
+                "conclusive" => false,
+                "phase" => "contraction",
+                "currentRing" => currentRing,
+                "currentIndex" => currentIndex,
+                "steps" => records,
+                "contractionData" => contraction
+                };
+        if contraction#"isFibreType" then (
+            record := mmpStepRecordData contraction;
+            records = append(records,record);
+            return new HashTable from {
+                "conclusive" => true,
+                "terminationType" => "Mori fibre space",
+                "finalRing" => currentRing,
+                "finalIndex" => currentIndex,
+                "steps" => records,
+                "numberOfSteps" => #records,
+                "finalContraction" => contraction
+                };
+            );
+        model := relativeCanonicalModelData(
+            contraction,
+            RelativeCanonicalMultipliers=>o.RelativeCanonicalMultipliers,
+            RelativeCanonicalMaxSteps=>o.RelativeCanonicalMaxSteps,
+            RelativeCanonicalVerbose=>o.RelativeCanonicalVerbose);
+        record = mmpStepRecordData(contraction,model);
+        records = append(records,record);
+        currentRing = record#"nextRing";
+        indexData := canonicalIndexData(
+            currentRing,CanonicalIndexSearchLimit=>o.CanonicalIndexSearchLimit);
+        if not indexData#"conclusive" then
+            return new HashTable from {
+                "conclusive" => false,
+                "phase" => "canonical index",
+                "currentRing" => currentRing,
+                "steps" => records,
+                "indexData" => indexData
+                };
+        currentIndex = indexData#"index";
+        iteration = iteration+1;
+        );
+    new HashTable from {
+        "conclusive" => false,
+        "phase" => "MMP step limit",
+        "currentRing" => currentRing,
+        "currentIndex" => currentIndex,
+        "steps" => records,
+        "stepsRun" => iteration,
+        "warning" => "the optional MMP step limit was reached"
+        }
+    )
+
 -- Proposition 3.8 for threefolds.  Run the two terminating searches in
 -- parallel: global generation of a reflexive pluricanonical sheaf proves nef,
 -- while failure of nefness for K_X+2^{-j}H proves non-nef.  NefSearchLimit is
@@ -720,6 +847,30 @@ Node
       Takehiko Yasuda, {em An algorithm for the minimal model program in
       dimension three}.  The first implemented stage is the canonical-divisor
       nefness test of Proposition 3.8.
+
+Node
+  Key
+    threefoldMMPData
+    (threefoldMMPData,Ring,ZZ)
+  Headline
+    run the three-dimensional minimal model program
+  Usage
+    result = threefoldMMPData(R,a)
+  Description
+    Text
+      Starting with a positive Cartier index multiple for $K_X$, iterate the
+      nefness, threshold, contraction, relative-model, smallness, and index
+      computations.  Return the graph-preserving step sequence and stop at a
+      minimal model or a Mori fibre space.
+
+Node
+  Key
+    canonicalIndexData
+    (canonicalIndexData,Ring)
+  Headline
+    find the Cartier index of the canonical divisor
+  Usage
+    result = canonicalIndexData R
 
 Node
   Key
@@ -974,6 +1125,18 @@ Node
     NefSearchLimit
   Headline
     optional iteration bound for the canonical-nefness search
+
+Node
+  Key
+    MMPMaxSteps
+  Headline
+    optional iteration bound for the top-level MMP driver
+
+Node
+  Key
+    CanonicalIndexSearchLimit
+  Headline
+    optional bound when searching for a canonical Cartier index
 
 Node
   Key

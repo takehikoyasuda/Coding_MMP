@@ -36,6 +36,11 @@ assert(pointContraction#"isFibreType");
 assert(not pointContraction#"isBirational");
 assert(pointContraction#"dimensionDrop" == 3);
 assert(pointContraction#"steinFactorizationType" == "trivial point target");
+p3MMP = threefoldMMPData(R,1);
+assert(p3MMP#"conclusive");
+assert(p3MMP#"terminationType" == "Mori fibre space");
+assert(p3MMP#"numberOfSteps" == 1);
+assert((p3MMP#"steps")#0#"stepType" == "fibration");
 
 -- On P(1,1,1,2), the construction uses O(2), not the generally noninvertible
 -- O(1), and its complete linear system is base-point-free.
@@ -55,6 +60,10 @@ assert(nonnegative#"nef");
 assert(nonnegative#"iteration" == 1);
 assert(nonnegative#"witnessType" == "base-point-free pluricanonical divisor");
 assert(isCanonicalNef(Q,1));
+quinticMMP = threefoldMMPData(Q,1);
+assert(quinticMMP#"conclusive");
+assert(quinticMMP#"terminationType" == "minimal model");
+assert(quinticMMP#"numberOfSteps" == 0);
 
 print "OK effective nef multipliers: m(3,1)=1920 and m(3,2)=1536.";
 print "OK P3: K is non-nef, detected by the t=1/2 perturbation.";
@@ -62,3 +71,4 @@ print "OK P3: the computed nef threshold is lambda=4.";
 print "OK P3: the threshold divisor gives the contraction to a point.";
 print "OK P(1,1,1,2): the constructed ample Cartier degree is 2.";
 print "OK quintic threefold: K=0 is certified nef at the first iteration.";
+print "OK MMP driver: P3 stops at a Mori fibre space; the quintic stops as a minimal model.";

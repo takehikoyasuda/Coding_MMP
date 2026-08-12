@@ -82,6 +82,8 @@ the identity, certified by the locally-free locus of its blow-up ideal.
 flipping, or mixed step metadata.  The original contraction's smallness is
 computed from the codimension of the relative-differential rank-jump locus; an
 explicit certificate can also be supplied.
+The end-to-end entry point is `threefoldMMPData(R,a)`.  It returns the recorded
+graph sequence and terminates at either a minimal model or a Mori fibre space.
 
 ## License
 

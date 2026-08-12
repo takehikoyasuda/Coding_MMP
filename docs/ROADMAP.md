@@ -56,7 +56,8 @@ Completed:
 4. **Implemented:** compute the exceptional-locus codimension from the
    relative-differential rank-jump locus and record divisorial, flipping, and
    mixed steps without losing either graph.
-5. Stop at a nef canonical divisor or a Mori fibre space.
+5. **Implemented:** the top-level driver iterates birational models and stops
+   at a nef canonical divisor or a Mori fibre space.
 
 Every milestone should add worked examples whose expected geometry is known
 independently of the implementation.

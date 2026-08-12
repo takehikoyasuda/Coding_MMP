@@ -35,7 +35,7 @@ The source repositories had the following local state at import time:
 | Relative-model isomorphism | `relativeCanonicalModelIsomorphismData` | certified by the saturated non-locally-free locus of the canonical blow-up ideal |
 | Contraction smallness | `contractionGraphSmallnessData`, `contractionSmallnessData` | blow-up divisor and identity-graph regressions pass; ODP is a slow benchmark |
 | MMP step records | `mmpStepRecordData` | graph-preserving divisorial/flipping/mixed records with automatic smallness |
-| Top-level threefold MMP loop | none in this repository | not implemented |
+| Top-level threefold MMP loop | `threefoldMMPData` | P3 Mori-fibre and quintic minimal-model end-to-end regressions pass |
 
 ## Stein graph correction
 
