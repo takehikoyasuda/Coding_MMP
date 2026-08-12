@@ -32,6 +32,8 @@ export {
     "relativeCanonicalModelFromBaseData",
     "relativeCanonicalModelData",
     "relativeCanonicalModelIsomorphismData",
+    "contractionGraphSmallnessData",
+    "contractionSmallnessData",
     "mmpStepRecordData",
     "canonicalNefData",
     "isCanonicalNef",
@@ -523,6 +525,67 @@ relativeCanonicalModelIsomorphismData HashTable := model -> (
         }
     )
 
+contractionGraphSmallnessInternal = (P,J,ns,sourceDimension) -> (
+    if ring J =!= P then
+        error "contractionGraphSmallnessData: graph ideal belongs to the wrong ring";
+    if ns <= 0 or ns >= numgens P then
+        error "contractionGraphSmallnessData: invalid source variable count";
+    G := P/J;
+    relativeJacobian := submatrix(jacobian J,toList(0..ns-1),);
+    relativeDifferentials := coker sub(relativeJacobian,G);
+    if rank relativeDifferentials != 1 then
+        error "contractionGraphSmallnessData: expected generic relative cone dimension one";
+    rankJumpIdeal := fittingIdeal(1,relativeDifferentials);
+    graphVars := flatten entries vars G;
+    sourceIrrelevant := ideal take(graphVars,ns);
+    targetIrrelevant := ideal drop(graphVars,ns);
+    biprojectiveIrrelevant := sourceIrrelevant*targetIrrelevant;
+    exceptionalIdeal := saturate(rankJumpIdeal,biprojectiveIrrelevant);
+    empty := exceptionalIdeal == ideal 1_G;
+    exceptionalDimension := if empty then -1 else dim(G/exceptionalIdeal)-2;
+    exceptionalCodimension := if empty then sourceDimension+1
+        else sourceDimension-exceptionalDimension;
+    new HashTable from {
+        "isSmall" => exceptionalCodimension >= 2,
+        "sourceDimension" => sourceDimension,
+        "exceptionalDimension" => exceptionalDimension,
+        "exceptionalCodimension" => exceptionalCodimension,
+        "exceptionalLocusEmpty" => empty,
+        "relativeDifferentials" => relativeDifferentials,
+        "rankJumpIdeal" => rankJumpIdeal,
+        "exceptionalIdeal" => exceptionalIdeal,
+        "criterion" => "codimension of the relative-differential rank-jump locus"
+        }
+    )
+
+contractionGraphSmallnessData = method()
+contractionGraphSmallnessData HashTable := graph -> (
+    if not graph#?"jointRing" or not graph#?"graphIdeal"
+        or not graph#?"sourceVariableCount" then
+        error "contractionGraphSmallnessData: expected a Stein graph table";
+    P := graph#"jointRing";
+    J := graph#"graphIdeal";
+    ns := graph#"sourceVariableCount";
+    contractionGraphSmallnessInternal(P,J,ns,dim(P/J)-2)
+    )
+contractionGraphSmallnessData GraphMorphism := graph -> (
+    P := graph#ambientRing;
+    J := graph#definingIdeal;
+    ns := #(graph#fiberVariables);
+    contractionGraphSmallnessInternal(P,J,ns,dim(graph#sourceRing)-1)
+    )
+
+contractionSmallnessData = method()
+contractionSmallnessData HashTable := contraction -> (
+    if not contraction#?"conclusive" or not contraction#"conclusive" then
+        error "contractionSmallnessData: expected a conclusive contraction";
+    if not contraction#?"isBirational" or not contraction#"isBirational" then
+        error "contractionSmallnessData: expected a birational contraction";
+    if not contraction#?"contractionGraph" then
+        error "contractionSmallnessData: missing contraction graph";
+    contractionGraphSmallnessData contraction#"contractionGraph"
+    )
+
 -- Record one MMP step without discarding either graph.  A nonidentity relative
 -- model is flipping when the original contraction is small and mixed when it
 -- is not; until that independent smallness test is supplied, retain the honest
@@ -554,6 +617,13 @@ mmpStepRecordData (HashTable,HashTable) := o -> (contraction,model) -> (
     small := o.ContractionIsSmall;
     if small =!= null and not instance(small,Boolean) then
         error "mmpStepRecordData: ContractionIsSmall must be null or Boolean";
+    smallnessData := null;
+    if small === null and contraction#?"contractionGraph"
+        and (instance(contraction#"contractionGraph",HashTable)
+            or instance(contraction#"contractionGraph",GraphMorphism)) then (
+            smallnessData = contractionSmallnessData contraction;
+            small = smallnessData#"isSmall";
+            );
     identity := model#"isIdentity";
     stepType := if identity then "divisorial"
         else if small === true then "flipping"
@@ -564,6 +634,7 @@ mmpStepRecordData (HashTable,HashTable) := o -> (contraction,model) -> (
         "terminal" => false,
         "stepTypeConclusive" => identity or small =!= null,
         "contractionIsSmall" => small,
+        "contractionSmallnessData" => smallnessData,
         "contractionData" => contraction,
         "contractionGraph" => contraction#"contractionGraph",
         "relativeModelData" => model,
@@ -649,6 +720,34 @@ Node
       Takehiko Yasuda, {em An algorithm for the minimal model program in
       dimension three}.  The first implemented stage is the canonical-divisor
       nefness test of Proposition 3.8.
+
+Node
+  Key
+    contractionGraphSmallnessData
+    (contractionGraphSmallnessData,HashTable)
+    (contractionGraphSmallnessData,GraphMorphism)
+  Headline
+    test smallness from a birational contraction graph
+  Usage
+    result = contractionGraphSmallnessData graph
+  Description
+    Text
+      The affine cone over a birational biprojective graph has generic relative
+      differential rank one, coming from source scaling.  The first Fitting
+      ideal cuts out its rank-jump locus.  After biprojective saturation, the
+      contraction is small precisely when that locus has codimension at least
+      two in the source.
+
+Node
+  Key
+    contractionSmallnessData
+    (contractionSmallnessData,HashTable)
+  Headline
+    test smallness of a computed birational contraction
+  Usage
+    result = contractionSmallnessData contraction
+  SeeAlso
+    contractionGraphSmallnessData
 
 Node
   Key

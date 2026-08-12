@@ -54,3 +54,42 @@ assert(not blowupType#"isFibreType");
 assert(blowupType#"dimensionDrop" == 0);
 
 print "OK Bl_L(P3)->P3: equal dimensions classify the contraction as birational.";
+
+-- Direct graph of Bl_L(P3)->P3 (without the auxiliary squaring map).  The
+-- relative-differential rank-jump locus is the exceptional divisor.
+BD = QQ[d00,d01,d10,d11,d20,d21,d30,d31,r0,r1,r2,r3,
+    Degrees=>{
+        {1,0},{1,0},{1,0},{1,0},{1,0},{1,0},{1,0},{1,0},
+        {0,1},{0,1},{0,1},{0,1}}];
+DP0 = QQ[c0,c1,c2,c3,du,dv,dSourceScale,dTargetScale];
+DP = DP0/ideal(c0*dv-c1*du);
+directParametrization = map(DP,BD,{
+    c0*du*dSourceScale,c0*dv*dSourceScale,
+    c1*du*dSourceScale,c1*dv*dSourceScale,
+    c2*du*dSourceScale,c2*dv*dSourceScale,
+    c3*du*dSourceScale,c3*dv*dSourceScale,
+    c0*dTargetScale,c1*dTargetScale,c2*dTargetScale,c3*dTargetScale});
+directIdeal = kernel directParametrization;
+directGraph = new HashTable from {
+    "jointRing" => BD,
+    "graphIdeal" => directIdeal,
+    "sourceVariableCount" => 8
+    };
+divisorialSmallness = contractionGraphSmallnessData directGraph;
+assert(not divisorialSmallness#"isSmall");
+assert(divisorialSmallness#"exceptionalDimension" == 2);
+assert(divisorialSmallness#"exceptionalCodimension" == 1);
+
+-- The diagonal graph of P1->P1 has empty exceptional locus and is small.
+ID = QQ[i0,i1,j0,j1,
+    Degrees=>{{1,0},{1,0},{0,1},{0,1}}];
+identityGraph = new HashTable from {
+    "jointRing" => ID,
+    "graphIdeal" => ideal(i0*j1-i1*j0),
+    "sourceVariableCount" => 2
+    };
+smallness = contractionGraphSmallnessData identityGraph;
+assert(smallness#"isSmall");
+assert(smallness#"exceptionalLocusEmpty");
+
+print "OK smallness: blow-up divisor has codimension 1; identity graph has empty exceptional locus.";

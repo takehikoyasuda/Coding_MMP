@@ -33,7 +33,8 @@ The source repositories had the following local state at import time:
 | Contraction type | `contractionTypeData` and classification fields on contraction results | P3/point and Segre are fibre type; blow-up of a line is birational |
 | Relative canonical model | `relativeCanonicalModelFromBaseData`, `relativeCanonicalModelData` | P3 identity and projective toric flip regressions pass |
 | Relative-model isomorphism | `relativeCanonicalModelIsomorphismData` | certified by the saturated non-locally-free locus of the canonical blow-up ideal |
-| MMP step records | `mmpStepRecordData` | graph-preserving records implemented; flipping/mixed needs a smallness certificate |
+| Contraction smallness | `contractionGraphSmallnessData`, `contractionSmallnessData` | blow-up divisor and identity-graph regressions pass; ODP is a slow benchmark |
+| MMP step records | `mmpStepRecordData` | graph-preserving divisorial/flipping/mixed records with automatic smallness |
 | Top-level threefold MMP loop | none in this repository | not implemented |
 
 ## Stein graph correction

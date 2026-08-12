@@ -53,10 +53,9 @@ Completed:
    relative canonical algebra / flip computation.
 3. **Implemented:** test whether the relative canonical model is an
    isomorphism using invertibility of its canonical blow-up ideal.
-4. **Partially implemented:** record divisorial, flipping, and mixed steps
-   without losing either graph.  Automatic smallness certification for the
-   original contraction remains to distinguish flipping from mixed without a
-   caller-supplied certificate.
+4. **Implemented:** compute the exceptional-locus codimension from the
+   relative-differential rank-jump locus and record divisorial, flipping, and
+   mixed steps without losing either graph.
 5. Stop at a nef canonical divisor or a Mori fibre space.
 
 Every milestone should add worked examples whose expected geometry is known

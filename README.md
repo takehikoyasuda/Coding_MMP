@@ -79,8 +79,9 @@ canonical algebra is already trivial and `FlipComputation` otherwise.
 `relativeCanonicalModelIsomorphismData(model)` records whether that model is
 the identity, certified by the locally-free locus of its blow-up ideal.
 `mmpStepRecordData` retains both morphism graphs and records fibre, divisorial,
-flipping, or mixed step metadata; flipping versus mixed currently accepts an
-explicit smallness certificate for the original contraction.
+flipping, or mixed step metadata.  The original contraction's smallness is
+computed from the codimension of the relative-differential rank-jump locus; an
+explicit certificate can also be supplied.
 
 ## License
 
