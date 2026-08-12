@@ -51,8 +51,8 @@ Completed:
 2. **Implemented:** compute the relative canonical model for birational steps,
    returning the target itself in the Cartier case and otherwise using the
    relative canonical algebra / flip computation.
-3. Use corrected Stein factorization to test whether that model is an
-   isomorphism.
+3. **Implemented:** test whether the relative canonical model is an
+   isomorphism using invertibility of its canonical blow-up ideal.
 4. Record divisorial, flipping, and mixed steps without losing graph data.
 5. Stop at a nef canonical divisor or a Mori fibre space.
 

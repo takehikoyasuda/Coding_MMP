@@ -31,6 +31,7 @@ export {
     "canonicalContractionData",
     "relativeCanonicalModelFromBaseData",
     "relativeCanonicalModelData",
+    "relativeCanonicalModelIsomorphismData",
     "canonicalNefData",
     "isCanonicalNef",
     "NefSearchLimit",
@@ -439,25 +440,53 @@ relativeCanonicalModelFromBaseData Ring := o -> W -> (
             "baseRing" => W,
             "relativeModelRing" => W,
             "relativeModelGraph" => null,
+            "relativeModelProjection" => null,
             "relativeModelType" => "identity",
             "isIdentity" => true,
+            "identityCertificate" => "canonical module embeds as the unit ideal",
             "sourceDimension" => dim W-1,
             "targetDimension" => dim W-1
             };
-    modelGraph := computeFlip(W,
+    modelProjection := computeFlip(W,
         Multipliers=>o.RelativeCanonicalMultipliers,
         MaxSteps=>o.RelativeCanonicalMaxSteps,
-        ReturnGraph=>true,
+        ReturnGraph=>false,
         BaseIsProjective=>true,
         Verbose=>o.RelativeCanonicalVerbose);
+    baseCanonicalIdeal := restrictToBase(
+        modelProjection,modelProjection#blownUpIdeal);
+    nonFreeLocus := fittingIdeal(1,module baseCanonicalIdeal);
+    irrelevant := ideal flatten entries vars W;
+    modelIsIdentity := saturate(nonFreeLocus,irrelevant) == ideal 1_W;
+    if modelIsIdentity then
+        return new HashTable from {
+            "conclusive" => true,
+            "baseRing" => W,
+            "relativeModelRing" => W,
+            "relativeModelGraph" => null,
+            "relativeModelProjection" => modelProjection,
+            "canonicalBlowupIdeal" => baseCanonicalIdeal,
+            "nonInvertibleLocus" => nonFreeLocus,
+            "relativeModelType" => "identity",
+            "isIdentity" => true,
+            "identityCertificate" => "the canonical blow-up ideal is locally free of rank one on Proj",
+            "sourceDimension" => dim W-1,
+            "targetDimension" => dim W-1
+            };
+    modelGraph := b2mToGraphMorphism(
+        modelProjection,Verbose=>o.RelativeCanonicalVerbose);
     modelRing := modelGraph#sourceRing;
     new HashTable from {
         "conclusive" => true,
         "baseRing" => W,
         "relativeModelRing" => modelRing,
         "relativeModelGraph" => modelGraph,
+        "relativeModelProjection" => modelProjection,
+        "canonicalBlowupIdeal" => baseCanonicalIdeal,
+        "nonInvertibleLocus" => nonFreeLocus,
         "relativeModelType" => "computed",
         "isIdentity" => false,
+        "identityCertificate" => "the canonical blow-up ideal is not locally free on Proj",
         "sourceDimension" => dim(modelRing)-1,
         "targetDimension" => dim(W)-1
         }
@@ -477,6 +506,19 @@ relativeCanonicalModelData HashTable := o -> contraction -> (
         RelativeCanonicalMaxSteps=>o.RelativeCanonicalMaxSteps,
         RelativeCanonicalVerbose=>o.RelativeCanonicalVerbose);
     new HashTable from join(pairs result,{"contractionData" => contraction})
+    )
+
+relativeCanonicalModelIsomorphismData = method()
+relativeCanonicalModelIsomorphismData HashTable := model -> (
+    if not model#?"conclusive" or not model#"conclusive" then
+        error "relativeCanonicalModelIsomorphismData: expected a conclusive model";
+    if not model#?"isIdentity" then
+        error "relativeCanonicalModelIsomorphismData: missing identity data";
+    new HashTable from {
+        "isIsomorphism" => model#"isIdentity",
+        "relativeModelType" => model#"relativeModelType",
+        "certificate" => model#"identityCertificate"
+        }
     )
 
 -- Proposition 3.8 for threefolds.  Run the two terminating searches in
@@ -555,6 +597,20 @@ Node
       Takehiko Yasuda, {em An algorithm for the minimal model program in
       dimension three}.  The first implemented stage is the canonical-divisor
       nefness test of Proposition 3.8.
+
+Node
+  Key
+    relativeCanonicalModelIsomorphismData
+    (relativeCanonicalModelIsomorphismData,HashTable)
+  Headline
+    decide whether a relative canonical model is the identity
+  Usage
+    result = relativeCanonicalModelIsomorphismData model
+  Description
+    Text
+      The relative model is an isomorphism precisely when its canonical
+      blow-up ideal is locally free of rank one.  The model computation tests
+      this using the first Fitting ideal and saturation by the irrelevant ideal.
 
 Node
   Key

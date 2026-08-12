@@ -9,6 +9,8 @@ assert(identityModel#"conclusive");
 assert(identityModel#"relativeModelType" == "identity");
 assert(identityModel#"isIdentity");
 assert(identityModel#"relativeModelRing" === P3);
+identityCheck = relativeCanonicalModelIsomorphismData identityModel;
+assert(identityCheck#"isIsomorphism");
 
 identityContraction = new HashTable from {
     "conclusive" => true,
@@ -33,7 +35,9 @@ flipModel = relativeCanonicalModelFromBaseData(
 assert(flipModel#"conclusive");
 assert(flipModel#"relativeModelType" == "computed");
 assert(not flipModel#"isIdentity");
+assert(not (relativeCanonicalModelIsomorphismData flipModel)#"isIsomorphism");
 assert(instance(flipModel#"relativeModelGraph",GraphMorphism));
+assert(instance(flipModel#"relativeModelProjection",B2MProjection));
 assert(dim(flipModel#"relativeModelRing")-1 == 3);
 assert(dim(flipModel#"relativeModelGraph"#totalRing)-2 == 3);
 

@@ -76,6 +76,8 @@ contraction is birational or of fibre type.
 For a birational result, `relativeCanonicalModelData(contraction)` computes the
 next model over the contraction target, using the identity model when the
 canonical algebra is already trivial and `FlipComputation` otherwise.
+`relativeCanonicalModelIsomorphismData(model)` records whether that model is
+the identity, certified by the locally-free locus of its blow-up ideal.
 
 ## License
 

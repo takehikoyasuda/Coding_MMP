@@ -32,6 +32,7 @@ The source repositories had the following local state at import time:
 | Extremal contraction | `canonicalContractionAtThresholdData`, `canonicalContractionData` | initial implementation; P3 point and Segre P1xP2 fibre contractions pass |
 | Contraction type | `contractionTypeData` and classification fields on contraction results | P3/point and Segre are fibre type; blow-up of a line is birational |
 | Relative canonical model | `relativeCanonicalModelFromBaseData`, `relativeCanonicalModelData` | P3 identity and projective toric flip regressions pass |
+| Relative-model isomorphism | `relativeCanonicalModelIsomorphismData` | certified by the saturated non-locally-free locus of the canonical blow-up ideal |
 | Top-level threefold MMP loop | none in this repository | not implemented |
 
 ## Stein graph correction
