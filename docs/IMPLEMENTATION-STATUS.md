@@ -7,7 +7,7 @@ Baseline recorded on 2026-08-12 with Macaulay2 1.26.06.
 | Component | Commit | Upstream branch at import |
 | --- | --- | --- |
 | Paper (`AlgoMMP`) | `dda50e7` | `revise/bigraded-degrees` |
-| `SteinFactorizationM2` | `8b30051` | `fix/paper-stein-graph` |
+| `SteinFactorizationM2` | `321135a` | `fix/paper-stein-graph` |
 | `flip-computation` | `28cefcc` | `main` |
 
 The source repositories had the following local state at import time:
@@ -48,7 +48,11 @@ The previous code retained the original target and Stein coordinates in one
 second grading block, leaving an extra projective scaling parameter. New
 identity, square, cube, weighted, fibre-type, and divisorial regressions assert
 that the corrected output graph ring has the same Krull dimension as the input
-graph ring. Primeness and bihomogeneity are also checked.
+graph ring. Primeness and bihomogeneity are also checked. In the identity,
+square, cube, and positive-dimensional-fibre examples, eliminating each graph
+block recovers the expected source and Stein intermediate, and substitution
+verifies `g o h = f`. Three admissible localization elements in the cubic
+example give identical coordinate and graph ideals after renaming variables.
 
 ## Baseline test results
 

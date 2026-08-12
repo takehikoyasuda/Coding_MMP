@@ -11,14 +11,13 @@ Completed:
 3. Added dimension assertions that fail on the old identity, square, and cube
    outputs, and extended them to weighted and higher-dimensional examples.
 4. Rebuilt the package manual and technical note with the revised construction.
+5. Added elimination checks for both graph projections and substitution checks
+   for `g o h = f`.
+6. Verified independence from three admissible localization elements in the
+   cubic example.
 
-Remaining review:
-
-1. Strengthen automatic checks of both graph projections and `g o h = f`.
-2. Add explicit independence tests for different admissible localization
-   elements.
-3. Decide whether the expensive component-based construction is useful as a
-   small reference implementation.
+The old component-based construction is not currently retained: the direct
+kernel construction is the algorithm in the pinned paper and the tested path.
 
 ## Milestone 2: stabilize the flip package
 
