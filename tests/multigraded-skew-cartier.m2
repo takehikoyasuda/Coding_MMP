@@ -109,3 +109,73 @@ assert(not isCartierMultigradedFn(K,P));
 assert(isCartierMultigradedFn(2*K,P));
 
 print "OK Stage 2 T1: multigradedBlockData Z gives a wrong (different-radical) B on this skew ring, and the caller-supplied-B override correctly finds K non-Cartier, 2K Cartier (canonical index 2), via both an explicit Ideal and the ring's own B2MProjection.";
+
+-- Part 0 of the Stage 2 measurement work order (docs/STAGE2-MEASUREMENT-
+-- RESULTS.md): completes what T1 above started.  T1 fixed the Cartier gate
+-- of canonicalScaledNefData/canonicalNefData/canonicalContractionAtThreshold-
+-- Data/etc. to honor a caller-supplied IrrelevantIdeal, but left those same
+-- entry points' internal *search loops* (canonicalScaledNefDataInternal,
+-- canonicalNefDataCore, canonicalContractionAtThresholdDataCore) still
+-- calling the bare 1-argument isBasePointFreeDivisor for every trial
+-- multiple, which re-derives B via multigradedBlockData every time --
+-- silently ignoring whatever IrrelevantIdeal the caller supplied to the
+-- outer entry point.  This is exactly the gap flagged, in comments, at the
+-- point T1 landed (see canonicalScaledNefData's own IrrelevantIdeal-option
+-- comment in MMPComputation.m2 before this change).  This section pins down
+-- a case where that gap is not merely a latent risk but a genuine, verified
+-- false positive, and confirms the fix.
+--
+-- H below is the ample-candidate class from the Stage 2 measurement's Part 1
+-- (docs/STAGE2-MEASUREMENT-RESULTS.md section on H): bidegree (1,1),
+-- Cartier under Btrue, base-point-free at multiplicity 1, and strictly
+-- positive on the flip's unique exceptional curve.  It is used here purely
+-- as a divisor of the right shape to construct a concrete counterexample,
+-- not because ampleness is being re-derived or re-certified by this test.
+H = divisor(Z_0) + divisor(Z_8);
+
+-- Lbig is EXACTLY the divisor canonicalScaledNefDataInternal computes as its
+-- own "L" (candidateDivisor at multiplier m=1) for a=2, t=6: L = q*a*K+a*p*H
+-- with q=1,p=6, i.e. L = 2*K + 12*H.  This is not a hand-picked pathological
+-- divisor; it is the literal candidate the search loop inside
+-- canonicalScaledNefData(Z,2,6,H,...) tests first.
+Lbig = 2*K + 12*H;
+
+-- THE COUNTEREXAMPLE: verified by direct computation (not assumed), Lbig is
+-- correctly NOT base-point-free under the true irrelevant ideal, but the
+-- bare (auto-deriving, i.e. multigradedBlockData-backed) predicate reports a
+-- FALSE POSITIVE, exactly mirroring the Cartier false positive above but for
+-- base-point-freeness specifically -- the property the nef/threshold/
+-- contraction search loops actually test on every trial multiple.
+assert(not isBasePointFreeDivisor(Lbig,Btrue));
+assert(isBasePointFreeDivisor Lbig);
+
+-- THE ACTUAL FIX (Part 0), exercised through a genuine entry point's own
+-- search loop -- not just the bare predicate above, and not just the
+-- Cartier gate T1 already fixed.  canonicalContractionAtThresholdData(Z,2,
+-- lambda=6,H,...)'s cartierThresholdDivisor is q*a*K+a*p*H for a=2,
+-- lambda=p/q=6/1, i.e. exactly 2*K+12*H = Lbig; ContractionMultipleLimit=>1
+-- caps canonicalContractionAtThresholdDataCore's own while loop to testing
+-- only that first candidate (multiplier=1), so this stays fast (a handful of
+-- seconds, like the direct predicate calls above) while still running the
+-- *loop*, not a hand-rolled substitute for it.  Confirmed by direct
+-- computation: with B threaded correctly, the loop's own bpf test of Lbig
+-- agrees with the ground truth above (not base-point-free), so testing only
+-- one multiple is correctly reported inconclusive.  Before this change, the
+-- loop's bpf test ignored the supplied B entirely and would have used
+-- Bmine, which (as just shown) reports Lbig base-point-free -- so the
+-- unfixed code would have wrongly reported this call conclusive (multiplier
+-- 1 "works") instead of correctly inconclusive.
+limitedContraction = canonicalContractionAtThresholdData(
+    Z,2,6,H,IrrelevantIdeal=>Btrue,ContractionMultipleLimit=>1);
+assert(not limitedContraction#"conclusive");
+assert(limitedContraction#"multipliersTested" == 1);
+
+-- a=1: a*K is genuinely not Cartier under Btrue (T1), so the Cartier gate of
+-- every IrrelevantIdeal-aware entry point must still reject it outright,
+-- confirming the gate itself is unaffected by threading B further inward.
+assert(
+    try (canonicalScaledNefData(Z,1,6,H,IrrelevantIdeal=>Btrue); false)
+    else true
+    );
+
+print "OK Stage 2 Part 0: canonicalContractionAtThresholdData's own internal search loop, not merely its Cartier gate, now honors a caller-supplied true B -- verified against a concrete base-point-free false positive (Lbig=2K+12H) that the un-threaded predicate reports.";
