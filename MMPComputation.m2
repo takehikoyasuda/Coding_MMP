@@ -186,11 +186,72 @@ effectiveNefMultiplier (ZZ,ZZ) := (d,N) -> (
     2^(d+1) * (d+1)! * (ceiling(2/N) + d)
     )
 
-isBasePointFreeDivisor = method()
-isBasePointFreeDivisor BasicDivisor := D -> (
+-- Stage 1 (T2): saturated versions of the two WeilDivisors predicates
+-- diagnosed in docs/STAGE1-MEASUREMENT-PLAN.md section 3.  Both compare a
+-- cone ideal with the unit ideal; that comparison is only correct when the
+-- irrelevant ideal is the maximal ideal, i.e. r = 1.  Multigraded, the cone
+-- ideal must be saturated against B = B_1*...*B_r (T1) first.
+--
+-- isBasePointFreeDivisorInternal does NOT call WeilDivisors' baseLocus.  A
+-- second, separate defect was found while testing the plan's stated fix
+-- (saturating baseLocus's own output): baseLocus(Module) computes
+-- "basis(0,M1)" with a bare integer, and on a ring with degreeLength > 1
+-- that call does not reliably select the degree (0,...,0) piece of M1 -- it
+-- can silently return a nonempty (wrong) answer where the correct
+-- multidegree query basis(toList(r:0),M1) returns empty.  Confirmed
+-- concretely: on bigraded P1xP2, for L = K+2H = O(0,-1) (which has no
+-- sections at all, so is certainly not base-point-free), baseLocus(L)
+-- already evaluates to ideal 1_R before any saturation is applied, purely
+-- from this basis(0,-) defect, so saturating its output by B (as the plan's
+-- 3.1 fix literally states) cannot recover correctness.  This is
+-- independent of, and in addition to, the "compare with the wrong
+-- irrelevant ideal" defect the plan diagnosed; the plan's own verified
+-- examples (Div(s), -K) happen not to trigger it because both are
+-- effective with a generator degree under which the bare-integer and
+-- explicit-multidegree calls happen to agree.
+--
+-- The fix used here instead builds the evaluation cokernel directly with an
+-- explicit full-length zero degree vector (matching
+-- BOTTLENECKS-AND-MULTIGRADING.md's "Promising direction" item 4: test
+-- base-point-freeness from the evaluation cokernel in the multigraded
+-- module category, not via a monograded shortcut), then saturates by B
+-- ourselves; WeilDivisors' own default saturation (against the monograded
+-- maximal ideal) is bypassed entirely rather than only being supplemented,
+-- since it cannot be relied on either way.  Confirmed by test to reproduce
+-- the current predicate exactly for r = 1 (P3's O(1) and K+4H=O; the
+-- weighted P(1,1,1,2) degree-2 ample class), so this is behaviour-preserving
+-- for every existing (monograded) caller, and additionally correct on the
+-- h^0 = 0 case above where the plan's literal fix is not.
+isBasePointFreeDivisorInternal = (D,B) -> (
     R := ring D;
-    trim baseLocus D == ideal 1_R
+    zeroDegree := toList(degreeLength R : 0);
+    evaluationCokernel := coker basis(zeroDegree,weilDivisorToModule D);
+    trim saturate(ann evaluationCokernel,B) == ideal 1_R
     )
+
+isBasePointFreeDivisor = method()
+isBasePointFreeDivisor BasicDivisor := D ->
+    isBasePointFreeDivisorInternal(D,(multigradedBlockData ring D)#"irrelevantIdeal")
+
+-- 3.2's fix, kept as a separate (unexported) predicate rather than an
+-- override of WeilDivisors' isCartier: isCartier(D,IsGraded=>true) is
+-- hard-wired, inside nonCartierLocus's own IsGraded branch, to
+-- getIrrelevantIdeal(R), the monograded maximal ideal, so it cannot be
+-- corrected by an option and is not touched here.  Existing callers of
+-- isCartier are therefore unaffected; new multigraded entry points (T3, T5)
+-- call this instead.  nonCartierLocus only has a WeilDivisor method, so a
+-- BasicDivisor/RWeilDivisor argument is converted first.
+isCartierSaturatedInternal = (D,B) -> (
+    R := ring D;
+    WD := if instance(D,WeilDivisor) then D else toWeilDivisor D;
+    if not isHomogeneous WD then
+        error "isCartierSaturatedInternal: expected a homogeneous divisor";
+    J := nonCartierLocus(WD,IsGraded=>true);
+    trim saturate(J,B) == ideal 1_R
+    )
+
+isCartierMultigraded = D ->
+    isCartierSaturatedInternal(D,(multigradedBlockData ring D)#"irrelevantIdeal")
 
 -- Search the projective components of a base locus for a curve on which D
 -- has negative degree.  Components of dimension greater than one are cut by
