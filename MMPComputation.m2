@@ -26,6 +26,8 @@ export {
     "canonicalNefThresholdData",
     "canonicalNefThreshold",
     "completeLinearSystemGraphData",
+    "completeLinearSystemGraphDataMultigraded",
+    "diagonalSubalgebraData",
     "mmpGraphMorphism",
     "contractionTypeData",
     "canonicalContractionAtThresholdData",
