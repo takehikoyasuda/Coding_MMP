@@ -527,15 +527,50 @@ canonicalNefThresholdDataCore = (R,a,K,H,d,limit) -> (
             );
         ));
     candidates = unique sort candidates;
+    testsRunBeforeCandidates := testsRun;
+
+    -- Stage 1 (T4): binary search over the sorted candidate list, replacing
+    -- the previous linear scan.  Valid in dimension three (plan section
+    -- 4.4): canonicalScaledNefDataInternal always sets trialBound =
+    -- guaranteedMultiplier there (guaranteedMultiplier <= 8, see
+    -- effectiveNefMultiplier) and tests every multiplier up to it, so "nef"
+    -- is a genuine decision procedure rather than a one-sided certificate,
+    -- and it is monotone in t; beta is itself always a candidate (v = beta,
+    -- u = 1, gcd(beta,1) = 1) and is already known nef, so the candidate
+    -- list always has a nef candidate at its top, and the first one testing
+    -- nef in ascending order is the threshold.  If canonicalScaledNef-
+    -- DataInternal's negative-curve shortcut is ever active instead (only
+    -- possible outside dimension three, where guaranteedMultiplier can
+    -- exceed 8), that decision-procedure property is not established and
+    -- binary search would not be valid; every entry point in this package
+    -- is for dimension three, so that case does not arise here.
     threshold := null;
     thresholdTest := null;
-    scan(candidates,t -> if threshold === null then (
-        candidateTest := testAt(t);
-        if candidateTest =!= null and candidateTest#"nef" then (
-            threshold = t;
-            thresholdTest = candidateTest;
+    if #candidates > 0 then (
+        lo := 0;
+        hi := #candidates-1;
+        stalled := false;
+        while lo < hi and not stalled do (
+            mid := lo + (hi-lo)//2;
+            midTest := testAt(candidates#mid);
+            if midTest === null then stalled = true
+            else if midTest#"nef" then hi = mid
+            else lo = mid+1;
             );
-        ));
+        if not stalled then (
+            finalTest := testAt(candidates#lo);
+            if finalTest =!= null and finalTest#"nef" then (
+                threshold = candidates#lo;
+                thresholdTest = finalTest;
+                );
+            );
+        );
+    -- The number of tests a linear scan of the same sorted candidate list
+    -- would have needed to reach the same threshold, for direct comparison
+    -- with testsRun (see docs/STAGE1-MEASUREMENT-RESULTS.md); null when no
+    -- threshold was found.
+    linearTestsRunEquivalent := if threshold === null then null
+        else testsRunBeforeCandidates + 1 + #(select(candidates,t -> t < threshold));
     if threshold === null and limit === null then
         error "canonicalNefThresholdData: no nef candidate; input hypotheses may fail";
     if threshold === null then
@@ -549,6 +584,7 @@ canonicalNefThresholdDataCore = (R,a,K,H,d,limit) -> (
             "candidates" => candidates,
             "tests" => tests,
             "testsRun" => testsRun,
+            "linearTestsRunEquivalent" => linearTestsRunEquivalent,
             "canonicalDivisor" => K,
             "warning" => "the optional threshold search limit was reached"
             };
@@ -562,6 +598,7 @@ canonicalNefThresholdDataCore = (R,a,K,H,d,limit) -> (
         "thresholdTest" => thresholdTest,
         "tests" => tests,
         "testsRun" => testsRun,
+        "linearTestsRunEquivalent" => linearTestsRunEquivalent,
         "canonicalDivisor" => K
         }
     )
