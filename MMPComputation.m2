@@ -51,7 +51,8 @@ export {
     "RelativeCanonicalVerbose",
     "ContractionIsSmall",
     "CanonicalIndexSearchLimit",
-    "MMPMaxSteps"
+    "MMPMaxSteps",
+    "IrrelevantIdeal"
     }
 
 weilDivisorsPackage := needsPackage "WeilDivisors";
@@ -235,6 +236,23 @@ isBasePointFreeDivisor = method()
 isBasePointFreeDivisor BasicDivisor := D ->
     isBasePointFreeDivisorInternal(D,(multigradedBlockData ring D)#"irrelevantIdeal")
 
+-- Stage 2 (T1) of docs/STAGE2-SINGULAR-MEASUREMENT-PLAN.md section 5: give a
+-- caller holding a known-correct irrelevant ideal a way to bypass
+-- multigradedBlockData's re-derivation entirely.  Verified necessary, not
+-- hypothetical: on the bigraded ring Z of that plan's section 3 (the toric
+-- flip target of canonical index 2), multigradedBlockData Z succeeds but
+-- returns a B with a different radical from the ring's true irrelevant
+-- ideal (P#irrelevantIdeal on the B2MProjection P that built Z), because Z's
+-- fibre grading is "skew" -- see tests/multigraded-skew-cartier.m2.  These
+-- overloads do not change multigradedBlockData or the plain BasicDivisor
+-- overload above at all; they are purely additive.
+isBasePointFreeDivisor (BasicDivisor,Ideal) := (D,B) ->
+    isBasePointFreeDivisorInternal(D,B)
+isBasePointFreeDivisor (BasicDivisor,B2MProjection) := (D,P) ->
+    isBasePointFreeDivisorInternal(D,sub(P#irrelevantIdeal,ring D))
+isBasePointFreeDivisor (BasicDivisor,GraphMorphism) := (D,G) ->
+    isBasePointFreeDivisorInternal(D,sub(G#irrelevantIdeal,ring D))
+
 -- 3.2's fix, kept as a separate (unexported) predicate rather than an
 -- override of WeilDivisors' isCartier: isCartier(D,IsGraded=>true) is
 -- hard-wired, inside nonCartierLocus's own IsGraded branch, to
@@ -252,8 +270,20 @@ isCartierSaturatedInternal = (D,B) -> (
     trim saturate(J,B) == ideal 1_R
     )
 
-isCartierMultigraded = D ->
+-- Converted from a plain closure to a method (Stage 2 T1) solely to admit
+-- the caller-supplied-B overloads below; isCartierMultigraded(D) alone is
+-- unchanged behaviour for every existing (unexported, internal-only) caller
+-- -- grep confirms it has none in this package or tests/, only mentions in
+-- docs/STAGE1-MEASUREMENT-RESULTS.md's prose.
+isCartierMultigraded = method()
+isCartierMultigraded BasicDivisor := D ->
     isCartierSaturatedInternal(D,(multigradedBlockData ring D)#"irrelevantIdeal")
+isCartierMultigraded (BasicDivisor,Ideal) := (D,B) ->
+    isCartierSaturatedInternal(D,B)
+isCartierMultigraded (BasicDivisor,B2MProjection) := (D,P) ->
+    isCartierSaturatedInternal(D,sub(P#irrelevantIdeal,ring D))
+isCartierMultigraded (BasicDivisor,GraphMorphism) := (D,G) ->
+    isCartierSaturatedInternal(D,sub(G#irrelevantIdeal,ring D))
 
 -- Search the projective components of a base locus for a curve on which D
 -- has negative degree.  Components of dimension greater than one are cut by
@@ -425,8 +455,20 @@ canonicalScaledNefDataInternal = (R,K,H,a,t) -> (
 
 -- Decide nefness of K_X+tH for t>0, using H constructed from the weighted
 -- projective presentation and Proposition 3.1.
-canonicalScaledNefData = method()
-canonicalScaledNefData (Ring,ZZ,QQ) := (R,a,t) -> (
+-- Stage 2 (T1) of docs/STAGE2-SINGULAR-MEASUREMENT-PLAN.md section 5: the
+-- IrrelevantIdeal option (added to every method below that has a multigraded
+-- overload) lets a caller holding a known-correct irrelevant ideal bypass
+-- multigradedBlockData's re-derivation for the Cartier gate.  An Ideal
+-- 5th/4th positional argument was tried first but M2's method dispatch caps
+-- out at 4 ordinary (non-Option) parameter types (newmethod1234c in
+-- Core/methods.m2), which canonicalScaledNefData's and
+-- canonicalContractionAtThresholdData's (Ring,ZZ,QQ-or-ZZ,BasicDivisor)
+-- overloads already saturate; an Option sidesteps that cap uniformly for all
+-- five entry points and is used here even where 4 types would have fit, for
+-- one consistent calling convention.  Default null preserves the exact
+-- previous re-derivation for every existing caller.
+canonicalScaledNefData = method(Options => {IrrelevantIdeal => null})
+canonicalScaledNefData (Ring,ZZ,QQ) := o -> (R,a,t) -> (
     if a <= 0 then
         error "canonicalScaledNefData: the index multiple must be positive";
     K := canonicalDivisor(R,IsGraded=>true);
@@ -435,8 +477,8 @@ canonicalScaledNefData (Ring,ZZ,QQ) := (R,a,t) -> (
     H := (weightedAmpleDivisorData R)#"divisor";
     canonicalScaledNefDataInternal(R,K,H,a,t)
     )
-canonicalScaledNefData (Ring,ZZ,ZZ) := (R,a,t) ->
-    canonicalScaledNefData(R,a,t/1)
+canonicalScaledNefData (Ring,ZZ,ZZ) := o -> (R,a,t) ->
+    canonicalScaledNefData(R,a,t/1,IrrelevantIdeal=>o.IrrelevantIdeal)
 
 -- Stage 1 (T3): multigraded entry points.  The caller supplies the ample
 -- Cartier class H directly (plan section 3.5: deriving it automatically is
@@ -445,19 +487,37 @@ canonicalScaledNefData (Ring,ZZ,ZZ) := (R,a,t) ->
 -- change: it already takes H as an argument, its base-point-free test is
 -- multigraded-correct since T2, and its geometric dimension is multigraded-
 -- correct since the T3 edit above.
-canonicalScaledNefData (Ring,ZZ,QQ,BasicDivisor) := (R,a,t,H) -> (
+--
+-- Stage 2 (T1): if o.IrrelevantIdeal is supplied, it is used verbatim for
+-- the Cartier gate below instead of multigradedBlockData's re-derivation --
+-- see docs/STAGE2-SINGULAR-MEASUREMENT-PLAN.md section 2.3/5.  Note this
+-- does not (and, per that plan's T1 scope, need not) change
+-- canonicalScaledNefDataInternal itself: its own internal base-point-free
+-- search still calls the 1-argument isBasePointFreeDivisor, which still
+-- re-derives B via multigradedBlockData for every trial multiple.  On a ring
+-- where that re-derivation is wrong (a skew multigraded ring, as in the
+-- plan's Z), this entry point's *own* Cartier gate will be correct even when
+-- IrrelevantIdeal is supplied, but the "nef"/"basePointFree" search it
+-- delegates to still inherits the latent defect -- fixing that nested search
+-- is T4 territory (measuring the nef/threshold/contraction chain on a
+-- singular ring), not this task's.
+canonicalScaledNefData (Ring,ZZ,QQ,BasicDivisor) := o -> (R,a,t,H) -> (
     if a <= 0 then
         error "canonicalScaledNefData: the index multiple must be positive";
     if ring H =!= R then
         error "canonicalScaledNefData: H must be a divisor on R";
     K := canonicalDivisor(R,IsGraded=>true);
-    B := (multigradedBlockData R)#"irrelevantIdeal";
+    B := if o.IrrelevantIdeal =!= null then (
+        if ring o.IrrelevantIdeal =!= R then
+            error "canonicalScaledNefData: IrrelevantIdeal must be an ideal of R";
+        o.IrrelevantIdeal
+        ) else (multigradedBlockData R)#"irrelevantIdeal";
     if not isCartierSaturatedInternal(a*K,B) then
         error "canonicalScaledNefData: a*K_X is not Cartier";
     canonicalScaledNefDataInternal(R,K,H,a,t)
     )
-canonicalScaledNefData (Ring,ZZ,ZZ,BasicDivisor) := (R,a,t,H) ->
-    canonicalScaledNefData(R,a,t/1,H)
+canonicalScaledNefData (Ring,ZZ,ZZ,BasicDivisor) := o -> (R,a,t,H) ->
+    canonicalScaledNefData(R,a,t/1,H,IrrelevantIdeal=>o.IrrelevantIdeal)
 
 -- Algorithm 1 of the paper.  First bracket the positive threshold by dyadic
 -- rationals, then enumerate the finite set supplied by the rationality
@@ -605,7 +665,8 @@ canonicalNefThresholdDataCore = (R,a,K,H,d,limit) -> (
         }
     )
 
-canonicalNefThresholdData = method(Options => {ThresholdSearchLimit => null})
+canonicalNefThresholdData = method(Options => {
+    ThresholdSearchLimit => null, IrrelevantIdeal => null})
 canonicalNefThresholdData (Ring,ZZ) := o -> (R,a) -> (
     if a <= 0 then
         error "canonicalNefThresholdData: the index multiple must be positive";
@@ -629,6 +690,17 @@ canonicalNefThresholdData (Ring,ZZ) := o -> (R,a) -> (
 -- monograded path, via canonicalNefThresholdDataCore.  The result carries
 -- the same keys as the monograded entry point (plus "blockData"), so the
 -- measurement harness and any later code can read either uniformly.
+--
+-- Stage 2 (T1): if o.IrrelevantIdeal is supplied, multigradedBlockData is
+-- bypassed entirely -- including for the geometric dimension.
+-- docs/STAGE2-SINGULAR-MEASUREMENT-PLAN.md section 5's T1 flags that
+-- "dim R - degreeLength R equals multigradedBlockData's geometricDimension"
+-- is a claim to verify, not assume; it was checked directly against the
+-- plan's own ring Z (degreeLength 2, dim 5): multigradedBlockData Z succeeds
+-- (despite its wrong block partition) and its "geometricDimension" field
+-- agrees exactly with dim Z - degreeLength Z (both 3), so computing d this
+-- way is safe here and avoids depending on multigradedBlockData succeeding
+-- at all when a caller-supplied ideal is in hand.
 canonicalNefThresholdData (Ring,ZZ,BasicDivisor) := o -> (R,a,H) -> (
     if a <= 0 then
         error "canonicalNefThresholdData: the index multiple must be positive";
@@ -637,16 +709,23 @@ canonicalNefThresholdData (Ring,ZZ,BasicDivisor) := o -> (R,a,H) -> (
     limit := o.ThresholdSearchLimit;
     if limit =!= null and (not instance(limit,ZZ) or limit <= 0) then
         error "canonicalNefThresholdData: ThresholdSearchLimit must be null or positive";
-    blockData := multigradedBlockData R;
     K := canonicalDivisor(R,IsGraded=>true);
-    if not isCartierSaturatedInternal(a*K,blockData#"irrelevantIdeal") then
+    suppliedB := o.IrrelevantIdeal;
+    if suppliedB =!= null and ring suppliedB =!= R then
+        error "canonicalNefThresholdData: IrrelevantIdeal must be an ideal of R";
+    blockData := if suppliedB === null then multigradedBlockData R else null;
+    B := if suppliedB =!= null then suppliedB else blockData#"irrelevantIdeal";
+    d := if suppliedB =!= null then dim R - degreeLength R
+        else blockData#"geometricDimension";
+    if not isCartierSaturatedInternal(a*K,B) then
         error "canonicalNefThresholdData: a*K_X is not Cartier";
-    d := blockData#"geometricDimension";
     result := canonicalNefThresholdDataCore(R,a,K,H,d,limit);
-    new HashTable from join(pairs result,{
-        "ampleData" => new HashTable from {"ring" => R,"divisor" => H},
-        "blockData" => blockData
-        })
+    extraKeys := if suppliedB =!= null then {
+        "irrelevantIdeal" => B, "irrelevantIdealSource" => "caller-supplied"}
+        else {"blockData" => blockData};
+    new HashTable from join(pairs result,join({
+        "ampleData" => new HashTable from {"ring" => R,"divisor" => H}},
+        extraKeys))
     )
 
 canonicalNefThreshold = method(Options => options canonicalNefThresholdData)
@@ -900,7 +979,7 @@ canonicalContractionAtThresholdDataCore = (R,a,lambda,K,H,d,limit,buildLinearSys
     )
 
 canonicalContractionAtThresholdData = method(
-    Options => {ContractionMultipleLimit => null})
+    Options => {ContractionMultipleLimit => null, IrrelevantIdeal => null})
 canonicalContractionAtThresholdData (Ring,ZZ,QQ) := o -> (R,a,lambda) -> (
     if a <= 0 then
         error "canonicalContractionAtThresholdData: the index multiple must be positive";
@@ -929,6 +1008,16 @@ canonicalContractionAtThresholdData (Ring,ZZ,ZZ) := o -> (R,a,lambda) ->
 -- flattened along at the Stein interface (completeLinearSystemGraphData-
 -- Multigraded).  The Cartier gate uses T2's saturated test, and the
 -- dimension bookkeeping uses T1's geometric dimension.
+--
+-- Stage 2 (T1): if o.IrrelevantIdeal is supplied, multigradedBlockData is
+-- bypassed entirely for both the Cartier gate and the geometric dimension
+-- (dim R - degreeLength R; see canonicalNefThresholdData's comment for the
+-- verification this equals multigradedBlockData's own field on the plan's
+-- Z).  completeLinearSystemGraphDataMultigraded is still called unchanged
+-- either way, so, as with canonicalScaledNefData's IrrelevantIdeal option
+-- above, only this entry point's own Cartier gate is guaranteed to honor the
+-- caller-supplied ideal; see that overload's comment for why the nested
+-- search is out of T1's scope.
 canonicalContractionAtThresholdData (Ring,ZZ,QQ,BasicDivisor) := o -> (R,a,lambda,H) -> (
     if a <= 0 then
         error "canonicalContractionAtThresholdData: the index multiple must be positive";
@@ -939,25 +1028,34 @@ canonicalContractionAtThresholdData (Ring,ZZ,QQ,BasicDivisor) := o -> (R,a,lambd
     limit := o.ContractionMultipleLimit;
     if limit =!= null and (not instance(limit,ZZ) or limit <= 0) then
         error "canonicalContractionAtThresholdData: ContractionMultipleLimit must be null or positive";
-    blockData := multigradedBlockData R;
     K := canonicalDivisor(R,IsGraded=>true);
-    if not isCartierSaturatedInternal(a*K,blockData#"irrelevantIdeal") then
+    suppliedB := o.IrrelevantIdeal;
+    if suppliedB =!= null and ring suppliedB =!= R then
+        error "canonicalContractionAtThresholdData: IrrelevantIdeal must be an ideal of R";
+    blockData := if suppliedB === null then multigradedBlockData R else null;
+    B := if suppliedB =!= null then suppliedB else blockData#"irrelevantIdeal";
+    d := if suppliedB =!= null then dim R - degreeLength R
+        else blockData#"geometricDimension";
+    if not isCartierSaturatedInternal(a*K,B) then
         error "canonicalContractionAtThresholdData: a*K_X is not Cartier";
-    d := blockData#"geometricDimension";
     result := canonicalContractionAtThresholdDataCore(R,a,lambda,K,H,d,limit,
         morphismDivisor -> completeLinearSystemGraphDataMultigraded(morphismDivisor,H));
-    new HashTable from join(pairs result,{
-        "ampleData" => new HashTable from {"ring" => R,"divisor" => H},
-        "blockData" => blockData
-        })
+    extraKeys := if suppliedB =!= null then {
+        "irrelevantIdeal" => B, "irrelevantIdealSource" => "caller-supplied"}
+        else {"blockData" => blockData};
+    new HashTable from join(pairs result,join({
+        "ampleData" => new HashTable from {"ring" => R,"divisor" => H}},
+        extraKeys))
     )
 canonicalContractionAtThresholdData (Ring,ZZ,ZZ,BasicDivisor) := o -> (R,a,lambda,H) ->
     canonicalContractionAtThresholdData(R,a,lambda/1,H,
-        ContractionMultipleLimit=>o.ContractionMultipleLimit)
+        ContractionMultipleLimit=>o.ContractionMultipleLimit,
+        IrrelevantIdeal=>o.IrrelevantIdeal)
 
 canonicalContractionData = method(Options => {
     ThresholdSearchLimit => null,
-    ContractionMultipleLimit => null})
+    ContractionMultipleLimit => null,
+    IrrelevantIdeal => null})
 canonicalContractionData (Ring,ZZ) := o -> (R,a) -> (
     thresholdData := canonicalNefThresholdData(
         R,a,ThresholdSearchLimit=>o.ThresholdSearchLimit);
@@ -975,9 +1073,14 @@ canonicalContractionData (Ring,ZZ) := o -> (R,a) -> (
     )
 
 -- Stage 1 (T5): the multigraded entry point.
+--
+-- Stage 2 (T1): o.IrrelevantIdeal, if supplied, is forwarded verbatim to
+-- both canonicalNefThresholdData and canonicalContractionAtThresholdData;
+-- this function adds no Cartier or dimension logic of its own.
 canonicalContractionData (Ring,ZZ,BasicDivisor) := o -> (R,a,H) -> (
     thresholdData := canonicalNefThresholdData(
-        R,a,H,ThresholdSearchLimit=>o.ThresholdSearchLimit);
+        R,a,H,ThresholdSearchLimit=>o.ThresholdSearchLimit,
+        IrrelevantIdeal=>o.IrrelevantIdeal);
     if not thresholdData#"conclusive" then
         return new HashTable from {
             "conclusive" => false,
@@ -987,7 +1090,8 @@ canonicalContractionData (Ring,ZZ,BasicDivisor) := o -> (R,a,H) -> (
             };
     result := canonicalContractionAtThresholdData(
         R,a,thresholdData#"threshold",H,
-        ContractionMultipleLimit=>o.ContractionMultipleLimit);
+        ContractionMultipleLimit=>o.ContractionMultipleLimit,
+        IrrelevantIdeal=>o.IrrelevantIdeal);
     new HashTable from join(pairs result,{"thresholdData" => thresholdData})
     )
 
@@ -1479,7 +1583,7 @@ canonicalNefDataCore = (R,a,K,H,limit) -> (
         }
     )
 
-canonicalNefData = method(Options => {NefSearchLimit => null})
+canonicalNefData = method(Options => {NefSearchLimit => null, IrrelevantIdeal => null})
 canonicalNefData (Ring,ZZ) := o -> (R,a) -> (
     if dim R - 1 != 3 then
         error "canonicalNefData: expected a projective threefold";
@@ -1500,10 +1604,17 @@ canonicalNefData (Ring,ZZ) := o -> (R,a) -> (
 -- Stage 1 (T3): the multigraded entry point, using T1's geometric dimension
 -- for the threefold gate, a caller-supplied ample Cartier class (plan
 -- section 3.5), and T2's saturated Cartier test.
+--
+-- Stage 2 (T1): if o.IrrelevantIdeal is supplied, multigradedBlockData is
+-- bypassed entirely, including for the threefold gate's dimension check
+-- (dim R - degreeLength R; see canonicalNefThresholdData's comment for the
+-- verification this agrees with multigradedBlockData's own field on the
+-- plan's Z).  canonicalNefDataCore's own internal base-point-free search
+-- still calls the 1-argument isBasePointFreeDivisor (see the comment on
+-- canonicalScaledNefData's IrrelevantIdeal option above); only this entry
+-- point's threefold gate and Cartier gate are guaranteed to honor the
+-- caller-supplied ideal.
 canonicalNefData (Ring,ZZ,BasicDivisor) := o -> (R,a,H) -> (
-    blockData := multigradedBlockData R;
-    if blockData#"geometricDimension" != 3 then
-        error "canonicalNefData: expected a projective threefold";
     if a <= 0 then
         error "canonicalNefData: the index multiple must be positive";
     if ring H =!= R then
@@ -1511,14 +1622,25 @@ canonicalNefData (Ring,ZZ,BasicDivisor) := o -> (R,a,H) -> (
     limit := o.NefSearchLimit;
     if limit =!= null and (not instance(limit,ZZ) or limit <= 0) then
         error "canonicalNefData: NefSearchLimit must be null or positive";
+    suppliedB := o.IrrelevantIdeal;
+    if suppliedB =!= null and ring suppliedB =!= R then
+        error "canonicalNefData: IrrelevantIdeal must be an ideal of R";
+    blockData := if suppliedB === null then multigradedBlockData R else null;
+    geometricDimension := if suppliedB =!= null then dim R - degreeLength R
+        else blockData#"geometricDimension";
+    if geometricDimension != 3 then
+        error "canonicalNefData: expected a projective threefold";
     K := canonicalDivisor(R,IsGraded=>true);
-    if not isCartierSaturatedInternal(a*K,blockData#"irrelevantIdeal") then
+    B := if suppliedB =!= null then suppliedB else blockData#"irrelevantIdeal";
+    if not isCartierSaturatedInternal(a*K,B) then
         error "canonicalNefData: a*K_X is not Cartier";
     result := canonicalNefDataCore(R,a,K,H,limit);
-    new HashTable from join(pairs result,{
-        "ampleData" => new HashTable from {"ring" => R,"divisor" => H},
-        "blockData" => blockData
-        })
+    extraKeys := if suppliedB =!= null then {
+        "irrelevantIdeal" => B, "irrelevantIdealSource" => "caller-supplied"}
+        else {"blockData" => blockData};
+    new HashTable from join(pairs result,join({
+        "ampleData" => new HashTable from {"ring" => R,"divisor" => H}},
+        extraKeys))
     )
 
 isCanonicalNef = method(Options => options canonicalNefData)
@@ -1917,6 +2039,27 @@ Node
     ThresholdSearchLimit
   Headline
     optional bound on scaled-nefness tests in the threshold search
+
+Node
+  Key
+    IrrelevantIdeal
+  Headline
+    caller-supplied irrelevant ideal, bypassing multigradedBlockData
+  Description
+    Text
+      Stage 2 (T1) of docs/STAGE2-SINGULAR-MEASUREMENT-PLAN.md: on a
+      multigraded ring with a "skew" fibre grading (as produced by
+      FlipComputation's bigradedReesProjection whenever the ideal being
+      blown up is not equigenerated), multigradedBlockData can silently
+      return an irrelevant ideal with the wrong radical, and the Cartier
+      test built on it then reports a false positive.  Passing
+      {tt IrrelevantIdeal=>B} to canonicalScaledNefData,
+      canonicalNefThresholdData, canonicalNefData,
+      canonicalContractionAtThresholdData, or canonicalContractionData uses
+      B verbatim for that entry point's own Cartier gate instead of
+      re-deriving one, when a caller already holds a known-correct ideal
+      (for instance a B2MProjection's or GraphMorphism's own irrelevantIdeal
+      field).  Default null preserves the previous re-derivation exactly.
 
 Node
   Key
