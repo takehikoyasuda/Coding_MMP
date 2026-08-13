@@ -360,7 +360,11 @@ canonicalScaledNefDataInternal = (R,K,H,a,t) -> (
         error "canonicalScaledNefData: t must be a positive rational number";
     p := if instance(t,ZZ) then t else numerator t;
     q := if instance(t,ZZ) then 1 else denominator t;
-    d := dim R - 1;
+    -- Stage 1 (T3): the geometric dimension of a rank-r presentation is
+    -- dim R - r, not dim R - 1 (plan section 3.4); multigradedBlockData (T1)
+    -- gives dim R - 1 exactly for r = 1, so this is behaviour-preserving for
+    -- every existing (monograded) caller.
+    d := (multigradedBlockData R)#"geometricDimension";
     N := a*q;
     L := q*a*K + a*p*H;
     guaranteedMultiplier := effectiveNefMultiplier(d,N);
@@ -432,22 +436,38 @@ canonicalScaledNefData (Ring,ZZ,QQ) := (R,a,t) -> (
 canonicalScaledNefData (Ring,ZZ,ZZ) := (R,a,t) ->
     canonicalScaledNefData(R,a,t/1)
 
+-- Stage 1 (T3): multigraded entry points.  The caller supplies the ample
+-- Cartier class H directly (plan section 3.5: deriving it automatically is
+-- out of scope), verified here with the saturated Cartier test of T2 in
+-- place of isCartier.  canonicalScaledNefDataInternal itself needs no other
+-- change: it already takes H as an argument, its base-point-free test is
+-- multigraded-correct since T2, and its geometric dimension is multigraded-
+-- correct since the T3 edit above.
+canonicalScaledNefData (Ring,ZZ,QQ,BasicDivisor) := (R,a,t,H) -> (
+    if a <= 0 then
+        error "canonicalScaledNefData: the index multiple must be positive";
+    if ring H =!= R then
+        error "canonicalScaledNefData: H must be a divisor on R";
+    K := canonicalDivisor(R,IsGraded=>true);
+    B := (multigradedBlockData R)#"irrelevantIdeal";
+    if not isCartierSaturatedInternal(a*K,B) then
+        error "canonicalScaledNefData: a*K_X is not Cartier";
+    canonicalScaledNefDataInternal(R,K,H,a,t)
+    )
+canonicalScaledNefData (Ring,ZZ,ZZ,BasicDivisor) := (R,a,t,H) ->
+    canonicalScaledNefData(R,a,t/1,H)
+
 -- Algorithm 1 of the paper.  First bracket the positive threshold by dyadic
 -- rationals, then enumerate the finite set supplied by the rationality
 -- theorem.  The threshold v/u in lowest terms has 1 <= v <= a(d+1).
-canonicalNefThresholdData = method(Options => {ThresholdSearchLimit => null})
-canonicalNefThresholdData (Ring,ZZ) := o -> (R,a) -> (
-    if a <= 0 then
-        error "canonicalNefThresholdData: the index multiple must be positive";
-    limit := o.ThresholdSearchLimit;
-    if limit =!= null and (not instance(limit,ZZ) or limit <= 0) then
-        error "canonicalNefThresholdData: ThresholdSearchLimit must be null or positive";
-    K := canonicalDivisor(R,IsGraded=>true);
-    if not isCartier(a*K,IsGraded=>true) then
-        error "canonicalNefThresholdData: a*K_X is not Cartier";
-    ampleData := weightedAmpleDivisorData R;
-    H := ampleData#"divisor";
-    d := dim R - 1;
+--
+-- Stage 1 (T3): the bracket-and-scan logic itself needs no change to work
+-- multigraded (its only dimension-dependent step, the numerator bound
+-- a*(d+1), is parameterized by d here); it is factored out so both the
+-- existing monograded entry point and the new multigraded one share it
+-- verbatim.  Does not include "ampleData" in its result -- callers add their
+-- own, since the monograded and multigraded ampleData shapes differ.
+canonicalNefThresholdDataCore = (R,a,K,H,d,limit) -> (
     tests := {};
     testsRun := 0;
     testCache := new MutableHashTable;
@@ -475,7 +495,6 @@ canonicalNefThresholdData (Ring,ZZ) := o -> (R,a) -> (
             "tests" => tests,
             "testsRun" => testsRun,
             "canonicalDivisor" => K,
-            "ampleData" => ampleData,
             "warning" => "the optional threshold search limit was reached"
             };
 
@@ -494,7 +513,6 @@ canonicalNefThresholdData (Ring,ZZ) := o -> (R,a) -> (
             "tests" => tests,
             "testsRun" => testsRun,
             "canonicalDivisor" => K,
-            "ampleData" => ampleData,
             "warning" => "the optional threshold search limit was reached"
             };
 
@@ -532,7 +550,6 @@ canonicalNefThresholdData (Ring,ZZ) := o -> (R,a) -> (
             "tests" => tests,
             "testsRun" => testsRun,
             "canonicalDivisor" => K,
-            "ampleData" => ampleData,
             "warning" => "the optional threshold search limit was reached"
             };
     new HashTable from {
@@ -545,9 +562,52 @@ canonicalNefThresholdData (Ring,ZZ) := o -> (R,a) -> (
         "thresholdTest" => thresholdTest,
         "tests" => tests,
         "testsRun" => testsRun,
-        "canonicalDivisor" => K,
-        "ampleData" => ampleData
+        "canonicalDivisor" => K
         }
+    )
+
+canonicalNefThresholdData = method(Options => {ThresholdSearchLimit => null})
+canonicalNefThresholdData (Ring,ZZ) := o -> (R,a) -> (
+    if a <= 0 then
+        error "canonicalNefThresholdData: the index multiple must be positive";
+    limit := o.ThresholdSearchLimit;
+    if limit =!= null and (not instance(limit,ZZ) or limit <= 0) then
+        error "canonicalNefThresholdData: ThresholdSearchLimit must be null or positive";
+    K := canonicalDivisor(R,IsGraded=>true);
+    if not isCartier(a*K,IsGraded=>true) then
+        error "canonicalNefThresholdData: a*K_X is not Cartier";
+    ampleData := weightedAmpleDivisorData R;
+    H := ampleData#"divisor";
+    d := dim R - 1;
+    result := canonicalNefThresholdDataCore(R,a,K,H,d,limit);
+    new HashTable from join(pairs result,{"ampleData" => ampleData})
+    )
+
+-- Stage 1 (T3): the multigraded entry point.  The caller supplies the ample
+-- Cartier class H (plan section 3.5); the geometric dimension and the
+-- irrelevant ideal come from T1, and the Cartier gate uses T2's saturated
+-- test.  The bracket-and-scan logic is otherwise identical to the
+-- monograded path, via canonicalNefThresholdDataCore.  The result carries
+-- the same keys as the monograded entry point (plus "blockData"), so the
+-- measurement harness and any later code can read either uniformly.
+canonicalNefThresholdData (Ring,ZZ,BasicDivisor) := o -> (R,a,H) -> (
+    if a <= 0 then
+        error "canonicalNefThresholdData: the index multiple must be positive";
+    if ring H =!= R then
+        error "canonicalNefThresholdData: H must be a divisor on R";
+    limit := o.ThresholdSearchLimit;
+    if limit =!= null and (not instance(limit,ZZ) or limit <= 0) then
+        error "canonicalNefThresholdData: ThresholdSearchLimit must be null or positive";
+    blockData := multigradedBlockData R;
+    K := canonicalDivisor(R,IsGraded=>true);
+    if not isCartierSaturatedInternal(a*K,blockData#"irrelevantIdeal") then
+        error "canonicalNefThresholdData: a*K_X is not Cartier";
+    d := blockData#"geometricDimension";
+    result := canonicalNefThresholdDataCore(R,a,K,H,d,limit);
+    new HashTable from join(pairs result,{
+        "ampleData" => new HashTable from {"ring" => R,"divisor" => H},
+        "blockData" => blockData
+        })
     )
 
 canonicalNefThreshold = method(Options => options canonicalNefThresholdData)
@@ -1187,6 +1247,46 @@ threefoldMMPData (Ring,ZZ,List) := o -> (initialRing,initialIndex,initialSteps) 
 -- parallel: global generation of a reflexive pluricanonical sheaf proves nef,
 -- while failure of nefness for K_X+2^{-j}H proves non-nef.  NefSearchLimit is
 -- an optional practical bound; null means the mathematical unbounded search.
+--
+-- Stage 1 (T3): factored into a shared core (no dimension-dependent step of
+-- its own, so nothing here needed the T1 geometric dimension except the
+-- "expected a projective threefold" gate each entry point checks itself)
+-- so the multigraded entry point below can reuse it verbatim.
+canonicalNefDataCore = (R,a,K,H,limit) -> (
+    i := 1;
+    while limit === null or i <= limit do (
+        pluricanonical := i*a*K;
+        if isBasePointFreeDivisor pluricanonical then
+            return new HashTable from {
+                "nef" => true,
+                "conclusive" => true,
+                "witnessType" => "base-point-free pluricanonical divisor",
+                "iteration" => i,
+                "witnessDivisor" => pluricanonical,
+                "canonicalDivisor" => K
+                };
+        scaledData := canonicalScaledNefDataInternal(R,K,H,a,1/(2^i));
+        if not scaledData#"nef" then
+            return new HashTable from {
+                "nef" => false,
+                "conclusive" => true,
+                "witnessType" => "non-nef positive perturbation",
+                "iteration" => i,
+                "witnessT" => 1/(2^i),
+                "scaledTest" => scaledData,
+                "canonicalDivisor" => K
+                };
+        i = i+1;
+        );
+    new HashTable from {
+        "nef" => null,
+        "conclusive" => false,
+        "iterationsRun" => limit,
+        "canonicalDivisor" => K,
+        "warning" => "the optional search limit was reached"
+        }
+    )
+
 canonicalNefData = method(Options => {NefSearchLimit => null})
 canonicalNefData (Ring,ZZ) := o -> (R,a) -> (
     if dim R - 1 != 3 then
@@ -1201,41 +1301,32 @@ canonicalNefData (Ring,ZZ) := o -> (R,a) -> (
         error "canonicalNefData: a*K_X is not Cartier";
     ampleData := weightedAmpleDivisorData R;
     H := ampleData#"divisor";
-    i := 1;
-    while limit === null or i <= limit do (
-        pluricanonical := i*a*K;
-        if isBasePointFreeDivisor pluricanonical then
-            return new HashTable from {
-                "nef" => true,
-                "conclusive" => true,
-                "witnessType" => "base-point-free pluricanonical divisor",
-                "iteration" => i,
-                "witnessDivisor" => pluricanonical,
-                "canonicalDivisor" => K,
-                "ampleData" => ampleData
-                };
-        scaledData := canonicalScaledNefDataInternal(R,K,H,a,1/(2^i));
-        if not scaledData#"nef" then
-            return new HashTable from {
-                "nef" => false,
-                "conclusive" => true,
-                "witnessType" => "non-nef positive perturbation",
-                "iteration" => i,
-                "witnessT" => 1/(2^i),
-                "scaledTest" => scaledData,
-                "canonicalDivisor" => K,
-                "ampleData" => ampleData
-                };
-        i = i+1;
-        );
-    new HashTable from {
-        "nef" => null,
-        "conclusive" => false,
-        "iterationsRun" => limit,
-        "canonicalDivisor" => K,
-        "ampleData" => ampleData,
-        "warning" => "the optional search limit was reached"
-        }
+    result := canonicalNefDataCore(R,a,K,H,limit);
+    new HashTable from join(pairs result,{"ampleData" => ampleData})
+    )
+
+-- Stage 1 (T3): the multigraded entry point, using T1's geometric dimension
+-- for the threefold gate, a caller-supplied ample Cartier class (plan
+-- section 3.5), and T2's saturated Cartier test.
+canonicalNefData (Ring,ZZ,BasicDivisor) := o -> (R,a,H) -> (
+    blockData := multigradedBlockData R;
+    if blockData#"geometricDimension" != 3 then
+        error "canonicalNefData: expected a projective threefold";
+    if a <= 0 then
+        error "canonicalNefData: the index multiple must be positive";
+    if ring H =!= R then
+        error "canonicalNefData: H must be a divisor on R";
+    limit := o.NefSearchLimit;
+    if limit =!= null and (not instance(limit,ZZ) or limit <= 0) then
+        error "canonicalNefData: NefSearchLimit must be null or positive";
+    K := canonicalDivisor(R,IsGraded=>true);
+    if not isCartierSaturatedInternal(a*K,blockData#"irrelevantIdeal") then
+        error "canonicalNefData: a*K_X is not Cartier";
+    result := canonicalNefDataCore(R,a,K,H,limit);
+    new HashTable from join(pairs result,{
+        "ampleData" => new HashTable from {"ring" => R,"divisor" => H},
+        "blockData" => blockData
+        })
     )
 
 isCanonicalNef = method(Options => options canonicalNefData)
