@@ -56,6 +56,92 @@ weilDivisorsPackage := needsPackage "WeilDivisors";
 weilDivisorToModule := value(
     weilDivisorsPackage#"private dictionary"#"divisorToModule");
 
+-- Stage 1 (T1) of docs/STAGE1-MEASUREMENT-PLAN.md: block structure and the
+-- irrelevant ideal of a (possibly multigraded) presentation.  Unexported by
+-- design -- this is bookkeeping consumed by T2/T3/T5, not a public entry
+-- point.
+--
+-- A presentation is admissible when its degree matrix is block lower
+-- triangular with positive diagonal: the variables of block s have degree
+-- zero in every component after s and positive degree in component s.  We
+-- discover the blocks by scanning, for each variable, the *last* nonzero
+-- component of its degree vector (after applying a candidate reordering of
+-- the r degree components) and checking that component is positive; if that
+-- succeeds for every variable with a consistent block assignment, the
+-- reordering witnesses admissibility.  Only permutations of the degree
+-- components are tried (not of the variables), matching the plan's
+-- "search over permutations of the degree components" instruction; for
+-- r = 1 there is exactly one (trivial) permutation, reproducing the
+-- monograded case unconditionally: B = ideal vars R.
+--
+-- Verified against a ring actually produced by bigradedReesProjection (an
+-- ideal with generators of unequal degree, so the fibre variables u_i pick
+-- up strictly positive degrees in the *base* component): the identity
+-- permutation already witnesses admissibility there, contrary to the
+-- concern that the returned ambient ring might need the two degree
+-- components reversed.  The permutation search is kept regardless, since it
+-- is correct and cheap for the r <= 2 case this package needs, and it
+-- reports which permutation it used.
+multigradedBlockData = method()
+multigradedBlockData Ring := R -> (
+    A := ambient R;
+    n := numgens A;
+    avars := flatten entries vars A;
+    Rvars := flatten entries vars R;
+    if n != #Rvars then
+        error "multigradedBlockData: ambient and quotient generator counts disagree";
+    r := degreeLength A;
+    if r <= 0 then
+        error "multigradedBlockData: expected a graded ring";
+    -- For a candidate component order (a permutation of 0..r-1), classify
+    -- each variable by the last nonzero entry of its reordered degree
+    -- vector, and require that entry to be positive.  Returns a list of
+    -- 1-indexed block numbers, or null if the order fails some variable.
+    tryOrder := perm -> (
+        assignment := new MutableList from toList(n:null);
+        ok := true;
+        scan(n, j -> if ok then (
+            dg := degree avars#j;
+            reordered := apply(perm, i -> dg#i);
+            lastNonzero := 0;
+            scan(#reordered, k -> if reordered#k != 0 then lastNonzero = k+1);
+            if lastNonzero == 0 or reordered#(lastNonzero-1) <= 0 then
+                ok = false
+            else assignment#j = lastNonzero;
+            ));
+        if ok then toList assignment else null
+        );
+    perms := permutations r;
+    assignment := null;
+    usedPermutation := null;
+    scan(perms, perm -> if assignment === null then (
+        candidate := tryOrder perm;
+        if candidate =!= null then (
+            assignment = candidate;
+            usedPermutation = perm;
+            );
+        ));
+    if assignment === null then
+        error "multigradedBlockData: not block lower triangular with positive diagonal for any permutation of the degree components";
+    blockIndices := apply(r, s0 -> select(n, j -> assignment#j == s0+1));
+    if any(blockIndices, idxs -> #idxs == 0) then
+        error "multigradedBlockData: a degree component has no variables assigned to it";
+    blockVariables := apply(blockIndices, idxs -> apply(idxs, j -> Rvars#j));
+    blockIdeals := apply(blockVariables, vs -> ideal vs);
+    B := product blockIdeals;
+    new HashTable from {
+        "ring" => R,
+        "rank" => r,
+        "permutation" => usedPermutation,
+        "blockAssignment" => assignment,
+        "blockVariableIndices" => blockIndices,
+        "blockVariables" => blockVariables,
+        "blockIdeals" => blockIdeals,
+        "irrelevantIdeal" => B,
+        "geometricDimension" => dim R - r
+        }
+    )
+
 -- Lemma 3.5 of the paper: if X is presented in a weighted projective space
 -- with coordinate weights c_i and l=lcm(c_i), then O_X(l) is ample and
 -- invertible.  A nonzero coordinate power of weighted degree l supplies an
