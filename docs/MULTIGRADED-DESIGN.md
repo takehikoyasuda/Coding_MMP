@@ -171,31 +171,73 @@ varieties are not needed.
 
 ## Staged plan
 
-1. **Admissibility predicate and irrelevant ideal.**  A function that checks
-   block lower triangularity with positive diagonal, recovers the block
-   decomposition, and returns `B = B_1 ... B_r`.  Pure bookkeeping, testable
-   against the existing bigraded rings from `FlipComputation` and
-   `SteinFactorization`.
-2. **Generalize the base-point-free predicate** to saturate against `B`, with
-   the monograded case as the `r = 1` specialization.  Regressions must show
-   agreement with the current predicate on `P3` and the weighted `P(1,1,1,2)`
-   case, and correctness on `P1 x P2` where the current predicate is wrong.
-3. **Multigraded ample Cartier class.**  The gate; see below.  Until it is
-   solved, allow the class to be supplied by the caller so that stages 4 and 5
-   can be tested independently.
-4. **Multigraded nef and threshold tests.**  `canonicalScaledNefDataInternal`
-   should need no change once `H` and the predicate generalize.  Add the binary
-   search over the candidate list at the same time, since it is independent and
-   free.
-5. **Multigraded linear-system graph.**  Keep the source blocks and append the
-   target block, producing rank `r+1`.  Pass to a diagonal subalgebra only at
-   interfaces that genuinely require a monograded `GraphMorphism`, and record
-   which chosen class `w` was used, since the choice determines the weights of
-   the next iteration.
+All five stages below were implemented and measured; see
+[STAGE1-MEASUREMENT-RESULTS.md](STAGE1-MEASUREMENT-RESULTS.md) for the full
+stage-by-stage tables.  What follows replaces this section's earlier
+(unmeasured) description with what was actually built and the numbers from
+running it on `Bl_p(P3)` and Segre `P1 x P2`, both rank `r = 2`.
 
-Stages 1, 2 and 4 are mechanical.  Stage 5 is where the interface with Stein
-factorization has to be decided, and it can be deferred by flattening at that
-boundary while the earlier stages are validated.
+1. **Admissibility predicate and irrelevant ideal** (`multigradedBlockData`,
+   unexported).  Checks block lower triangularity with positive diagonal by
+   searching permutations of the degree components, recovers the block
+   decomposition, and returns `B = B_1 ... B_r` and the geometric dimension
+   `dim R - r`.  Verified against a ring genuinely produced by
+   `bigradedReesProjection` on a non-equigenerated ideal (not just a
+   hand-written example): the identity permutation already witnesses
+   admissibility there, so no reversal of degree components is needed in
+   practice, correcting a concern raised while planning this work.  Measured
+   cost: 0.0002-0.0007s on both example inputs -- confirmed mechanical.
+2. **Generalized the base-point-free predicate** to saturate against `B`,
+   with the monograded case as the `r = 1` specialization (confirmed by
+   test to reproduce the existing predicate exactly).  A second, independent
+   defect was found beyond the one originally diagnosed here: `WeilDivisors`'
+   `baseLocus` computes `basis(0,-)` with a bare integer, which does not
+   reliably select the degree `(0,...,0)` piece on a ring with
+   `degreeLength > 1`; saturating its raw output, as originally planned, is
+   not sufficient on its own.  The predicate actually used builds the
+   evaluation cokernel directly with an explicit full-length zero-degree
+   vector instead of calling `baseLocus` at all.  See section 6 of the
+   results document for the concrete failing case this was tested against.
+   Measured cost: 0.05-0.39s for the canonical-divisor Cartier/base-point-
+   free check on both inputs.
+3. **Multigraded ample Cartier class**: the caller supplies it, exactly as
+   planned; the open mathematical gate below remains open and was not
+   addressed (out of scope for this work order).
+4. **Multigraded nef and threshold tests.**  `canonicalScaledNefDataInternal`
+   needed only the geometric dimension fix (stage 1) to work multigraded, as
+   expected; its base-point-free test was already multigraded-correct via
+   stage 2.  The linear candidate scan was replaced by binary search, sharing
+   `testCache` with the dyadic bracket phase.  Measured: on `P3` (monograded,
+   for direct comparison against previously recorded linear-scan counts),
+   `a = 1/3/6` now cost `6/8/10` tests instead of `6/16/49` -- an exact match
+   against the previously recorded "before" figures, confirming both the fix
+   and its saving.  On the two multigraded inputs, the whole nefness-through-
+   threshold chain (stages 1-4) costs 3.68s for `Bl_p(P3)` and 0.40s for
+   Segre, and returns the correct thresholds (`lambda = 2` and `lambda = 3`
+   respectively).
+5. **Flattening at the Stein interface.**  The original plan for this stage
+   (keep the source blocks and append the target block, producing rank
+   `r + 1`) turned out not to be viable: `SteinFactorization`'s
+   `blockDegreeData` requires exactly two blocks, block *diagonal* (every
+   variable `(positive,0)` or `(0,positive)`), and generalizing it is
+   explicitly out of scope.  What was built instead, matching the later,
+   more specific instruction in `STAGE1-MEASUREMENT-PLAN.md` section 4.5:
+   flatten the *source* ring to the diagonal subalgebra of the caller-
+   supplied ample class `w` (`diagonalSubalgebraData`, built by reusing
+   `WeilDivisors`' `mapToProjectiveSpace(w)` rather than re-deriving it), and
+   feed that monograded ring to the existing (unmodified) graph/Stein
+   machinery.  Measured cost: 0.041-0.054s for both inputs -- cheap here,
+   though this relies on `w` being very ample, true for both measurement
+   inputs (it is literally the polarization each was built from) but not
+   checked by the code and not tested for `w` merely ample.
+
+Stages 1, 2 and 4 are mechanical, confirmed by measurement (well under a
+second each on both example inputs).  Stage 5's interface with Stein
+factorization was resolved by flattening at that boundary, also confirmed
+cheap here; whichever of the two example inputs reaches a non-trivial Stein
+factorization (Segre, contracting to `P1`) exercises it for 0.06s, while
+`Bl_p(P3)` with `w = O(1,1)` contracts to a point in one step and skips it
+entirely, as anticipated.
 
 ## The open mathematical gate
 
