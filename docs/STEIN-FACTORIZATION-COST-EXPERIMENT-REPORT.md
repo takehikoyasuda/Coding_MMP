@@ -1,6 +1,6 @@
 # Stein Factorization Cost on a Genuine Divisorial Multigraded Contraction: Experimental Report
 
-**Status**: Completed, negative result (new bottleneck located, not fixed)
+**Status**: Completed, negative result (new bottleneck located and root-caused to `res(nn,LengthLimit=>d1+d2+1)`; not fixed)
 **Date**: 2026-08-14
 **Work location**: Scratchpad only (no repo changes, no commits)
 **Branch**: `feature/multigraded-stage1` (unchanged)
@@ -26,7 +26,15 @@ complete-linear-system graph construction all remained cheap, confirming the
 hand computation exactly. But the next step -- Stein factorization itself,
 specifically `steinHomData` -- did not complete in 30+ minutes on a graph with
 29 variables and a 265-generator ideal, on a **smooth** ring with Cartier `K`,
-with no reflexive-hull machinery involved at all.
+with no reflexive-hull machinery involved at all. Root-caused (see "Root
+cause" below): `steinHomData` must compute a free resolution up to
+homological degree `d1+d2+1`, where `d1,d2` are one less than the source and
+target variable counts -- i.e. a length that scales with **total variable
+count**, not with the geometry of the contraction. On this input that length
+is 28 in a 29-variable ring, essentially the maximum the Hilbert syzygy
+theorem allows, and the resolution computation itself (not the subsequent
+truncation/`Hom` step) is confirmed to already be catastrophic by homological
+degree 4 -- far short of the 28 actually needed.
 
 **This is a third, independent bottleneck**, distinct from both:
 - the singular-target base-point-free/reflexive-hull bottleneck
@@ -107,6 +115,63 @@ of output cannot be distinguished from a genuine stall.
 
 ---
 
+## Root cause: the resolution length needed to certify the truncation bound
+
+`steinHomData`'s own source
+([SteinFactorization.m2:156-192](../third_party/SteinFactorizationM2/SteinFactorization.m2#L156-L192))
+shows the mechanism precisely. It computes a free resolution up to a
+homological degree fixed by the ambient ring's block sizes, uses that
+resolution to certify a bigraded truncation bound (`bigradedTruncationBound`,
+the paper's Corollary 4.3), then truncates and takes `Hom`:
+
+```m2
+bd := blockDegreeData ambient;              -- (d1,d2,c1,c2)
+maxHomologicalDegree := d1+d2+1;            -- NOT a free choice
+ff := res(nn,LengthLimit=>maxHomologicalDegree);
+bound := bigradedTruncationBound(ff,d1,d2,c1,c2);
+truncation := truncate(bound,rr^1);
+rawHomModule := Hom(truncation,rr^1,MinimalGenerators=>true);
+```
+
+`d1 = sourceVariableCount-1`, `d2 = targetVariableCount-1`, so
+`maxHomologicalDegree` grows linearly with the **total variable count** of
+the product ring, not with anything about the geometry of the contraction
+itself. Measured directly on this experiment's graph
+(`sourceVariableCount=19`, `targetVariableCount=10`, 29 variables total):
+
+| Quantity | Value |
+| --- | --- |
+| `blockDegreeData` | `d1=18, d2=9, c1=19, c2=10` |
+| `maxHomologicalDegree` (`d1+d2+1`) | **28**, in a **29-variable** ring |
+
+By the Hilbert syzygy theorem, projective dimension over a 29-variable
+polynomial ring is at most 29 -- so `steinHomData` is asking, on this input,
+for a free resolution of nearly maximal possible length before it can even
+state the truncation bound it needs. Compare Stage 1's Segre example
+(`sourceVariableCount=6`, `targetVariableCount=2`, 8 variables total):
+`d1=5, d2=1, maxHomologicalDegree=7` -- a resolution well short of that
+ring's own 8-variable syzygy ceiling, which is exactly why it was cheap
+(0.062s total for Stein factorization there).
+
+Isolating the resolution call itself confirms the growth is not gradual:
+
+| `res(nn, LengthLimit=>k)` | cpu time |
+| --- | --- |
+| `k=2` | 1.94s |
+| `k=4` | **did not complete**; killed after 34 min elapsed / 93 min cpu time (multi-threaded), memory 8.7GB |
+
+So the blowup is not a slow climb toward `k=28` -- it is already
+catastrophic by `k=4`, a small fraction of the way to the `28` that
+`steinHomData` actually needs. The truncation bound's *value* was never
+reached or measured; the free resolution required to *certify* it is what
+fails first, and it fails at a homological degree far below the nominal
+target. This directly confirms the diagnosis: the cost is driven by the
+resolution-length parameter `d1+d2+1` scaling with total variable count, on
+a 265-generator ideal that is evidently not sparse/structured enough for
+Macaulay2's resolution algorithm to stay cheap anywhere near that length.
+
+---
+
 ## Interpretation
 
 `steinHomData` computes the paper's bigraded global Hom (`B tensor C^[k] ->
@@ -156,13 +221,24 @@ target), not because the underlying construction is generically cheap.
   the algebra level; only the subsequent Stein-factorization step is
   unresolved.
 
+- *Why* `steinHomData` scales this badly with variable count, localized to
+  the specific mechanism: `maxHomologicalDegree = d1+d2+1` grows linearly
+  with total product-ring variable count (source + target), asking for a
+  free resolution approaching the Hilbert-syzygy ceiling of that ring
+  (28 out of a possible 29 here); and the resolution computation itself,
+  not the subsequent truncate/Hom step, is confirmed as the actual site of
+  the blowup, already catastrophic by homological degree `k=4` (34+ minutes
+  elapsed, killed) versus `k=2`'s 1.94s. Segre's cheap case
+  (`maxHomologicalDegree=7` in an 8-variable ring) never approached its own
+  ring's syzygy ceiling, which is why it stayed cheap.
+
 **Does not establish:**
 
-- *Why* `steinHomData` scales this badly with generator/variable count --
-  no internal profiling of `steinHomData`'s own algorithm was performed here
-  (the user's next-step preference was to record this finding and stop, not
-  to read `third_party/SteinFactorizationM2/SteinFactorization.m2`'s
-  internals).
+- Why the resolution itself grows so sharply between `k=2` and `k=4` in
+  Macaulay2's implementation terms (which Betti numbers explode, or whether
+  a different resolution strategy/algorithm choice would fare better) --
+  that would require profiling Macaulay2's `res` internals themselves, not
+  just this package's use of them, and was not attempted.
 - Whether a different choice of `w` closer to the `O(1,0)` boundary (e.g.
   larger tilt ratios) would give a threshold divisor with *fewer* sections
   and a correspondingly cheaper `steinHomData` call, or whether the generator
@@ -176,15 +252,22 @@ target), not because the underlying construction is generically cheap.
 
 ## Suggested next steps (not attempted here)
 
-- Profile `steinHomData` directly (`third_party/SteinFactorizationM2/SteinFactorization.m2:156`)
-  to find which internal sub-computation (Hom module presentation, kernel,
-  or something else) drives the cost, mirroring how the BPF bottleneck was
-  earlier broken down into construction-vs-assessment shares
-  (`docs/BPF-CONSTRUCTION-VS-ASSESSMENT-BREAKDOWN.md`).
-- Try a `w` giving a smaller-generator-count graph ideal for a genuinely
-  divisorial (non-point, non-tiny-target) contraction, to see whether the
-  cost curve in generator count is steep-but-tractable at smaller sizes or
-  is already bad at the smallest divisorial case reachable.
+- Localized further than originally planned: the site is confirmed to be
+  `res(nn,LengthLimit=>k)` itself, already catastrophic by `k=4` of the 28
+  `steinHomData` asks for. Profiling Macaulay2's own resolution algorithm on
+  this specific 265-generator/29-variable ideal (which Betti numbers are
+  large, whether a different strategy such as `FastNonminimal` or computing
+  over a smaller residue field helps) is the natural continuation, distinct
+  from (and more specific than) generically "profiling `steinHomData`".
+- Since `maxHomologicalDegree = d1+d2+1` scales with **total product-ring
+  variable count** (`sourceVariableCount+targetVariableCount`), reducing
+  either side would directly lower the resolution length demanded, not just
+  the generator count of the graph ideal. `sourceVariableCount` comes from
+  `diagonalSubalgebraData`'s flattening of `w` (19 here, vs Stage 1's 9 for
+  `w=(1,1)`) and `targetVariableCount` from the number of sections of the
+  threshold divisor (10 here, `h^0(O_{P3}(2))`). Whether a `w` exists that
+  reaches a genuine (non-point, non-tiny) divisorial contraction with a
+  smaller combined variable count was not investigated.
 - For a near-term "prove the program works on a nontrivial smooth example"
   goal, prefer examples that stay Picard-rank-one (single contraction to a
   point, never exercising Stein factorization on a nontrivial target) over
