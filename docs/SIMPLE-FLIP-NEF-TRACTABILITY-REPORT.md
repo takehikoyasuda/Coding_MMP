@@ -1,6 +1,6 @@
 # Does Singular BPF/Nef Testing Stay Tractable for the Simplest Flip Singularities?
 
-**Status**: Confirmed, positive but partial: nef testing completes (~530s) on a flip target with only one simple (index-2) singular point, unlike the previously measured rank-2 canonical-index-2 example (never completed after 20+ minutes). The specific example tested does not itself terminate as a minimal model (`nef=false`). Two follow-up candidates searching for a `nef=true` variant were inconclusive: one turned out accidentally Gorenstein (no genuine flip at all), the other's flip computation itself did not finish in 10+ minutes. A one-line Gorenstein pre-check and a mirror-of-the-working-example candidate (`v4=(2,1,-1)`) are recorded as the next things to try.
+**Status**: Confirmed, positive but partial: nef testing completes (~530s) on flip targets with only one simple (index-2) singular point, unlike the previously measured rank-2 canonical-index-2 example (never completed after 20+ minutes). Four candidates tried in total: two gave genuine, comparably cheap flips both landing on `nef=false` at near-identical cost (529.75s and 509.4s), one was accidentally Gorenstein (no flip to study), one had an expensive flip computation itself (killed after 10+ minutes). No candidate reached `nef=true`; a "one flip, then minimal model" example was not found within this one 4-ray-circuit family, suggesting the compactification method itself, not just the ray choice, needs rethinking.
 **Date**: 2026-08-14
 **Work location**: Scratchpad only (no repo changes to `MMPComputation.m2`/`FlipComputation`); reuses `tests/relative-model.m2`'s existing toric-circuit construction verbatim
 **Branch**: `feature/multigraded-stage1` (unchanged)
@@ -312,24 +312,71 @@ otherwise-simple-looking circuit (candidate 3 versus the cheap working
 example and candidate 1), nor to find a `nef=true` case. The Gorenstein
 one-line check at least rules out an entire class of degenerate
 non-candidates (like candidate 2) for free, before spending any real
-computation. The natural next attempt, not yet tried, is the *mirror* of
-the original working example -- `v4=(2,1,-1)` (chamber determinants
-`{v1,v3,v4}=-1` smooth, `{v2,v3,v4}=2` index-2; `{v1,v2,v3}=1` smooth,
-`{v1,v2,v4}=-1` smooth; `p+q+r=2+1-1=2 != 1`, non-Gorenstein) -- structurally
-the same shape as the working example (one side entirely smooth, the other
-with exactly one index-2 point) with the singular chamber swapped, so
-comparable cost is plausible though not guaranteed.
+computation.
+
+### Candidate 4: `v4=(2,1,-1)`, the mirror of the working example -- also `nef=false`, essentially identical cost
+
+Chamber determinants: `{v1,v3,v4}=-1` (smooth), `{v2,v3,v4}=2` (index-2);
+`{v1,v2,v3}=1` (smooth), `{v1,v2,v4}=-1` (smooth); `p+q+r=2+1-1=2 != 1`
+(non-Gorenstein) -- structurally the same shape as the working example
+(one side entirely smooth, the other with exactly one index-2 point), with
+the singular chamber swapped. This one *did* behave comparably cheaply:
+`relativeCanonicalModelFromBaseData` in 0.23s (`relativeModelType=
+"computed"`, a genuine flip), `numgens Xplus=12`, monograded, canonical
+index `a=1` -- essentially identical shape to the working example.
+
+The full `canonicalNefData(Xplus,1)` completed in **509.4s**, reporting
+**`nef=false`** -- again, not a minimal model. The near-identical cost
+(509.4s vs. the working example's 529.75s, a ~4% difference) across two
+independently chosen, only-mirror-related configurations is itself a
+notable, if negative, finding: it suggests this specific family (one
+smooth side, one index-2 side, built via this particular
+"projectivize-the-affine-cone-with-an-extra-`w`-variable" compactification)
+lands reliably on `nef=false`, not by coincidence in one instance but as an
+apparent systematic feature of the construction. Whether this is intrinsic
+to the *combinatorial type* (one index-2 point circuits, this compactification)
+or specific to these two particular ray choices was not further isolated.
+
+### Where this leaves the search
+
+Four candidates were tried in total (the original working example plus
+three follow-ups): two gave a genuine, comparably cheap flip with
+`nef=false` (the original and candidate 4), one was accidentally
+Gorenstein with no flip to study (candidate 2), and one had an expensive
+flip computation itself, not reached in 10+ minutes (candidate 3). No
+candidate reached `nef=true`. This suggests that finding a genuine "one
+flip, then minimal model" example may require either a different
+compactification strategy (the `w`-variable trick borrowed from
+`tests/relative-model.m2` was designed to test the flip computation in
+isolation, not to produce a globally minimal post-flip model, and may be
+systematically unsuited to the latter goal) or a combinatorially different
+family of circuits (more than 4 rays, or a different relation pattern)
+rather than further perturbations of this one 4-ray family's `v4`.
 
 ## Suggested next steps
 
-- Search for a different, comparably simple ray configuration (one
-  relation among 4 rays in rank 3, at most one non-smooth cone of small
-  index on the flip side) whose flip target *does* satisfy `nef=true`,
-  giving a genuine "one flip, then minimal model" demonstration.
-- If found, connect the pre-flip smooth chamber to the flip through the
-  actual top-level driver (`mmpStepRecordData`/`threefoldMMPData`), mirroring
-  the `Bl_p(P3)` capstone's pattern, rather than only testing the flip and
-  post-flip nef search in isolation.
+- Rethink the compactification, not just the ray configuration: the
+  `w`-variable projectivization borrowed from `tests/relative-model.m2` was
+  built to isolate the flip computation, and two independent 4-ray circuits
+  through it both landed on `nef=false` at near-identical cost -- weak
+  evidence this specific compactification systematically fails to produce
+  `nef=true`, rather than that `nef=true` is rare among simple flips in
+  general.
+- Try a genuinely different family: more than 4 rays, or a different
+  relation pattern (not a single 4-ray circuit's `v4` perturbed), possibly
+  guided by an explicit literature construction of Francia's flip embedded
+  in a compact Fano/Calabi-Yau-type ambient known independently to reach a
+  minimal (or Mori-fibre) model after the flip, rather than searching
+  blindly within this one compactification's parameter space.
+- If a `nef=true` case is found, connect the pre-flip smooth chamber to the
+  flip through the actual top-level driver
+  (`mmpStepRecordData`/`threefoldMMPData`), mirroring the `Bl_p(P3)`
+  capstone's pattern, rather than only testing the flip and post-flip nef
+  search in isolation as done throughout this report.
 - Consider testing `canonicalNefData` on Chamber A (the smooth side) as a
   sanity/contrast check -- expected to be fast given smoothness, confirming
   that the *only* added cost is the one singular point on the flip side.
+- Profile why candidate 3's flip computation itself (not the nef search)
+  became expensive from a single `v4` coordinate change (`-2` to `-3`),
+  distinct from and unexplained by anything found in the `steinHomData`
+  investigation.
