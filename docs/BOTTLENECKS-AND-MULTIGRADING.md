@@ -164,6 +164,22 @@ Even with multigrading preserved, further bottlenecks may remain:
 - canonical Cartier index searches for singular targets;
 - expensive support-empty tests for general multigraded modules.
 
+A third one was found by direct measurement, not merely anticipated: **Stein
+factorization's own bigraded global Hom construction (`steinHomData`)**, on a
+**smooth**, Cartier-index-1 input, once a divisorial contraction's target has
+more than a couple of embedding coordinates. See
+[STEIN-FACTORIZATION-COST-EXPERIMENT-REPORT.md](STEIN-FACTORIZATION-COST-EXPERIMENT-REPORT.md):
+`Bl_p(P3)` with a polarization tilted toward the blow-down ray (rather than
+Stage 1's `w=(1,1)`, which happened to make the threshold divisor exactly
+zero) reaches a genuine 3-dimensional-target divisorial contraction cheaply
+through nef test, threshold search, and complete-linear-system graph
+construction (all well under 15 seconds combined), then stalls unresolved for
+30+ minutes in `steinHomData` alone, on a 29-variable product ring with a
+265-generator graph ideal. Neither of Stage 1's example inputs exercised
+`steinHomData` at this size (one skipped it via the trivial-point-target
+shortcut, the other had a much smaller target), so this bottleneck was not
+visible in either of Stage 1's "cheap" measurements.
+
 Still, the current experiments suggest that preserving multigrading is the
 best next step for obtaining nontrivial end-to-end MMP examples beyond
 Picard-rank-one Fano and manually supplied divisorial prefixes.

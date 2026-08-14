@@ -275,3 +275,13 @@ constructions, the `t=0` pluricanonical search, canonical Cartier index
 searches for singular targets, and support-empty tests for general multigraded
 modules.  The measurements above only establish that the first nef test, which
 is where the current examples stall, becomes cheap.
+
+A follow-up measurement found a further bottleneck neither of this note's two
+example inputs exercised: **Stein factorization's own bigraded global Hom
+construction (`steinHomData`)**, on a smooth, Cartier-index-1 input, once a
+divisorial contraction's target needs more than a couple of embedding
+coordinates. Both inputs above avoided this by construction -- `Bl_p(P3)` with
+`w=(1,1)` collapsed to a point-target contraction that skips Stein
+factorization entirely, and Segre's target had only 2 variables -- not
+because the construction is generically cheap. See
+[STEIN-FACTORIZATION-COST-EXPERIMENT-REPORT.md](STEIN-FACTORIZATION-COST-EXPERIMENT-REPORT.md).
