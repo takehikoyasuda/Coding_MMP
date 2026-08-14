@@ -178,7 +178,26 @@ construction (all well under 15 seconds combined), then stalls unresolved for
 265-generator graph ideal. Neither of Stage 1's example inputs exercised
 `steinHomData` at this size (one skipped it via the trivial-point-target
 shortcut, the other had a much smaller target), so this bottleneck was not
-visible in either of Stage 1's "cheap" measurements.
+visible in either of Stage 1's "cheap" measurements. Root cause: `steinHomData`
+must resolve to homological degree `d1+d2+1` (scaling with total variable
+count, not geometry) just to certify its truncation bound, and that
+resolution is itself already infeasible far short of the length needed (28
+of 29 possible here; already unresolved after 30+ minutes at homological
+degree 4).
+
+A **practical workaround was then found and confirmed on this input**: the
+package already ships `steinHomDataAtBound` (skip the resolution, truncate
+at a caller-supplied bound) and an existing test
+(`third_party/SteinFactorizationM2/tests/blowup-twisted-cubic.m2`) already
+validates a small guessed bound against independently known target geometry
+rather than the internal certificate. Repeating that pattern here, guessed
+bounds `r=1` (1.45s) and `r=2` (8.89s) both reproduce the correct,
+independently verified answer -- turning an unresolved 30+ minute stall into
+a 1.45-second computation on this input. See
+[STEIN-FACTORIZATION-COST-EXPERIMENT-REPORT.md](STEIN-FACTORIZATION-COST-EXPERIMENT-REPORT.md)'s
+"practical workaround" section for the caveats (this relied on knowing the
+expected target in advance; a genuinely unknown contraction would need
+`steinDataByStabilization`'s weaker self-consistency check instead).
 
 Still, the current experiments suggest that preserving multigrading is the
 best next step for obtaining nontrivial end-to-end MMP examples beyond

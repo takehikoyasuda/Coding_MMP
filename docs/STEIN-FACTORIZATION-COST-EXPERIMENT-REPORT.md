@@ -1,6 +1,6 @@
 # Stein Factorization Cost on a Genuine Divisorial Multigraded Contraction: Experimental Report
 
-**Status**: Completed, negative result (new bottleneck located and root-caused to `res(nn,LengthLimit=>d1+d2+1)`; not fixed)
+**Status**: Bottleneck located and root-caused to `res(nn,LengthLimit=>d1+d2+1)`; a practical workaround (guessed truncation bound + independent geometric verification) found and confirmed on this input
 **Date**: 2026-08-14
 **Work location**: Scratchpad only (no repo changes, no commits)
 **Branch**: `feature/multigraded-stage1` (unchanged)
@@ -44,6 +44,18 @@ degree 4 -- far short of the 28 actually needed.
 It hits precisely the case most wanted for a nontrivial multi-step smooth MMP
 demonstration: a divisorial contraction whose target has more than a couple
 of embedding coordinates.
+
+**A practical workaround was then found and confirmed** (see "A practical
+workaround" below): the package already ships `steinHomDataAtBound` (skip
+the resolution, truncate at a caller-supplied bound) and
+`steinDataByStabilization` (guess-and-increase with a self-consistency
+check), and an existing test (`blowup-twisted-cubic.m2`) already validates
+a guessed bound against independently known geometry rather than an internal
+certificate. Repeating that pattern here: guessed bounds `r=1` (1.45s) and
+`r=2` (8.89s) both reproduce the correct, independently verified answer
+(`dim=4, H(1)=10, H(2)=35`, matching the known target `P3` embedded by
+`O(2)`) -- turning an unresolved 30+ minute stall into a 1.45-second
+computation, on this input.
 
 ---
 
@@ -172,6 +184,70 @@ Macaulay2's resolution algorithm to stay cheap anywhere near that length.
 
 ---
 
+## A practical workaround: guessed bound + independent geometric verification
+
+`SteinFactorization.m2` already ships an escape hatch from the expensive
+certified-bound path, in two flavors:
+
+- `steinHomDataAtBound(ambient,igraph,bound)` -- skip the resolution
+  entirely and truncate at a caller-supplied `bound`. `"certifiedBound"` is
+  `false`: nothing establishes the supplied bound was large enough.
+- `steinDataByStabilization(...)` -- automate a guess-and-increase loop:
+  try `startBound, startBound+(1,0), startBound+(2,0), ...`, compare a
+  "fingerprint" (Krull dimension, Hilbert function values, module degrees)
+  across consecutive bounds, and stop once `requiredMatches` consecutive
+  bounds agree. Documented explicitly as heuristic evidence, not proof
+  (`"finite stabilization is not a proof of the Corollary 4.3 bound"`).
+
+`third_party/SteinFactorizationM2/tests/blowup-twisted-cubic.m2` already
+uses exactly this pattern on a harder case than Stage 1 ever measured (a
+blow-up of a twisted cubic in `P3`, composed with a squaring map, where "the
+full minimal resolution is the bottleneck... >2 minutes"): it supplies
+`r=(2,0)` directly to `steinHomDataAtBound`, then validates the result
+against **independently known geometry** (the expected target's Krull
+dimension and Hilbert function), rather than trusting an internal
+certificate.
+
+This experiment repeated that exact pattern on the input that stalled above.
+The expected target is independently known here too: the contraction is the
+blow-down `E -> point` (`Bl_p(P3) -> P3`), and `morphismDivisor L` is
+numerically the pullback of `O_{P3}(2)` (its 10 sections match
+`h^0(O_{P3}(2))=10` exactly, confirmed earlier in this report). So the
+expected Stein-factorization target ring is the degree-2 Veronese
+subalgebra of `P3`'s coordinate ring: Krull dimension 4, Hilbert function
+`h^0(O_{P3}(2k)) = binomial(2k+3,3)`, i.e. `H(1)=10, H(2)=35`.
+
+```m2
+hd = steinHomDataAtBound(productRing,graphIdeal,{r,0});
+cd = steinCoordinateAlgebra(hd,0);
+dim(cd#"ring"); hilbertFunction(1,cd#"ring"); hilbertFunction(2,cd#"ring");
+```
+
+| Guessed bound `{r,0}` | cpu time | `dim` | `H(1)` | `H(2)` | Matches expected geometry? |
+| --- | --- | --- | --- | --- | --- |
+| `r=1` | **1.45s** | 4 | 10 | 35 | **yes** |
+| `r=2` | 8.89s | 4 | 10 | 35 | **yes** (same answer -- one stabilizing match) |
+
+Both guessed bounds -- vastly smaller than the certified `28` that made the
+resolution itself unresolvable at homological degree `4` -- reproduce the
+correct, independently verified answer. `r=1` alone resolves the entire
+Stein-factorization step in 1.45 seconds, versus 30+ minutes unresolved via
+the certified path: a practical fix for this specific input, using machinery
+that already existed in the package before this experiment.
+
+**Caveat, stated plainly**: this verification was only possible because the
+expected target geometry (`P3`, Veronese-embedded) was known independently
+in advance. For a genuinely unknown contraction, one would fall back to
+`steinDataByStabilization`'s weaker self-consistency check (does the answer
+stop changing as the bound increases?), which its own documentation
+correctly calls evidence, not proof. What this experiment adds beyond that
+existing caveat is a second, positive data point: on a real instance where
+the certified path is provably infeasible (not merely slow), a small guessed
+bound both stabilizes *and* matches ground truth, on the first two bounds
+tried.
+
+---
+
 ## Interpretation
 
 `steinHomData` computes the paper's bigraded global Hom (`B tensor C^[k] ->
@@ -196,7 +272,11 @@ Stein-factorization interface is already a live problem *before* any flip or
 relative model is involved, as soon as the target of a divisorial contraction
 has more than a couple of embedding coordinates. Both of Stage 1's example
 inputs avoided this by construction (one trivially, one by having a small
-target), not because the underlying construction is generically cheap.
+target), not because the underlying construction is generically cheap. The
+certified-bound path (`steinHomData` proper) is genuinely infeasible on this
+input; but, as the next section shows, the package's own existing
+guessed-bound escape hatch turns this from a hard stop into a fast,
+independently-checkable computation on this input.
 
 ## What this does and does not establish
 
@@ -249,27 +329,54 @@ target), not because the underlying construction is generically cheap.
 - Whether this cost is specific to `Bl_p(P3)` and this particular `w`, or is
   a general property of `steinHomData` whenever the target embedding needs
   more than a handful of coordinates. No second example was tested.
+- That the guessed-bound workaround (`r=1`, `r=2`) generalizes beyond this
+  one input. It was confirmed here only because the target geometry (`P3`
+  embedded by `O(2)`) was known independently in advance to check against;
+  for a genuinely unknown contraction the same procedure would have to rely
+  on `steinDataByStabilization`'s weaker self-consistency criterion instead,
+  which is evidence, not proof, and was not itself exercised on this input
+  (only two individual `steinHomDataAtBound` calls plus a by-hand comparison
+  to known geometry were run, not the automated stabilization loop).
+- Whether the guessed-bound path's cost also grows sharply with `r` the way
+  the certified path's resolution length did (`r=2` already cost 6x `r=1`);
+  `r=3` and above were not measured, so whether this workaround itself would
+  eventually hit a similar wall on a harder input is unknown.
 
-## Suggested next steps (not attempted here)
+## Suggested next steps
 
-- Localized further than originally planned: the site is confirmed to be
-  `res(nn,LengthLimit=>k)` itself, already catastrophic by `k=4` of the 28
-  `steinHomData` asks for. Profiling Macaulay2's own resolution algorithm on
-  this specific 265-generator/29-variable ideal (which Betti numbers are
-  large, whether a different strategy such as `FastNonminimal` or computing
-  over a smaller residue field helps) is the natural continuation, distinct
-  from (and more specific than) generically "profiling `steinHomData`".
+- **Adopt the guessed-bound + independent-verification pattern as the
+  default recovery path** when `steinHomData`'s certified-bound resolution
+  is infeasible, mirroring `blowup-twisted-cubic.m2`: try
+  `steinHomDataAtBound` at a small bound, and check the resulting Krull
+  dimension and a few Hilbert function values against whatever is
+  independently known about the expected target (even a partial invariant,
+  such as expected dimension alone, is informative). Where no independent
+  geometry is known in advance, fall back to `steinDataByStabilization`'s
+  automated guess-and-increase loop, understanding its match is evidence,
+  not proof.
+- Run `steinDataByStabilization` itself (not just two manual
+  `steinHomDataAtBound` calls) on this input, to confirm the automated
+  stabilization loop reaches the same conclusion without needing the
+  independently-known target in advance.
+- Test whether the guessed-bound path's own cost grows sharply with `r`
+  (only `r=1,2` were measured; `r=3+` was not) -- if it does, the workaround
+  may only postpone, not remove, the wall on harder inputs.
+- Profiling Macaulay2's own resolution algorithm on the specific
+  265-generator/29-variable ideal that makes the *certified* path infeasible
+  (which Betti numbers explode between homological degree 2 and 4) remains
+  a separate, not-yet-attempted line of investigation, orthogonal to the
+  workaround above.
 - Since `maxHomologicalDegree = d1+d2+1` scales with **total product-ring
   variable count** (`sourceVariableCount+targetVariableCount`), reducing
-  either side would directly lower the resolution length demanded, not just
-  the generator count of the graph ideal. `sourceVariableCount` comes from
-  `diagonalSubalgebraData`'s flattening of `w` (19 here, vs Stage 1's 9 for
-  `w=(1,1)`) and `targetVariableCount` from the number of sections of the
-  threshold divisor (10 here, `h^0(O_{P3}(2))`). Whether a `w` exists that
-  reaches a genuine (non-point, non-tiny) divisorial contraction with a
-  smaller combined variable count was not investigated.
-- For a near-term "prove the program works on a nontrivial smooth example"
-  goal, prefer examples that stay Picard-rank-one (single contraction to a
-  point, never exercising Stein factorization on a nontrivial target) over
-  further multi-step smooth blow-up/blow-down chains, until this bottleneck
-  is either fixed or better characterized.
+  either side would directly lower the resolution length the *certified*
+  path demands. `sourceVariableCount` comes from `diagonalSubalgebraData`'s
+  flattening of `w` (19 here, vs Stage 1's 9 for `w=(1,1)`) and
+  `targetVariableCount` from the number of sections of the threshold divisor
+  (10 here, `h^0(O_{P3}(2))`). Whether a `w` exists reaching a genuine
+  divisorial contraction with a smaller combined variable count was not
+  investigated.
+- Given the workaround above, a nontrivial multi-step smooth MMP example is
+  no longer blocked by this bottleneck by default -- it can proceed via
+  guessed bounds with geometric spot-checks. Picard-rank-one examples
+  (single contraction to a point) remain the simplest fallback where no
+  workaround is needed at all.

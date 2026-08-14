@@ -283,5 +283,11 @@ divisorial contraction's target needs more than a couple of embedding
 coordinates. Both inputs above avoided this by construction -- `Bl_p(P3)` with
 `w=(1,1)` collapsed to a point-target contraction that skips Stein
 factorization entirely, and Segre's target had only 2 variables -- not
-because the construction is generically cheap. See
+because the construction is generically cheap. A practical workaround was
+then found and confirmed on that same input: the package's existing
+guessed-bound entry point (`steinHomDataAtBound`), checked against
+independently known target geometry rather than the internal certificate
+(a pattern already precedented in
+`third_party/SteinFactorizationM2/tests/blowup-twisted-cubic.m2`), turned a
+30+ minute unresolved stall into a 1.45-second computation. See
 [STEIN-FACTORIZATION-COST-EXPERIMENT-REPORT.md](STEIN-FACTORIZATION-COST-EXPERIMENT-REPORT.md).
