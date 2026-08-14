@@ -52,7 +52,9 @@ export {
     "ContractionIsSmall",
     "CanonicalIndexSearchLimit",
     "MMPMaxSteps",
-    "IrrelevantIdeal"
+    "IrrelevantIdeal",
+    "negativeCurveWitnessData",
+    "NegativeCurveSearchLimit"
     }
 
 weilDivisorsPackage := needsPackage "WeilDivisors";
@@ -339,6 +341,120 @@ negativeBaseLocusCurveData = (D,B) -> (
                 "intersection" => degree0,
                 "hilbertPolynomialDifference" =>
                     hilbertPolynomial restriction-hilbertPolynomial curveModule,
+                "baseLocus" => projectiveBaseLocus
+                };
+        ));
+    witness
+    )
+
+-- Iterated multigrading, Phase 4 idea (docs/ITERATED-MULTIGRADING-MMP-PLAN.md
+-- section "Stein factorization との境界" and the 2026-08-15 discussion of
+-- cheaper non-nef certificates): the multigraded generalization of
+-- negativeBaseLocusCurveData above.  That function is hardcoded to
+-- degreeLength(ambient R) == 1 (see its guard clause) because it leans on
+-- Castelnuovo-Mumford regularity and hilbertFunction with a bare integer
+-- degree, both single-graded notions.  Rediscovering the same "constant
+-- Hilbert-polynomial difference along a curve is deg(D|_C)" certificate in a
+-- genuinely multigraded (rank r) presentation turns out not to need any
+-- regrading of the ambient ring at all: hilbertFunction accepts a full
+-- multidegree (a length-r list), so probing along the ray n*h for the
+-- caller's own ample class's multidegree h = (h_1,...,h_r) and watching the
+-- difference stabilize as n grows plays exactly the same role that
+-- regularity played in the single-graded version.  Verified concretely
+-- (2026-08-15) on bigraded P1xP2 with the known witness curve C =
+-- {pt}x{line in P2} and D = K+2H = O(0,-1): hilbertFunction(n*{1,1},-) gives
+-- a difference of exactly -1 for every n = 1..6 tested, matching the known
+-- deg(O(0,-1)|_C) = -1 -- no newRing/diagonal-subalgebra reduction needed.
+--
+-- h is taken as an explicit argument (not read off of an ample WeilDivisor)
+-- because this package's WeilDivisor type has no degree method at all --
+-- confirmed while designing this function, not assumed -- so a caller who
+-- already built its ample class from specific homogeneous elements already
+-- knows h and should simply pass it, rather than this function guessing.
+--
+-- Stabilization is a search (increase n until two consecutive values of the
+-- difference agree), not a closed-form bound the way regularity is; this is
+-- honestly a heuristic, exactly as the coordinate-hyperplane curve-cutting
+-- above already is, and NegativeCurveSearchLimit bounds it.  A search that
+-- exhausts the limit without stabilizing returns null (no witness), never a
+-- wrong answer: this function only ever asserts a certificate once it has
+-- actually observed the constant difference, mirroring the "failure to find
+-- one says nothing" discipline of the single-graded version.
+negativeCurveWitnessData = method(Options => {NegativeCurveSearchLimit => 8})
+negativeCurveWitnessData (BasicDivisor,Ideal,Ideal,List) := o -> (D,candidateBaseLocus,B,h) -> (
+    R := ring D;
+    if ring candidateBaseLocus =!= R then
+        error "negativeCurveWitnessData: candidateBaseLocus must be an ideal of ring D";
+    if ring B =!= R then
+        error "negativeCurveWitnessData: B must be an ideal of ring D";
+    r := degreeLength R;
+    if #h != r then
+        error "negativeCurveWitnessData: h must have degreeLength R entries";
+    limit := o.NegativeCurveSearchLimit;
+    if not instance(limit,ZZ) or limit <= 0 then
+        error "negativeCurveWitnessData: NegativeCurveSearchLimit must be a positive integer";
+    projectiveBaseLocus := trim saturate(candidateBaseLocus,B);
+    if projectiveBaseLocus == ideal 1_R then return null;
+    components := minimalPrimes projectiveBaseLocus;
+    coordinates := flatten entries vars R;
+    curves := {};
+    scan(components,P -> (
+        pieces := {P};
+        while any(pieces,Q -> dim(R/Q)-r > 1) do (
+            nextPieces := {};
+            scan(pieces,Q -> (
+                componentDimension := dim(R/Q)-r;
+                if componentDimension <= 1 then
+                    nextPieces = append(nextPieces,Q)
+                else (
+                    -- Rank r > 1: unlike the monograded case, cutting with
+                    -- the first available coordinate is not safe -- if that
+                    -- coordinate shares a block with one already used, the
+                    -- cut ideal can reconstruct an entire irrelevant-ideal
+                    -- block (a locus already excluded from Proj) rather than
+                    -- a genuine lower-dimensional piece, silently saturating
+                    -- to the unit ideal.  Concretely reproduced on bigraded
+                    -- P1xP2 (2026-08-15): cutting {s} then {t} (both degree
+                    -- (1,0)) recreates exactly the block ideal (s,t) and
+                    -- saturates away to nothing, even though the genuine
+                    -- witness curve {pt in P1}x{line in P2} = (s,u) is found
+                    -- immediately by preferring a coordinate from the other
+                    -- block.  So try candidates in the given order and skip
+                    -- any that collapse the cut to the unit ideal, rather
+                    -- than committing to the first one unconditionally.
+                    candidates := select(coordinates,x -> x % Q != 0);
+                    cutIdeal := null;
+                    scan(candidates,x -> if cutIdeal === null then (
+                        candidate := trim saturate(Q+ideal x,B);
+                        if candidate != ideal 1_R then cutIdeal = candidate;
+                        ));
+                    if cutIdeal =!= null then
+                        nextPieces = join(nextPieces,minimalPrimes cutIdeal);
+                    );
+                ));
+            pieces = unique nextPieces;
+            );
+        curves = join(curves,select(pieces,Q -> dim(R/Q)-r == 1));
+        ));
+    DModule := weilDivisorToModule D;
+    witness := null;
+    scan(unique curves,Q -> if witness === null then (
+        curveModule := coker gens Q;
+        restriction := DModule ** curveModule;
+        n := 1;
+        current := hilbertFunction(n*h,restriction) - hilbertFunction(n*h,curveModule);
+        stabilized := false;
+        while not stabilized and n < limit do (
+            previous := current;
+            n = n+1;
+            current = hilbertFunction(n*h,restriction) - hilbertFunction(n*h,curveModule);
+            if current == previous then stabilized = true;
+            );
+        if stabilized and current < 0 then
+            witness = new HashTable from {
+                "curveIdeal" => Q,
+                "intersection" => current,
+                "stabilizedAt" => n,
                 "baseLocus" => projectiveBaseLocus
                 };
         ));
@@ -1500,7 +1616,8 @@ threefoldMMPData = method(Options => {
     ContractionMultipleLimit => null,
     RelativeCanonicalMultipliers => null,
     RelativeCanonicalMaxSteps => 4,
-    RelativeCanonicalVerbose => false})
+    RelativeCanonicalVerbose => false,
+    IrrelevantIdeal => null})
 threefoldMMPData (Ring,ZZ) := o -> (initialRing,initialIndex) ->
     threefoldMMPData(initialRing,initialIndex,{},
         MMPMaxSteps=>o.MMPMaxSteps,
@@ -1609,6 +1726,117 @@ threefoldMMPData (Ring,ZZ,List) := o -> (initialRing,initialIndex,initialSteps) 
         "stepsRun" => iteration,
         "warning" => "the optional MMP step limit was reached"
         }
+    )
+
+-- Iterated multigrading, Phase 1 (docs/ITERATED-MULTIGRADING-MMP-PLAN.md):
+-- the top-level multigraded entry point.  The caller supplies the ample
+-- Cartier class H and irrelevant ideal B for the *current* multigraded
+-- presentation, so this first iteration's nefness test and contraction reuse
+-- canonicalNefData/canonicalContractionData's existing (Ring,ZZ,BasicDivisor)
+-- overloads verbatim -- no flattening to a monograded presentation is done
+-- here, and no contraction graph or post-flip ring is supplied by the caller.
+--
+-- relativeCanonicalModelFromBaseData (and hence the Stein-factorization
+-- target it builds on) still assumes a monograded base ring today, so once a
+-- birational step is recorded, the resulting nextRing is monograded and
+-- subsequent iterations fall back to the existing (Ring,ZZ,List) loop.  That
+-- boundary is Phase 3/4 of the plan, not this phase; recording it here rather
+-- than papering over it is deliberate.
+threefoldMMPData (Ring,ZZ,BasicDivisor) := o -> (initialRing,initialIndex,H) -> (
+    if initialIndex <= 0 then
+        error "threefoldMMPData: the initial index multiple must be positive";
+    if ring H =!= initialRing then
+        error "threefoldMMPData: H must be a divisor on the initial ring";
+    maxSteps := o.MMPMaxSteps;
+    if maxSteps =!= null and (not instance(maxSteps,ZZ) or maxSteps <= 0) then
+        error "threefoldMMPData: MMPMaxSteps must be null or positive";
+    B := o.IrrelevantIdeal;
+    if B =!= null and ring B =!= initialRing then
+        error "threefoldMMPData: IrrelevantIdeal must be an ideal of the initial ring";
+    nefData := canonicalNefData(initialRing,initialIndex,H,
+        NefSearchLimit=>o.NefSearchLimit,IrrelevantIdeal=>B);
+    if not nefData#"conclusive" then
+        return new HashTable from {
+            "conclusive" => false,
+            "phase" => "nefness",
+            "currentRing" => initialRing,
+            "currentIndex" => initialIndex,
+            "steps" => {},
+            "nefData" => nefData
+            };
+    if nefData#"nef" then
+        return new HashTable from {
+            "conclusive" => true,
+            "terminationType" => "minimal model",
+            "finalRing" => initialRing,
+            "finalIndex" => initialIndex,
+            "steps" => {},
+            "numberOfSteps" => 0,
+            "finalNefData" => nefData
+            };
+    contraction := canonicalContractionData(
+        initialRing,initialIndex,H,
+        ThresholdSearchLimit=>o.ThresholdSearchLimit,
+        ContractionMultipleLimit=>o.ContractionMultipleLimit,
+        IrrelevantIdeal=>B);
+    if not contraction#"conclusive" then
+        return new HashTable from {
+            "conclusive" => false,
+            "phase" => "contraction",
+            "currentRing" => initialRing,
+            "currentIndex" => initialIndex,
+            "steps" => {},
+            "contractionData" => contraction
+            };
+    if contraction#"isFibreType" then (
+        record := mmpStepRecordData contraction;
+        return new HashTable from {
+            "conclusive" => true,
+            "terminationType" => "Mori fibre space",
+            "finalRing" => initialRing,
+            "finalIndex" => initialIndex,
+            "steps" => {record},
+            "numberOfSteps" => 1,
+            "finalContraction" => contraction
+            };
+        );
+    model := relativeCanonicalModelData(
+        contraction,
+        RelativeCanonicalMultipliers=>o.RelativeCanonicalMultipliers,
+        RelativeCanonicalMaxSteps=>o.RelativeCanonicalMaxSteps,
+        RelativeCanonicalVerbose=>o.RelativeCanonicalVerbose);
+    record = mmpStepRecordData(contraction,model);
+    nextRing := record#"nextRing";
+    indexData := canonicalIndexData(
+        nextRing,CanonicalIndexSearchLimit=>o.CanonicalIndexSearchLimit);
+    if not indexData#"conclusive" then
+        return new HashTable from {
+            "conclusive" => false,
+            "phase" => "canonical index",
+            "currentRing" => nextRing,
+            "steps" => {record},
+            "indexData" => indexData
+            };
+    remainingSteps := if maxSteps === null then null else maxSteps-1;
+    if maxSteps =!= null and remainingSteps <= 0 then
+        return new HashTable from {
+            "conclusive" => false,
+            "phase" => "MMP step limit",
+            "currentRing" => nextRing,
+            "currentIndex" => indexData#"index",
+            "steps" => {record},
+            "stepsRun" => 1,
+            "warning" => "the optional MMP step limit was reached"
+            };
+    threefoldMMPData(nextRing,indexData#"index",{record},
+        MMPMaxSteps=>remainingSteps,
+        CanonicalIndexSearchLimit=>o.CanonicalIndexSearchLimit,
+        NefSearchLimit=>o.NefSearchLimit,
+        ThresholdSearchLimit=>o.ThresholdSearchLimit,
+        ContractionMultipleLimit=>o.ContractionMultipleLimit,
+        RelativeCanonicalMultipliers=>o.RelativeCanonicalMultipliers,
+        RelativeCanonicalMaxSteps=>o.RelativeCanonicalMaxSteps,
+        RelativeCanonicalVerbose=>o.RelativeCanonicalVerbose)
     )
 
 -- Proposition 3.8 for threefolds.  Run the two terminating searches in
@@ -1772,19 +2000,30 @@ Node
     threefoldMMPData
     (threefoldMMPData,Ring,ZZ)
     (threefoldMMPData,Ring,ZZ,List)
+    (threefoldMMPData,Ring,ZZ,BasicDivisor)
   Headline
     run the three-dimensional minimal model program
   Usage
     result = threefoldMMPData(R,a)
     result = threefoldMMPData(R,a,steps)
+    result = threefoldMMPData(R,a,H)
   Description
     Text
       Starting with a positive Cartier index multiple for $K_X$, iterate the
       nefness, threshold, contraction, relative-model, smallness, and index
       computations.  Return the graph-preserving step sequence and stop at a
-      minimal model or a Mori fibre space.  The three-argument form continues
-      from a current model while retaining certified preceding nonterminal
-      step records; the last record must lead to the supplied current ring.
+      minimal model or a Mori fibre space.  The three-argument form with a
+      @TO List@ continues from a current model while retaining certified
+      preceding nonterminal step records; the last record must lead to the
+      supplied current ring.  The three-argument form with a
+      @TO BasicDivisor@ runs the first iteration on the caller-supplied
+      multigraded presentation directly, using @TT "H"@ as the ample Cartier
+      class and the optional @TT "IrrelevantIdeal=>B"@ as the irrelevant
+      ideal of that presentation, without flattening it to a monograded ring
+      first; once a birational step is recorded the resulting ring is
+      monograded (a current limitation of @TO relativeCanonicalModelData@,
+      not of this entry point), so later iterations fall back to the
+      @TO List@ form automatically.
 
 Node
   Key

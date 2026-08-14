@@ -327,3 +327,106 @@ result = threefoldMMPData(
 block lower triangular で正の対角成分を持つ grading tower に限定する。この
 限定でも今回の一回 flip 例を含み、現状の end-to-end 実行を妨げている主要な
 表現上の問題を直接解消できる。
+
+## 2026-08-15: Phase 1 実装、cyclic-cover 例での実測、文献調査
+
+### Phase 1 の実装
+
+`threefoldMMPData` に多重次数トップレベル入口
+`threefoldMMPData(R,a,H)` / `threefoldMMPData(R,a,H,IrrelevantIdeal=>B)` を実装した。
+最初の iteration は多重次数のまま `canonicalNefData`/`canonicalContractionData` を
+呼び、双有理ステップが記録された後（`relativeCanonicalModelFromBaseData` がまだ
+単次数前提のため）は既存の `(Ring,ZZ,List)` ループへ自動的に引き継ぐ。
+`tests/multigraded-mmp-driver.m2` で Segre `P1×P2`（Mori fibre space に1ステップ、
+flattening なし）、明示的 `IrrelevantIdeal` 指定、単次数退化ケース、引数エラー
+ゲートを検証済み。既存テスト一式（軽量5本 + 重い `bl-p-p3-two-step-mmp.m2`）で
+退行なし。
+
+### cyclic-cover 例の自然な9変数双次数表示での実測
+
+`bigradedReesProjection` の `totalRing`（`b2mToGraphMorphism` による35変数への
+平坦化前の、natural な9変数双次数表示、fiber vars 2個 + base vars 7個）に対して
+Phase 1 の入口を直接試した。
+
+- 環の構築自体は高速（~1.2秒）。
+- `isCartierSaturatedInternal`（Cartier 判定）単体は高速（~0.2秒）。
+- `isBasePointFreeDivisor`（$2K$ 自体の BPF 判定、$i=1$ の最初の一手）単体も
+  高速（~0.3秒）。
+- しかし `canonicalScaledNefDataInternal`（非nefを証明する摂動テスト、内部で
+  最大6回の BPF 判定を行う）は、最初の呼び出し（$m=1$）だけで **約95秒**
+  かかり、$m=2$ ではその時点で7分経過してもまだ完了しなかった（打ち切り）。
+  BPF 判定コストが因子の複雑さとともに増大するという既存の知見
+  （[bpf-construction-dominates-assessment]）が、$H$ を含む摂動因子の
+  スイープで積み重なっていることを確認した。
+
+結論：Phase 1 の配管自体は正しく動作する（対応する既存ケースでは全て高速）。
+自動発見が詰まるのは、多重次数化そのものの不備ではなく、**既存の・既知の
+BPF 構築コストのボトルネック**（reflexive hull 構築、[bpf-construction-dominates-assessment]）
+がこの例で顕在化したため。
+
+### アイデアA：`negativeBaseLocusCurveData` の多重次数への一般化
+
+既存の `negativeBaseLocusCurveData`（BPF 判定より安価な、曲線との交点数による
+非nef証拠探し）は `degreeLength ambient R == 1` にハードコードされていた
+（`regularity`/`hilbertFunction` の単次数専用性に依存していたため）。
+
+一般化した `negativeCurveWitnessData` を実装し、鍵となる技法は
+**regrading を一切せず、`hilbertFunction(n*h, module)` を直接、多重次数を
+保ったまま増加する $n$ に対して評価する**というもの（$h$ は呼び出し側が
+指定する ample class の次数ベクトル）。Segre $P^1\times P^2$ の既知の非nef
+witness（$K+2H=O(0,-1)$、witness 曲線 $\{pt\}\times\{line\}$）で交点数 $-1$ を
+正しく再現し、既知の BPF（nef）な2例では false positive を出さないことを
+確認した（`tests/negative-curve-witness-multigraded.m2`）。曲線探索段階で、
+単次数版の「最初に見つかった座標で切る」ヒューリスティックが多重次数では
+irrelevant ideal のブロックを丸ごと再構成してしまい消えてしまう不具合を発見・
+修正した（cutting candidate が unit ideal になる場合はスキップして次を試す）。
+
+cyclic-cover 例の $m=1$ 候補（$L=4K+2H$）に適用したところ、`candidateBaseLocus`
+の計算（`weilDivisorToModule` 構築）自体に約90秒かかり（BPF判定と同根のコスト、
+避けられない）、その後の曲線探索・Hilbert関数差分は高速（~5秒）だったが、
+唯一見つかった曲線上の交点数は最終的に $+13$（負ではない）に収束し、witness は
+`null`（正しい結果、$m=1$ では非nefの証拠にならなかった）。$m=2$ 以降は
+`candidateBaseLocus` の計算自体がさらに重くなることを確認したところで、
+文献調査へ方針転換した。
+
+### 文献調査：より適切な例を探す
+
+[Kollár–Mori の分類論文](https://arxiv.org/pdf/math/0007004)（Corti–Reid の
+序文経由）に「最も単純なフリップの例」（$\mathbb{C}^5$、重み
+$(1,1,m,-1,-1)$、関係式 $x_3y_1=f_{m-1}(x_1,x_2)$）を発見。さらに
+[Brown (1999) / Chang (2024)](https://arxiv.org/pdf/2410.16113) がこれを
+完全に明示的な多項式・特異点型の表として拡張している（Example 4.11 は
+$X^+$ が滑らかな、6変数・2関係式の具体的なフリップ）。
+
+**重要な発見**：最初の検索結果に出てきたトーリック版の格子点
+$e_1,\ldots,e_5$（$P(1,1,1,2)$ を $e_3$ 方向にブローアップ、$(1/2)(1,1,1)$点）が、
+**私たち自身の `compactRays`（`v1+v2=2v3+v4` の回路のコンパクト化）と完全に
+一致**していた。つまり私たちの独自構成は、最初から「Francia のフリップ」＝
+Kollár–Mori の最も単純なフリップ族のトーリック実現そのものだった。
+
+Brown/Chang の構成は、この同じフリップの**非トーリックな別実現**だが、
+$X^-,X^+$ はどちらも $Y=A/\!/\mathbb{C}^\times$（アフィン）上への**相対**射影
+でしかなく、大域的なコンパクト化はまだ済んでいない。コンパクト化するには
+私たちが巡回被覆で行ったのと同種の「大域的正性の注入」が別途必要であり、
+「文献にある近道」ではないと判断した。
+
+### log MMP（境界因子付きペア）による代替案の検討
+
+「$\tau=0$（フロップ）を境界因子 $\Delta$ で $\tau\ne0$（フリップ）に変えられ
+ないか」という着想を検討した。数学的には正しく、巡回被覆はまさに
+「$(W,\Delta)$、$\Delta=\frac34 B_0$」を「裸の $K$ の問題」に変換する標準的な
+道具である。設計を詰めた結果を
+[LOG-MMP-BOUNDARY-DIVISOR-DESIGN.md](LOG-MMP-BOUNDARY-DIVISOR-DESIGN.md) に
+記録した。要点：
+
+- `computeFlip`（`FlipComputation`）は裸の $K_R$ にハードコードされているが、
+  **core algorithm 自体は無変更のまま**、$K':=rK_W+\Delta'$（$\Delta'=r\Delta$
+  を積分因子とする）を「あたかも $W$ の正準因子であるかのように」既存の
+  関数に supply する入口を追加するだけで実現できる（Veronese部分環は
+  Proj を変えないという事実による）。
+- 最大の技術的難所は `canonicalIdeal` の一般化：現状は $\omega_R$ 専用の
+  `Ext` 公式による「次数最小の埋め込み」最適化（17分→0.05秒の実績）を
+  持っており、これを一般の因子類に拡張して同じ速度を再現できるかは未検証。
+- Phase 1 や `negativeCurveWitnessData` より大きい投資であり、具体的な
+  $(r,\Delta')$ を伴う例が用意できてから着手するのが妥当と判断し、
+  実装はまだ行っていない。
