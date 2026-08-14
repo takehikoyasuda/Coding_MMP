@@ -1,6 +1,6 @@
 # Does Singular BPF/Nef Testing Stay Tractable for the Simplest Flip Singularities?
 
-**Status**: Confirmed, positive but partial: nef testing completes (~530s) on a flip target with only one simple (index-2) singular point, unlike the previously measured rank-2 canonical-index-2 example (never completed after 20+ minutes). The specific example tested does not itself terminate as a minimal model (`nef=false`), so it does not yet give a complete "one flip, then done" MMP demonstration.
+**Status**: Confirmed, positive but partial: nef testing completes (~530s) on a flip target with only one simple (index-2) singular point, unlike the previously measured rank-2 canonical-index-2 example (never completed after 20+ minutes). The specific example tested does not itself terminate as a minimal model (`nef=false`). Two follow-up candidates searching for a `nef=true` variant were inconclusive: one turned out accidentally Gorenstein (no genuine flip at all), the other's flip computation itself did not finish in 10+ minutes. A one-line Gorenstein pre-check and a mirror-of-the-working-example candidate (`v4=(2,1,-1)`) are recorded as the next things to try.
 **Date**: 2026-08-14
 **Work location**: Scratchpad only (no repo changes to `MMPComputation.m2`/`FlipComputation`); reuses `tests/relative-model.m2`'s existing toric-circuit construction verbatim
 **Branch**: `feature/multigraded-stage1` (unchanged)
@@ -249,6 +249,76 @@ which is the property that actually matters for the top-level driver.
   done for `Bl_p(P3)` in the Stein-factorization capstone), rather than only
   exercising the flip computation and post-flip nef test in isolation as
   done here.
+
+---
+
+## A search for a `nef=true` variant: two more candidates tried, neither conclusive
+
+Immediately after the result above, two further ray configurations
+(varying only `v4`, keeping `v1,v2,v3` as the standard basis) were tried,
+looking for a comparably simple circuit whose flip target reaches
+`nef=true`. Neither succeeded, for two different, informative reasons.
+
+### A useful diagnostic found along the way: a one-line Gorenstein test
+
+For `v1=e1,v2=e2,v3=e3` and `v4=(p,q,r)`, the cone over all four rays is
+Gorenstein (index 1, hence -- per the "Background" section above -- giving
+at best a *flop*, or even a fully trivial relative model, never a genuine
+flip) **exactly when `p+q+r=1`**: Gorenstein-ness needs a single integral
+linear functional `m` with `m.v_i` constant across all four rays, and for
+the standard-basis `v1,v2,v3` this forces `m=(c,c,c)`, giving
+`m.v4=c(p+q+r)`, equal to `c` (the same constant) iff `p+q+r=1`. This is a
+free, instant sanity check before spending any real computation on a
+candidate.
+
+### Candidate 2: `v4=(1,2,-2)` -- accidentally Gorenstein, no flip at all
+
+Chamber determinants: `{v1,v3,v4}=-2` (index 2), `{v2,v3,v4}=1` (smooth);
+`{v1,v2,v3}=1` (smooth), `{v1,v2,v4}=-2` (index 2) -- by the local
+combinatorics alone this looked like an even *more* symmetric version of
+the working example (one simple singular point on **each** side, matching
+Francia's flip's classical symmetric shape). But `p+q+r=1+2-2=1`: this
+configuration is Gorenstein. Confirmed directly:
+`relativeCanonicalModelFromBaseData` returned `relativeModelType="identity"`
+in 0.0028s, `numgens Xplus=5` (versus 12 for the working example) -- no
+genuine flip is needed at all here; the relative canonical model is
+trivial. This is a clean illustration of the Background section's
+theorem in action: simple local singularity data is not sufficient on its
+own, the *global* Gorenstein-defect of the full 4-ray cone must also be
+nonzero, or there is no flip to study.
+
+### Candidate 3: `v4=(1,2,-3)` -- non-Gorenstein, but the flip computation itself did not finish
+
+Chamber determinants: `{v1,v3,v4}=-2` (index 2), `{v2,v3,v4}=1` (smooth);
+`{v1,v2,v3}=1` (smooth), `{v1,v2,v4}=-3` (index 3) -- non-Gorenstein
+(`p+q+r=1+2-3=0 != 1`), one simple singular point on each side (index 2 and
+index 3 respectively), asymmetric but still individually simple. Unlike
+the working example (whose entire `relativeCanonicalModelFromBaseData` call
+cost 0.22s) or candidate 2's instant identity verdict, this one did not
+complete: killed after 10+ minutes elapsed (~7.5 minutes cpu, memory
+climbing to ~800MB, still rising) with only the Hilbert-basis computation
+(size 6, versus size 4 for candidate 2 and an unrecorded but evidently
+larger basis for the working example) having printed -- the flip
+computation itself, not even the subsequent nef search, was the bottleneck
+here. Not profiled further; this is a genuine, if unexplained, cost
+increase from swapping one `v4` coordinate (`-2` to `-3`), not a
+resolution-length-style mechanism identified the way `steinHomData`'s was.
+
+### Where this leaves the search
+
+Two data points is not enough to characterize what makes
+`relativeCanonicalModelFromBaseData`/`computeFlip` itself expensive on an
+otherwise-simple-looking circuit (candidate 3 versus the cheap working
+example and candidate 1), nor to find a `nef=true` case. The Gorenstein
+one-line check at least rules out an entire class of degenerate
+non-candidates (like candidate 2) for free, before spending any real
+computation. The natural next attempt, not yet tried, is the *mirror* of
+the original working example -- `v4=(2,1,-1)` (chamber determinants
+`{v1,v3,v4}=-1` smooth, `{v2,v3,v4}=2` index-2; `{v1,v2,v3}=1` smooth,
+`{v1,v2,v4}=-1` smooth; `p+q+r=2+1-1=2 != 1`, non-Gorenstein) -- structurally
+the same shape as the working example (one side entirely smooth, the other
+with exactly one index-2 point) with the singular chamber swapped, so
+comparable cost is plausible though not guaranteed.
 
 ## Suggested next steps
 
