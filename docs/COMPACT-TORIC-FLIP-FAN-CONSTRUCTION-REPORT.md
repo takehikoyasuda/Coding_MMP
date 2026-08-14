@@ -1,6 +1,6 @@
 # Building a Genuine Compact Toric Flip via an Explicit Fan
 
-**Status**: A genuine, fully verified compact toric 3-fold flip was constructed (the known non-Gorenstein circuit `v1+v2=2v3+v4`, previously only tested via an ad hoc affine-cone-plus-`w` compactification, is now embedded as the unique non-simplicial cone of a complete, `isWellDefined`-checked 5-ray fan). `isNef` (a fast, purely combinatorial toric check, not the general `canonicalNefData` search) confirms `K` is not nef on either side of the flip. A precise, rigorous reason was found: with only 5 rays (Picard rank 2), *both* of the post-flip variety's two extremal contractions lead backward (to the pre-flip chamber, or to the shared singular non-Q-factorial base) -- there is no room for a "forward" contraction. Reaching a minimal model requires higher Picard rank; not yet attempted.
+**Status**: A genuine, fully verified compact toric 3-fold flip was constructed (the known non-Gorenstein circuit `v1+v2=2v3+v4`, previously only tested via an ad hoc affine-cone-plus-`w` compactification, is now embedded as the unique non-simplicial cone of a complete, `isWellDefined`-checked 5-ray fan). `isNef` (a fast, purely combinatorial toric check, not the general `canonicalNefData` search) confirms `K` is not nef on either side of the flip. A precise, rigorous reason was found: with only 5 rays (Picard rank 2), *both* of the post-flip variety's two extremal contractions lead backward (to the pre-flip chamber, or to the shared singular non-Q-factorial base) -- there is no room for a "forward" contraction. A follow-up, exhaustive attempt at Picard rank 4 (one extra distant vertex, all 8 valid triangulation combinations of the resulting extra structure) also gave `nef=false` in every single case -- a comprehensive, not merely unlucky, negative result for that specific extension. Reaching a genuine "one flip, then minimal model" example remains open.
 **Date**: 2026-08-14
 **Work location**: Scratchpad only (no repo changes)
 **Branch**: `feature/multigraded-stage1` (unchanged)
@@ -98,6 +98,43 @@ Neither is a fibration (`isFibration` was not invoked directly, but full-dimensi
 
 **Conclusion**: within this specific 5-ray, Picard-rank-2 compact toric 3-fold, chamber B's *entire* Mori cone points backward -- toward either the pre-flip chamber or the shared singular base -- with no third direction available. This is not a failure of search technique (the combinatorics here are exhaustive and exact, not a numerical search that might have missed something): with only two extremal rays total, and both accounted for, there is no room left for a "forward" (toward smaller/more positive `K`) contraction. Reaching a genuine minimal model requires more rays (higher Picard rank), giving a third (or further) extremal direction that is not simply undoing what came before.
 
+## An exhaustive Picard-rank-4 attempt: still `nef=false`, in all 8 valid triangulations
+
+To test whether more Picard rank supplies the missing forward direction, one
+extra distant vertex (`(3,3,3)`) was added to the same 5-point polytope. This
+grew the fan to 7 rays (Picard rank 4) and, unlike earlier naive perturbation
+attempts, **preserved the target circuit exactly** (still exactly the four
+rays `(1,0,0),(0,1,0),(0,0,1),(1,1,-2)`) -- but introduced **three additional**
+non-simplicial cones elsewhere in the polytope, each needing its own
+triangulation choice to get a fully Q-factorial (simplicial) complete fan.
+
+Rather than guessing single combinations, each extra cone's own relation was
+computed (same method as the main circuit) to identify its two genuinely
+valid triangulations (splitting along the positive-coefficient side or the
+negative-coefficient side of its own relation), and **all `2^3=8`
+combinations** of these choices were tried, keeping the target circuit's own
+chamber-A/chamber-B choice fixed:
+
+```text
+choice {0,0,0} through {1,1,1} (all 8): wellDefined ok, complete A/B=true/true,
+    isNef(KA)=false, isNef(KB)=false
+```
+
+**Every one of the 8 valid, well-defined, complete configurations gives
+`nef=false` on both the pre- and post-flip chamber.** This is an exhaustive
+result for this specific extension (one additional vertex at `(3,3,3)`), not
+a sample that might have missed a working combination: given the extra
+structure's own combinatorics, there is no triangulation choice, among the
+ones that produce a valid fan at all, that makes `K` nef on either side.
+
+This suggests (without proving it in general) that simply adding *one* more
+vertex/direction, however triangulated, does not supply the missing forward
+contraction -- the obstruction found at Picard rank 2 is not fixed by this
+particular kind of extension. Whether a genuinely different extension
+strategy (multiple simultaneous new vertices, or a wholly different base
+polytope shape rather than incremental additions to this one) can succeed
+was not tested.
+
 ## What this does and does not establish
 
 **Establishes:**
@@ -106,15 +143,17 @@ Neither is a fibration (`isFibration` was not invoked directly, but full-dimensi
 - Pyramids (planar-base + apex) are structurally unsuited to genuine (non-crepant) flips: confirmed Gorenstein on two independent, unrelated apex choices.
 - `isNef` gives the same qualitative answer (`nef=false`) as the much slower `canonicalNefData` search, in a small fraction of the time, whenever the input is genuinely toric -- a practical methodological lesson for any future toric-specific investigation in this project.
 - A complete, rigorous (not merely suggestive) explanation for why this particular compact example does not reach a minimal model after one flip: both of its only two extremal contractions are accounted for and both lead backward.
+- Extending to Picard rank 4 via one additional vertex, and exhaustively trying all 8 valid triangulations of the resulting extra structure, **still** gives `nef=false` on both chambers in every case -- ruling out (for this specific extension, not in complete generality) the hope that "just add one more ray" fixes the Picard-rank-2 obstruction.
 
 **Does not establish:**
 
 - A working "one flip, then minimal model" example -- this remains open.
-- Whether a higher-Picard-rank compactification of the *same* circuit (adding more rays to the "outer" structure beyond the single automatically-produced one) can supply the missing forward direction, or whether the circuit itself (this specific `v1+v2=2v3+v4` relation) is somehow obstructed from ever reaching `nef=true` regardless of ambient Picard rank. Not tested.
+- Whether a *genuinely different* higher-Picard-rank extension (multiple simultaneous new vertices, or a different base polytope shape entirely, rather than one incremental vertex added to this specific 5-point polytope) can supply the missing forward direction, or whether the circuit itself (`v1+v2=2v3+v4`) is obstructed from ever reaching `nef=true` regardless of ambient Picard rank. Not tested -- only one specific rank-4 extension was tried, exhaustively over its own triangulation choices, not exhaustively over all possible rank-4 (or higher) extensions.
 - Whether `computeFlip`/`relativeCanonicalModelFromBaseData` (this project's own machinery, as opposed to `NormalToricVarieties`' independent toric tools) agrees with this analysis when run on the same explicit fan data -- not cross-checked in this report.
 
 ## Suggested next steps
 
-- Extend the compactification to Picard rank 3+ (more outer rays), keeping the same circuit as the only non-simplicial cone, and search (again using fast, exact `isNef` checks rather than slow general search) for a configuration whose post-flip chamber has a genuine third, forward extremal contraction reaching `nef=true`.
+- Try a genuinely different Picard-rank-4+ (or higher) extension strategy -- e.g. multiple simultaneous new vertices, or restarting from a different base polytope shape entirely -- rather than incremental single-vertex additions to the specific 5-point polytope used here, which was shown (exhaustively, for one such addition) not to work.
+- Consider whether the specific circuit `v1+v2=2v3+v4` might be intrinsically obstructed (e.g. by some invariant of the relation itself) from ever reaching `nef=true` after one flip, regardless of compactification -- not investigated theoretically, only empirically for the extensions tried.
 - Cross-check this project's own `computeFlip`/`canonicalNefData` machinery against the same explicit toric data, to confirm consistency between the two independent verification routes (general algorithm vs. toric-specific combinatorics) on a case where the general algorithm's answer is already known.
 - If a `nef=true` compactification is found, translate its fan data into the coordinate-ring presentation this project's `MMPComputation.m2`/`FlipComputation` machinery expects, and run the actual top-level driver end to end, mirroring the `Bl_p(P3)` capstone's pattern.
