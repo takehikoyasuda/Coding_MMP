@@ -51,6 +51,14 @@ prefix:
 In both blow-up continuations the relative canonical model is the identity
 over the `P3` target, so the post-contraction part is light.
 
+A genuine flip-to-minimal example is now also available. A degree-four cyclic
+cover of the compact toric circuit base preserves the local index-two flip but
+changes the global canonical divisor by `+3A`. The anti-canonical source,
+contraction graph, nonidentity relative canonical model, flipping step, and
+minimal-model termination all complete in about 7.6 cpu seconds, with exactly
+one recorded MMP step. See
+[CYCLIC-COVER-ONE-FLIP-MINIMAL-REPORT.md](CYCLIC-COVER-ONE-FLIP-MINIMAL-REPORT.md).
+
 **Update**: `Bl_p(P3) -> P3 -> point` no longer needs the first contraction
 graph supplied manually. Starting from the bigraded presentation and a
 polarization tilted to reach the divisorial ray (rather than the

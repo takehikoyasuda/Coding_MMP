@@ -5,6 +5,15 @@
 **Work location**: Scratchpad only (no repo changes)
 **Branch**: `feature/multigraded-stage1` (unchanged)
 
+**Subsequent resolution of the global goal**: the negative result here is now
+understood structurally -- a positive-dimensional complete toric variety cannot
+have nef canonical divisor. The local circuit was retained, but global toricity
+was broken by a degree-four cyclic cover. That construction gives a complete
+one-step flip ending in a minimal model; see
+[CYCLIC-COVER-ONE-FLIP-MINIMAL-REPORT.md](CYCLIC-COVER-ONE-FLIP-MINIMAL-REPORT.md).
+Thus “remains open” below means *inside the complete toric family*, not for the
+project as a whole.
+
 ---
 
 ## Executive Summary
