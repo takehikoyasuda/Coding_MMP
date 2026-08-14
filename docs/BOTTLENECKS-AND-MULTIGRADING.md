@@ -51,6 +51,18 @@ prefix:
 In both blow-up continuations the relative canonical model is the identity
 over the `P3` target, so the post-contraction part is light.
 
+**Update**: `Bl_p(P3) -> P3 -> point` no longer needs the first contraction
+graph supplied manually. Starting from the bigraded presentation and a
+polarization tilted to reach the divisorial ray (rather than the
+apex-of-nef-cone `w` used above), the driver computes that first contraction
+itself via the guessed-bound Stein-factorization workaround, then continues
+to the same `P3 -> point` termination -- a genuine two-step MMP with no
+hand-built graph anywhere in the chain. See
+[STEIN-FACTORIZATION-COST-EXPERIMENT-REPORT.md](STEIN-FACTORIZATION-COST-EXPERIMENT-REPORT.md)'s
+"Capstone" section for the full breakdown (dominant cost ~13-14 minutes cpu,
+in a step -- `contractionSmallnessData` -- distinct from Stein factorization
+itself and not yet profiled).
+
 ## Examples that expose the next bottleneck
 
 The following are geometrically good candidates but did not complete from the
@@ -90,6 +102,16 @@ driver stalls before reaching that threshold construction.  Probing showed:
 Thus the new obstruction is not the large multiplier itself.  It is the cost
 of computing global sections and base-point-free certificates after a naturally
 multigraded variety has been flattened to a monograded presentation.
+
+**Update**: the `Bl_p(P3)` entry above is specifically the *monograded*,
+Rees-Proj-flattened presentation. The genuinely *bigraded* presentation of
+the same variety (never converted via Rees Proj) does complete end to end,
+including a full two-step MMP `Bl_p(P3) -> P3 -> point`, once Stein
+factorization's own bottleneck (a different one, found later, root-caused
+to resolution length) is worked around -- see
+[STEIN-FACTORIZATION-COST-EXPERIMENT-REPORT.md](STEIN-FACTORIZATION-COST-EXPERIMENT-REPORT.md)'s
+"Capstone" section. This is the first nontrivial multi-step smooth MMP
+example in this project not built from a manually supplied graph.
 
 ## BPF checks tried
 

@@ -1,6 +1,6 @@
 # Stein Factorization Cost on a Genuine Divisorial Multigraded Contraction: Experimental Report
 
-**Status**: Bottleneck located and root-caused to `res(nn,LengthLimit=>d1+d2+1)`; a practical workaround (guessed truncation bound `r=1`) found; and, for this birational input, **fully proved correct** (not merely circumstantially verified) via `g` finite and `g∘h=f` holding automatically at any bound plus a direct `isNormal` computation combined with Zariski's Main Theorem. A closing theorem further shows this reduces to an *if-and-only-if*: given the source normal and `f` birational, `h_*O_Y=O_Z` holds exactly when the candidate `Z_r` is normal -- not a sufficient condition among others, the necessary and sufficient one. A follow-up attempt to bypass the bottleneck entirely via BGG/relative-Beilinson-monad methods (`TateOnProducts`'s `directImageComplex`) was tried and, on this input, was not faster -- a negative result, recorded below, not a refutation of the general technique.
+**Status**: Bottleneck located and root-caused to `res(nn,LengthLimit=>d1+d2+1)`; a practical workaround (guessed truncation bound `r=1`) found; and, for this birational input, **fully proved correct** (not merely circumstantially verified) via `g` finite and `g∘h=f` holding automatically at any bound plus a direct `isNormal` computation combined with Zariski's Main Theorem. A closing theorem further shows this reduces to an *if-and-only-if*: given the source normal and `f` birational, `h_*O_Y=O_Z` holds exactly when the candidate `Z_r` is normal -- not a sufficient condition among others, the necessary and sufficient one. A follow-up attempt to bypass the bottleneck entirely via BGG/relative-Beilinson-monad methods (`TateOnProducts`'s `directImageComplex`) was tried and, on this input, was not faster -- a negative result, recorded below, not a refutation of the general technique. **Capstone**: the whole workaround was then plugged into the top-level driver, completing a genuine two-step smooth MMP, `Bl_p(P3) -> P3 -> point`, end to end from the pure bigraded input with no manually supplied graph -- see "Capstone" below.
 **Date**: 2026-08-14
 **Work location**: Scratchpad only (no repo changes, no commits)
 **Branch**: `feature/multigraded-stage1` (unchanged)
@@ -676,6 +676,76 @@ independently-checkable computation on this input.
   whether it is cheap enough in practice to be worth checking upfront on a
   target ring before ever attempting a Stein factorization. Not tested.
 
+---
+
+## Capstone: a complete two-step MMP, `Bl_p(P3) -> P3 -> point`
+
+Everything above was building toward one end: does the guessed-bound
+workaround actually let the top-level driver complete a nontrivial
+multi-step smooth MMP from a pure multigraded input, with no manually
+supplied graph -- the original motivation for choosing this example back in
+the "Setup" section. It does. Using `steinHomDataAtBound(...,{1,0})` for
+Stein factorization (the proven `r=1` bound) and `directSteinGraph` to build
+the actual contraction, then feeding the result through
+`mmpStepRecordData` and `threefoldMMPData` exactly as
+`tests/contraction.m2`'s existing `Bl_L(P3)` pattern does:
+
+```m2
+hd = steinHomDataAtBound(graphData#"productRing",graphData#"graphIdeal",{1,0});
+cd = steinCoordinateAlgebra(hd,0);
+rawGraph = directSteinGraph(hd,cd);
+contractionGraph = mmpGraphMorphism new HashTable from join(pairs rawGraph,
+    {"sourceRing"=>graphData#"sourceRing", "targetRing"=>cd#"ring"});
+divisorialContraction = new HashTable from join({
+    "conclusive"=>true, "contractionGraph"=>contractionGraph,
+    "steinAlgebraData"=>new HashTable from {"ring"=>cd#"ring"}
+    }, pairs contractionTypeData(3, dim(cd#"ring")-1));
+divisorialModel = relativeCanonicalModelData divisorialContraction;
+divisorialStep = mmpStepRecordData(divisorialContraction,divisorialModel);
+birationalMMP = threefoldMMPData(cd#"ring",1,{divisorialStep});
+```
+
+| Stage | cpu time | Result |
+| --- | --- | --- |
+| complete-linear-system graph | 0.56s | (as before) |
+| Stein algebra at `r=1` | 1.46s | (as before) |
+| `directSteinGraph` + `mmpGraphMorphism` | 2.12s | builds the actual contraction graph |
+| `contractionTypeData` | negligible | `isBirational=true`, source/target dimension both 3 |
+| `relativeCanonicalModelData` | 0.007s | `isIdentity=true` -- `P3`'s canonical algebra is already trivial, as expected |
+| `mmpStepRecordData`'s `contractionSmallnessData` | **~13-14 min cpu** | `contractionIsSmall=false` -- the exceptional divisor `E` is genuinely codimension 1, confirming a real divisorial contraction |
+| `threefoldMMPData(cd#"ring",1,{divisorialStep})` | 5.14s | `conclusive=true`, `terminationType="Mori fibre space"`, `numberOfSteps=2` |
+
+**Result**: `step 0 = divisorial`, `step 1 = fibration` -- exactly the
+expected geometry (`Bl_p(P3)`'s blow-down of `E` to `P3`, then `P3`'s own
+Mori-fibre-space contraction to a point), obtained fully automatically from
+the bigraded starting ring, no hand-built graph anywhere in the chain.
+
+This is a new, previously unmeasured cost: `contractionSmallnessData` (the
+exterior-power-of-relative-differentials support computation that
+`mmpStepRecordData` runs to classify the step) took far longer than the
+`isNormal` check that preceded it in this investigation (~13-14 minutes cpu
+vs. 294s) -- but, crucially, it **completed**, with memory flat throughout
+(no runaway growth), unlike the original certified-bound `steinHomData`
+path that never reached this stage at all after 30+ minutes. Total wall
+time for the whole two-step MMP, dominated by this one step, was on the
+order of 13-14 minutes -- slow for an interactive session, but a
+categorically different outcome from "does not complete."
+
+**Significance**: this closes the loop on the original goal that opened
+this whole line of investigation (see `docs/BOTTLENECKS-AND-MULTIGRADING.md`'s
+"Examples that expose the next bottleneck", which listed `Bl_p(P3)` among
+inputs that "did not complete from the raw top-level input within short
+interactive runs"). With the guessed-bound-plus-proof workaround, it now
+does complete, end to end, from the pure multigraded presentation -- the
+first nontrivial (divisorial-then-fibration) multi-step smooth MMP example
+in this project not built from a manually supplied graph.
+
+**Caveat**: `contractionSmallnessData`'s cost was not investigated further
+(no breakdown of what inside it is slow, unlike `steinHomData`'s
+resolution-length root cause). Whether it generalizes cheaply to other
+multi-step examples, or becomes its own new bottleneck on a harder input,
+is unknown.
+
 ## Suggested next steps
 
 - **Adopt the guessed-bound + independent-verification pattern as the
@@ -710,10 +780,14 @@ independently-checkable computation on this input.
   divisorial contraction with a smaller combined variable count was not
   investigated.
 - Given the workaround above, a nontrivial multi-step smooth MMP example is
-  no longer blocked by this bottleneck by default -- it can proceed via
-  guessed bounds with geometric spot-checks. Picard-rank-one examples
-  (single contraction to a point) remain the simplest fallback where no
-  workaround is needed at all.
+  no longer blocked by this bottleneck by default -- **confirmed**: see
+  "Capstone" below, `Bl_p(P3) -> P3 -> point` now completes end to end.
+  Picard-rank-one examples (single contraction to a point) remain the
+  simplest fallback where no workaround is needed at all.
+- Profile `mmpStepRecordData`'s `contractionSmallnessData` step (~13-14 min
+  cpu in the capstone run below, the new dominant cost once Stein
+  factorization itself is unblocked) the way `steinHomData` was profiled
+  down to its resolution-length root cause -- not yet attempted.
 - Do **not** spend effort building a `g`-finiteness check, nor a `g∘h=f`
   substitution check: both hold automatically at every bound (proved above)
   and would carry no information about whether a guessed bound was large
