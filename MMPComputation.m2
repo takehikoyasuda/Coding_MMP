@@ -387,6 +387,38 @@ canonicalIdealSeedBPFInternal = (R,K,kCoeff,hCoeff,H,B) -> (
     answer
     )
 
+-- Sufficient (not necessary) certificate that D is Cartier: if every support
+-- prime of D is visibly homogeneous principal, O(D) is literally the free
+-- rank-1 module principalHomogeneousShiftModule(D), hence Cartier
+-- unconditionally -- no irrelevant ideal, no Hom/Ext call of any kind.
+-- Returns a definite boolean only in the affirmative; use null (via the
+-- caller's own dispatch) rather than false when the hypothesis fails, since
+-- failing this cheap test says nothing about whether D is actually Cartier.
+principalShiftCartierCertificateInternal = D ->
+    principalHomogeneousShiftDegreeInternal D =!= null
+
+-- Sufficient (not necessary) certificate that kCoeff*K is Cartier, found
+-- while root-causing the canonicalIndexData/isCartier bottleneck (memory
+-- hom-fastpath-scope-excludes-iscartier): if the kCoeff-th reflexive power
+-- of the cached canonical-ideal seed (canonicalIdealSeedDataInternal) is
+-- itself principal (a single generator after trim), the corresponding
+-- module is free of rank 1, so kCoeff*K is Cartier -- again unconditionally,
+-- via only reflexivePower and trim, no Hom(dualModule,R^1) double dual.
+-- Returns null (meaning "unknown, fall back to a general test"), never
+-- false, when the seed is unavailable or the power is not visibly
+-- principal: not being visibly principal does not certify non-Cartier-ness.
+canonicalIdealSeedInvertibleInternal = (R,K,kCoeff) -> (
+    if kCoeff <= 0 then return null;
+    seed := canonicalIdealSeedDataInternal(R,K);
+    if seed === null then return null;
+    answer := null;
+    try (
+        powerIdeal := trim reflexivePower(kCoeff,seed#"ideal");
+        answer = (numgens powerIdeal == 1);
+        ) else answer = null;
+    answer
+    )
+
 basePointFreeModuleInternal = (M,B) -> (
     R := ring M;
     zeroDegree := toList(degreeLength R : 0);
@@ -1908,15 +1940,46 @@ mmpStepRecordData (HashTable,HashTable) := o -> (contraction,model) -> (
         }
     )
 
-canonicalIndexData = method(Options => {CanonicalIndexSearchLimit => null})
+-- The IrrelevantIdeal option (added while extending the BPF fastpath's
+-- canonical-ideal-seed idea to isCartier itself; see memory
+-- hom-fastpath-scope-excludes-iscartier) is purely additive: when null
+-- (every existing caller), the fallback below is the exact original
+-- isCartier(i*K,IsGraded=>true) call, so behaviour is unchanged wherever the
+-- new cheap certificates below do not apply.  When supplied, the fallback
+-- uses isCartierSaturatedInternal(i*K,B) instead of the generic isCartier,
+-- which also fixes a separate, independently documented correctness gap
+-- (WeilDivisors' own getIrrelevantIdeal(R) can be wrong on mixed-sign
+-- multigraded rings; see memory chamberb-coxring-driver-probe) for any
+-- caller that does supply a known-correct B.
+canonicalIndexData = method(Options => {
+    CanonicalIndexSearchLimit => null, IrrelevantIdeal => null})
 canonicalIndexData Ring := o -> R -> (
     limit := o.CanonicalIndexSearchLimit;
     if limit =!= null and (not instance(limit,ZZ) or limit <= 0) then
         error "canonicalIndexData: CanonicalIndexSearchLimit must be null or positive";
+    B := o.IrrelevantIdeal;
+    if B =!= null and ring B =!= R then
+        error "canonicalIndexData: IrrelevantIdeal must be an ideal of R";
     K := canonicalDivisor(R,IsGraded=>true);
+    -- Try the two cheap, certificate-producing sufficient conditions for
+    -- Cartier-ness first (no Hom/Ext call); only fall back to the original,
+    -- expensive general test when neither applies.  Both certificates can
+    -- only return true or null, never false, so this can only find a
+    -- correct "yes" earlier -- it never changes any "no" verdict the
+    -- original loop would have produced.
+    isCartierAtIndex := m -> (
+        candidate := m*K;
+        if principalShiftCartierCertificateInternal candidate then true
+        else (
+            seedCert := canonicalIdealSeedInvertibleInternal(R,K,m);
+            if seedCert =!= null then seedCert
+            else if B =!= null then isCartierSaturatedInternal(candidate,B)
+            else isCartier(candidate,IsGraded=>true)
+            )
+        );
     i := 1;
     while (limit === null or i <= limit)
-        and not isCartier(i*K,IsGraded=>true) do i = i+1;
+        and not isCartierAtIndex i do i = i+1;
     if limit =!= null and i > limit then
         return new HashTable from {
             "conclusive" => false,
