@@ -586,7 +586,7 @@ negative-curve witness を三次元の通常経路へ接続し、一つの曲線
 - flip 後の状態を自動生成する。
 - MMP が terminal branch まで到達する。
 
-## 9. 現時点の結論
+## 9. 現時点の結論（2026-08-15 時点の初期版。10節の実測で更新）
 
 現行コードで最初から最後まで完走する新しい flip 例は、まだ見つかっていない。
 
@@ -602,3 +602,135 @@ negative-curve witness を三次元の通常経路へ接続し、一つの曲線
 3. grading を積み重ねたまま graph/Stein へ渡す境界を実装する。
 
 この基盤の上で、6変数 toric hypersurface 候補を raw driver に通すのが次の実験である。
+
+**10節の実測により、この楽観的見通しは修正が必要になった。** 実際に raw driver
+(`canonicalNefData`)を通したところ、nef判定の最初の非自明なステップ（$m$-sweep,
+10.4節）で巡回被覆例と同じコスト増大パターン（$m=1\to2$ で約770倍）が再現し、
+$m=2$ で約69秒、$m=3$ は27分超で打ち切りとなった。6変数という入力サイズの
+小ささはこのボトルネックを回避しなかった。詳細と今後の判断は10節を参照。
+
+## 10. 2026-08-15: Phase E 前半の実測
+
+具体的な一般方程式（degree-2/3/4 の一般 `y` 多項式を係数付きで組んだもの）を
+[`scripts/toric-hypersurface-rank2-probe.m2`](../scripts/toric-hypersurface-rank2-probe.m2)
+に固定し、4.3節で戒めた「無効な非整域環」を避けるため、`WeilDivisors` を使う前に
+`isPrime`/`isNormal` を検証する形で実装した。
+
+### 10.1 正規整域であることと block 構造の自動導出（すべて cpu 2秒以内）
+
+- `degree F = {-2,4}`、`isPrime ideal F = true`。
+- `R = A/F` は `isNormal R = true`（正規整域）。
+- `multigradedBlockData R`（未公開関数、private dictionary 経由）が
+  `IrrelevantIdeal` オプションなしで
+  `B = (u0,u1)*(x,y0,y1,y2)` を自動導出し、`geometricDimension = 3` を返した。
+  これは4.1節で想定した chamber・irrelevant ideal と一致する。
+- `K = canonicalDivisor(R,IsGraded=>true)` は `-divisor(u0)`、つまり次数
+  `(-1,0)`。これも4.1節の adjunction 予想と一致する。
+- **`K` 自身が既に Cartier**（`isCartierSaturatedInternal(K,B) = true`）。
+  循環被覆例（非Gorenstein、指数2以上）とは異なり、この候補は index 1 から
+  始まる。
+- `H = divisor(u0)+divisor(x)`（次数 `(1,1)`）も Cartier。
+
+ここまでは、既知の縮約先やCox provenanceのfast pathを一切使わずに、入力の
+grading と方程式だけから計算されている。
+
+### 10.2 raw な nef 判定は完走しなかった
+
+続けて `canonicalNefData(R,1,H,IrrelevantIdeal=>B)` を呼んだところ、
+**27分以上経過してもプロセスが終了せず、メモリ使用量が5.14GBまで増加**した
+ため、打ち切った（`kill -9`、出力は最後まで `Cartier(H) checked` 止まりで、
+`nefData` に関する出力は一切なかった）。
+
+循環被覆例では同種の呼び出しが $m=1$ で約95秒、$m=2$ で7分超という記録
+（本メモ2.1節）があったが、この候補では最初の呼び出しの時点で、より深刻な
+無応答・メモリ増大が観測された。少なくとも、Cox変数が少なく graph 構成が
+軽いことは、`canonicalScaledNefDataInternal` 内部の摂動 BPF 判定コストには
+直結しないことを確認した。既存の
+[bpf-construction-dominates-assessment] の知見（reflexive hull 構築コストは
+変数数ではなく因子の複雑さに依存する）と整合的である。
+
+### 10.3 次の一手：negativeCurveWitnessData を直接 K に試す
+
+`canonicalNefData` の内部摂動ループを待つのではなく、Idea A で実装済みの
+`negativeCurveWitnessData`（[[ITERATED-MULTIGRADING-MMP-PLAN.md]] 参照）を、
+摂動済み候補ではなく **`K` 自身に対して直接** 試す。これは
+`weilDivisorToModule` の構築を一度だけで済ませ、既知の巡回被覆例の $m=1$
+診断と同様の役割を果たす、より安価な非nef証拠探索である。この結果は次の
+実験で記録する。
+
+### 10.4 実測：`K` 単体への直接テストは不発、詰まっている箇所を特定
+
+[`scripts/toric-hypersurface-negcurve-probe.m2`](../scripts/toric-hypersurface-negcurve-probe.m2)
+で `negativeCurveWitnessData(K,candidateBaseLocus K,B,{1,1})` を試したところ
+cpu 1.3秒で完了したが、`candidateBaseLocus K` の codim が0であり、関数は
+曲線探索に入る前の早期リターン（`projectiveBaseLocus == ideal 1_R` 相当）
+で `null` を返していた。`K=-divisor(u0)` は height-one prime を一つしか
+持たない自明な因子であり、この結果は「非nefの証拠なし」ではなく
+「この入力に対してこの手法が空振りした」ことを意味する。単体テストとして
+は無意味だったが、$K$ 自体が既に単純すぎて `negativeCurveWitnessData` の
+対象にならないことを確認できた。
+
+`canonicalNefDataCore`（2017--2015行）と `canonicalScaledNefDataInternal`
+（582--661行）を読み、実際に詰まっている箇所を特定した。
+
+- $i=1$ でまず `isBasePointFreeDivisor(K,B)` を試す（結果 `false`、cpu
+  0.05秒、高速）。
+- 次に `canonicalScaledNefDataInternal(R,K,H,1,1/2,B)` を呼ぶ。$p=1,q=2$
+  なので $L=2K+H$。これは `(u0)` に係数 $-1$、`(x)` に係数 $+1$ を持つ、
+  **二つの異なる height-one prime を組み合わせた因子**であり、単純な $K$
+  とは構造が異なる（循環被覆例の $L$ 値と同種）。
+- $d=3$ なので `effectiveNefMultiplier(3,N)` は常に7以下であり、
+  `canonicalScaledNefDataInternal` 内の negative-curve shortcut 分岐は
+  コード上到達不能（`trialBound==guaranteedMultiplier` が常に成立、
+  582--612行のコメントで確認済み）。したがって三次元では常に
+  `isBasePointFreeDivisor(m*L,B)` を $m=1,2,\ldots$ と順に呼ぶだけであり、
+  安価な代替経路は存在しない。
+
+[`scripts/toric-hypersurface-bpf-sweep-probe.m2`](../scripts/toric-hypersurface-bpf-sweep-probe.m2)
+でこの $m$-sweep を直接再現し、$m$ ごとの cpu 時間を計測した
+（`guaranteedMultiplier=6`）。
+
+| $m$ | 結果 | 所要 cpu 時間（累積差分） |
+| --- | --- | ---: |
+| 1 | `false` | 約0.09秒 |
+| 2 | `false` | 約69秒 |
+| 3 | （打ち切り） | 27分以上、メモリ5.18GBで打ち切り |
+
+$m=1\to2$ で約770倍のコスト増加があり、循環被覆例（$m=1$: 約95秒、$m=2$:
+7分超で打ち切り）とほぼ同じ増大パターンを再現した。**Cox変数が少なく
+graph構成が軽いこの候補でも、`weilDivisorToModule` が複数の異なる
+height-one prime を組み合わせた因子で急激にコスト増大するという、
+[bpf-construction-dominates-assessment] の知見が構造非依存に再現する**
+ことを確認した。
+
+### 10.5 結論と次の判断
+
+この結果は次を強く示唆する。
+
+1. 6変数・rank2という入力サイズの小ささは、`canonicalScaledNefDataInternal`
+   内部の BPF 判定コストには寄与しない。ボトルネックは変数数ではなく、
+   テスト対象の因子が組み合わせる height-one prime の個数と複雑さに依存
+   する。
+2. Phase C の cost-aware threshold search（`threshold-cost-aware-search.m2`）
+   は、候補有理数 $t=p/q$ をどの順で試すかを最適化するものであり、この
+   $m$-sweep（固定 $t$ に対して pluricanonical 倍数を探す base-point-free
+   theorem の適用）とは別のループである。したがってこの候補の停滞には
+   直接効かない。
+3. 別の flip 族を探しても、同じ `weilDivisorToModule`/BPF 判定機構を使う
+   限り同じコスト増大に当たる可能性が高い。巡回被覆・toric hypersurface
+   という構造的に異なる二つの族で同じパターンが再現したことは、族選びの
+   問題ではなく、reflexive hull 構築そのもの（`WeilDivisors` の
+   `divisorToModule`）のアルゴリズム的な限界を示唆する。
+
+したがって、次に投資すべきはどちらの族でも「$m=2$ 相当」を通過させる根本
+的な改善であり、候補は次の二つに絞られる。
+
+- $m$-sweep 自体を避ける：negative-curve shortcut を三次元でも有効にし、
+  安価な curve witness で高い $m$ を省略できるようにする。ただし10.4節の
+  通り、witness 探索も同じ `weilDivisorToModule` 構築を必要とするため、
+  構築コスト自体は避けられない。得られるのは「構築後の判定」を1回で済ま
+  せられる可能性のみで、根本解決ではない。
+- `weilDivisorToModule` 構築そのものの高速化（[gfp-reduction-benchmark-positive]
+  で確認済みの GF(p) 還元は境界1.2--2.3倍止まりであり、この規模の増大には
+  桁違いに足りない）。より大きい投資として、`Ext`/double-dual 計算の
+  アルゴリズムを見直す必要がある。
