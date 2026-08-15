@@ -61,6 +61,67 @@ weilDivisorsPackage := needsPackage "WeilDivisors";
 weilDivisorToModule := value(
     weilDivisorsPackage#"private dictionary"#"divisorToModule");
 
+-- docs/TORIC-HYPERSURFACE-FLIP-MMP-DESIGN.md section 6.3: WeilDivisors'
+-- mapToProjectiveSpace defends against the D = 0 case (embedAsIdeal's
+-- returned degree shift d1 is the zero degree, so the naive map's kernel
+-- would be inhomogeneous) by checking only d1#0 == 0, i.e. only the first
+-- component of the degree vector. On a multigraded ring (degreeLength > 1)
+-- this misfires whenever d1 is a nonzero vector whose first entry happens to
+-- be 0 -- observed concretely on a rank-2 toric hypersurface candidate whose
+-- threshold divisor has embedding shift d1 = {0,1}: not the zero vector, so
+-- the defense should not fire, but it does, and every returned section is
+-- multiplied by the ring's first variable. Section counts and the
+-- homogeneous kernel are unaffected (the extra factor is common to every
+-- section), but the representatives carry an artificial common factor that
+-- can fabricate spurious base-locus components and needlessly raise
+-- Gröbner-basis degrees downstream.
+--
+-- mapToProjectiveSpaceInternal reproduces WeilDivisors' mapToProjectiveSpace
+-- exactly, replacing the single-component check with an all-components
+-- check, so the defense fires only when d1 really is the zero degree
+-- vector, in any degreeLength (this also reproduces the original behaviour
+-- exactly when degreeLength R = 1, where d1 has a single component).
+mapToProjectiveSpaceInternal = method(
+    Options => {KnownCartier=>true, Variable=>"YY"});
+mapToProjectiveSpaceInternal BasicDivisor := RingMap => o -> D1 -> (
+    if not isHomogeneous D1 then
+        error "mapToProjectiveSpaceInternal: expected a graded/homogeneous divisor";
+    if not o.KnownCartier and not isCartier(D1,IsGraded=>true) then
+        error "mapToProjectiveSpaceInternal: expected a Cartier divisor";
+    newVar := if instance(o.Variable,Symbol) then o.Variable
+        else if instance(o.Variable,String) then getSymbol o.Variable
+        else error "mapToProjectiveSpaceInternal: expected option Variable to be a string or a symbol";
+    R1 := ring D1;
+    -- WeilDivisors' own mapToProjectiveSpace writes this as "prune OO(D1)";
+    -- OO(D1) is installed (installMethod(symbol SPACE,OO,RWeilDivisor,...))
+    -- as exactly divisorToModule(D1), which weilDivisorToModule already is
+    -- (see its definition above). Using it directly here, instead of the raw
+    -- OO symbol, also sidesteps an unrelated M2 package-closing check that
+    -- rejects any bare reference to the core ScriptedFunctor OO from inside
+    -- a newPackage body ("mutable unexported unset symbol(s) ... 'OO'").
+    M1 := prune weilDivisorToModule D1;
+    L1 := embedAsIdeal(M1,IsGraded=>true);
+    d1 := L1#1;
+    M1 = L1#0*R1^{d1};
+    b1 := super((basis(degree sub(1,R1),M1))**R1);
+    n1 := #(first entries b1);
+    K1 := coefficientRing R1;
+    myMon := monoid[toList(newVar_1..newVar_n1)];
+    S1 := K1 myMon;
+    varTargetList := first entries b1;
+    -- the only change from WeilDivisors' mapToProjectiveSpace: check every
+    -- component of d1, not just d1#0, before applying the D = 0 defense.
+    isZeroDegree := instance(d1,List) and all(d1,e -> instance(e,Number) and e == 0);
+    if isZeroDegree then (
+        R1varList := first entries vars R1;
+        if #R1varList > 0 then (
+            vv := R1varList#0;
+            varTargetList = apply(varTargetList,ss -> ss*vv);
+            )
+        );
+    map(R1,S1,varTargetList)
+    )
+
 -- Stage 1 (T1) of docs/STAGE1-MEASUREMENT-PLAN.md: block structure and the
 -- irrelevant ideal of a (possibly multigraded) presentation.  Unexported by
 -- design -- this is bookkeeping consumed by T2/T3/T5, not a public entry
@@ -896,10 +957,12 @@ canonicalNefThreshold (Ring,ZZ) := o -> (R,a) -> (
     )
 
 -- Construct the graph of the complete linear system of a base-point-free
--- Cartier divisor.  mapToProjectiveSpace represents its sections in a common
--- rational trivialization; their polynomial representatives can therefore
--- have an artificial common zero divisor.  The kernel into R[t] is the Rees
--- graph closure and is insensitive to that choice of trivialization.
+-- Cartier divisor.  mapToProjectiveSpaceInternal represents its sections in
+-- a common rational trivialization; their polynomial representatives can
+-- therefore have an artificial common zero divisor (see that function's own
+-- comment for the multigraded D = 0 defense bug this avoids).  The kernel
+-- into R[t] is the Rees graph closure and is insensitive to that choice of
+-- trivialization.
 completeLinearSystemGraphData = method()
 completeLinearSystemGraphData BasicDivisor := D -> (
     if not isBasePointFreeDivisor D then
@@ -909,7 +972,7 @@ completeLinearSystemGraphData BasicDivisor := D -> (
     if degreeLength S != 1 then
         error "completeLinearSystemGraphData: expected a singly graded ring";
     sourceIdeal := ideal R;
-    sectionMap := mapToProjectiveSpace(D,Variable=>"mmpLinearSystemTarget");
+    sectionMap := mapToProjectiveSpaceInternal(D,Variable=>"mmpLinearSystemTarget");
     sectionImages := first entries sectionMap.matrix;
     if #sectionImages == 0 then
         error "completeLinearSystemGraphData: the complete linear system has no sections";
@@ -949,20 +1012,21 @@ completeLinearSystemGraphData BasicDivisor := D -> (
 
 -- Stage 1 (T5): flatten a multigraded ring to the diagonal subalgebra of a
 -- caller-supplied ample Cartier class w, i.e. the subring generated by the
--- degree-w strand.  mapToProjectiveSpace(w) already builds exactly that
--- subring as the image of its rational map (a singly graded polynomial ring
--- modulo the kernel of the map sending its variables to a chosen spanning
--- set of sections of w); this reuses it rather than re-deriving it, and its
--- basis(degree sub(1,R),-) call (not a bare integer) is not subject to the
--- basis(0,-) defect found while implementing T2.  When w is very ample --
--- true for both of this plan's measurement inputs, where w is literally the
--- polarization the multigraded presentation was built from -- the result is
--- an isomorphic (as varieties) singly graded presentation of the same X;
--- this is not verified in general (see docs/STAGE1-MEASUREMENT-RESULTS.md).
+-- degree-w strand.  mapToProjectiveSpaceInternal(w) already builds exactly
+-- that subring as the image of its rational map (a singly graded polynomial
+-- ring modulo the kernel of the map sending its variables to a chosen
+-- spanning set of sections of w); this reuses it rather than re-deriving it,
+-- and its basis(degree sub(1,R),-) call (not a bare integer) is not subject
+-- to the basis(0,-) defect found while implementing T2.  When w is very
+-- ample -- true for both of this plan's measurement inputs, where w is
+-- literally the polarization the multigraded presentation was built from --
+-- the result is an isomorphic (as varieties) singly graded presentation of
+-- the same X; this is not verified in general (see
+-- docs/STAGE1-MEASUREMENT-RESULTS.md).
 diagonalSubalgebraData = (R,w) -> (
     if ring w =!= R then
         error "diagonalSubalgebraData: w must be a divisor on R";
-    wSectionMap := mapToProjectiveSpace(w,Variable=>"mmpFlatteningVariable");
+    wSectionMap := mapToProjectiveSpaceInternal(w,Variable=>"mmpFlatteningVariable");
     Sflat := source wSectionMap;
     if degreeLength Sflat != 1 then
         error "diagonalSubalgebraData: flattening did not produce a singly graded ring";
@@ -988,8 +1052,12 @@ diagonalSubalgebraData = (R,w) -> (
 -- motivated keeping the multigraded presentation through the nef/threshold
 -- stages; measuring that cost is the point (plan section 5.2, stage 5).
 -- Otherwise this mirrors completeLinearSystemGraphData exactly: D's own
--- sections still come from mapToProjectiveSpace(D) on the original
--- (multigraded) R, unaffected by the flattening.
+-- sections still come from mapToProjectiveSpaceInternal(D) on the original
+-- (multigraded) R, unaffected by the flattening.  D's embedding shift d1 is
+-- exactly where the multigraded D = 0 defense bug of
+-- mapToProjectiveSpaceInternal's own comment was found (a threshold divisor
+-- with d1 = {0,1}), which is why this call site uses the Internal version
+-- rather than WeilDivisors' own mapToProjectiveSpace.
 --
 -- Part 0 of the Stage 2 measurement work (completing Stage 1's T1/T3, not
 -- new Stage 2 scope): this method's own base-point-free re-check of D was
@@ -1018,7 +1086,7 @@ completeLinearSystemGraphDataMultigraded (BasicDivisor,BasicDivisor) := o -> (D,
     Sflat := flattening#"flatAmbientRing";
     flatVars := flatten entries vars Sflat;
     flatSectionImages := flattening#"sectionImages";
-    sectionMap := mapToProjectiveSpace(D,Variable=>"mmpLinearSystemTarget");
+    sectionMap := mapToProjectiveSpaceInternal(D,Variable=>"mmpLinearSystemTarget");
     sectionImages := first entries sectionMap.matrix;
     if #sectionImages == 0 then
         error "completeLinearSystemGraphDataMultigraded: the complete linear system has no sections";
