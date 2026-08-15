@@ -103,10 +103,67 @@ negative-curve shortcut が常にコード上到達不能（dead code）であ�
    `Hom`ボトルネックが再現したことから、**別の族を探しても同じ壁に当たる
    可能性が高い**。
 
-## 8. 次に投資すべき方向（未着手）
+## 8. 残る課題（一般 Weil divisor の場合）
 
 `Hom(Module,R^1)`（二重双対）のコストが、組み合わされるprimeの個数・codim・
 次数にどう依存するかを直接調べ、そこを回避・高速化する方向。GF(p)還元は
 1.2--2.3倍止まりで桁違いに足りない（`gfp-reduction-benchmark-positive`）ため、
 より大きい投資（アルゴリズムの見直し、あるいは`Hom`を経由しない代替の
 reflexive hull構成）が必要になる。
+
+## 9. 実装した回避策（class-degree fast path）
+
+一般の Weil divisor について `Hom`/double dual を取り除くことはできないが、
+今回のように $K$ と $H$ の divisor class degree が既知の場合は、候補
+$D=q aK+a pH$ を直接 free graded shift
+
+$$
+\mathcal O_X(mD) \simeq R^{\,m(qa\deg K+ap\deg H)}
+$$
+
+として表せる。この経路では `divisorToModule`、`Hom`、double dual を一切呼ばず、
+degree-zero evaluation と irrelevant-ideal saturation だけを実行する。
+
+`canonicalNefData` と `canonicalScaledNefData` に
+`DivisorClassDegrees=>{degree(K),degree(H)}` を渡すとこの経路を利用する。
+これは caller-supplied certificate として扱い、未指定時の既存挙動は変えない。
+また、各 support prime が homogeneous principal と機械的に確認できる場合は、
+通常の `isBasePointFreeDivisor` にも同じ shift fast path を適用する。
+
+rank-2 toric hypersurface の同一例では、`m=1,...,6` の BPF sweep が従来の
+`m=2` 約69秒、`m=3` 27分超の状態から、全体約2秒で完了した。判定結果は既存の
+false と一致し、`make test-core` の既存回帰テストも全て通過した。
+
+`Hom(I_{D_+},I_{D_-})` という一回の `Hom` に置き換える案も実測したが、今回の
+入力では約64秒かかり、double dual 回避による実用的な改善にはならなかった。
+
+なお、$H$ だけを class degree shift とし、$K$ 部分を通常の
+`divisorToModule` で構成してから tensor する中間案も同じ例では約1.8秒で
+完了した。ただしこれは $K=-\operatorname{div}(u_0)$ が特に単純な例だからであり、
+一般の $K$ の double dual コストを消すものではない。
+
+## 10. 実装した canonical-ideal / reflexive-power fast path
+
+class degree を caller が与えない場合にも、$H$ が単一の homogeneous shift として
+認識できるときは、canonical module の embedding を一度だけ計算して
+
+$$
+I_K=\operatorname{im}(\omega_R\to R),\qquad
+\mathcal O_X(mK+bH)
+\simeq
+\operatorname{reflexivePower}(m,I_K)\otimes R^{m e+b h}
+$$
+
+という ideal 表現を使う経路を追加した。各 multiplier ごとの巨大な
+`Hom(dualModule,R^1)` は呼ばず、`reflexivePower` と degree-zero evaluation のみを
+行う。canonical seed は $K$ に cache するため、$m=1,\ldots,7$ の sweep で再利用される。
+
+rank-2 toric hypersurface の同じ例では、class degree を渡さない場合でも
+`canonicalScaledNefData(...,t=1/2)` の BPF sweep が約1.9秒で完了し、従来の
+27分超の経路と同じ `nef=false`、multiplier列 `{1,2,3,4,5,6}` を返した。
+同じ経路を含む `canonicalNefData` 全体も約2.9秒で完了し、従来どおり
+`witnessType="non-nef positive perturbation"` を返した。
+
+この shortcut は normal domain と canonical ideal embedding が利用できる場合に限り、
+seed または $H$ の shift を構成できない場合は従来の一般 Weil divisor 経路へ戻る。
+従って未検証の近似判定ではなく、適用条件を満たした場合だけ使う証明可能な高速化である。

@@ -741,3 +741,77 @@ isBPF(a,b):
 - finite determinacy, higher Tjurina algebras
 - semi-invariant monomials and cyclic quotient singularities
 
+---
+
+## 21. Chartwise canonical-form probe（cyclic-cover例）
+
+既存の degree-four cyclic-cover 例で、Jacobian minor から canonical-form atlas の
+codimension-one 部分を実際に検証した。
+
+[`scripts/cyclic-cover-differential-chart-probe.m2`](../scripts/cyclic-cover-differential-chart-probe.m2)
+の結果は次のとおり。
+
+- affine cone は7変数・4関係式・次元4。
+- Jacobian は一般点で rank 3。
+- 非零の3次Jacobian minor は trim 後の ideal では68生成元、重複を含む局所チャート表では96個あり、その非零開集合が smooth locus を覆う。
+- Jacobian singular locus は affine 次元1（Proj上は有限個の点）。
+- `canonicalDivisor` の結果は `-P_1-P_2+(c)` で、`K` は非Cartier。
+- `K` の non-Cartier locus も affine 次元1で、Jacobian singular locusと radical が一致。
+- `K` は各Jacobian chart上ではCartierであり、non-Cartier locusは全てchartの外にある。
+- `isQCartier(8,K,IsGraded=>true)` は `0`。この例では有限の周期的な index-one correction に落ちるとは限らない。
+
+したがって、少なくともこの非hypersurface cyclic-cover presentationでは、
+
+```text
+smooth charts の局所有理 top form
++ 有限個の singular-point correction
+```
+
+という分解のうち、smooth locus の atlas 部分は実際に成立する。ただし `K` が
+非-\(\mathbb Q\)-Gorenstein の例なので、特異点補正を有限周期データとみなすことはできない。
+従って、この方法が直ちに `K` 自体の global double dual を置換するわけではなく、
+まずは次の二枝に分ける必要がある。
+
+1. `isQCartier(n,K)` が有限の index を返す場合：index-one cover / character data を
+   cache し、chartwise form と有限 local correction から section oracle を作る。
+2. index が存在しない場合：chartwise data は codimension-one の seed に限定し、
+   singular locus 上の reflexive closure または別の canonical-module certificate を
+   fallback として使う。
+
+この分岐は、一般化可能なアルゴリズムに必要な安全条件を明示する。
+
+## 22. canonical ideal / reflexive-power fast path の実装
+
+チャート atlas 単独では global section の完全性を保証できないため、BPF全体には
+canonical module の ideal embedding を接続した。`MMPComputation.m2` の内部経路では、
+まず一度だけ
+
+```text
+omega_R = Ext^codim(R, omega_S),
+I_K = image(omega_R -> R)
+```
+
+を計算し、候補 `mK+bH` を
+
+```text
+reflexivePower(m, I_K) ** R^(m*embeddingDegree+b*classDegree(H))
+```
+
+として degree-zero evaluation に渡す。`I_K` は canonical divisor に cache され、
+各 multiplier の巨大な module double dual を繰り返さない。
+
+`H` の class degree は、まず homogeneous principal support から読み、必要なら
+`OO(H)` が単一 shift であることを確認して復元する。復元できない場合はこの shortcut
+を使わず、従来の `divisorToModule` に戻る。
+
+rank-2 toric hypersurface 例では、class degree を明示しなくても
+`canonicalScaledNefData(...,t=1/2)` が約1.9秒で完了し、従来と同じ
+`nef=false`、`multipliersTested={1,2,3,4,5,6}` を返した。
+この経路を含む `canonicalNefData` 全体も約2.9秒で完了し、従来と同じ
+`witnessType="non-nef positive perturbation"` を返した。
+
+この経路は `tests/canonical-seed-bpf-fastpath.m2` で回帰検証している。normal domain と
+canonical ideal embedding が成立する範囲では exact な reflexive power を使うため、
+YES/NO の近似判定ではない。seed または H の shift が取れない場合は安全に一般経路へ
+fallback する。なお、non-\(\mathbb Q\)-Gorenstein 例に対する chartwise atlas のみの
+処理は、依然として codimension-one seed に限定される。

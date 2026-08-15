@@ -18,6 +18,8 @@ newPackage(
     AuxiliaryFiles => false
     )
 
+protect mmpCanonicalIdealSeedData;
+
 export {
     "weightedAmpleDivisorData",
     "effectiveNefMultiplier",
@@ -53,6 +55,7 @@ export {
     "CanonicalIndexSearchLimit",
     "MMPMaxSteps",
     "IrrelevantIdeal",
+    "DivisorClassDegrees",
     "negativeCurveWitnessData",
     "NegativeCurveSearchLimit"
     }
@@ -258,6 +261,139 @@ effectiveNefMultiplier (ZZ,ZZ) := (d,N) -> (
 -- irrelevant ideal is the maximal ideal, i.e. r = 1.  Multigraded, the cone
 -- ideal must be saturated against B = B_1*...*B_r (T1) first.
 --
+-- Fast path for the common Cox-coordinate case.  If
+--
+--   D = sum_i c_i div(f_i)
+--
+-- with each support prime visibly equal to a homogeneous principal ideal
+-- (f_i), then the corresponding sheaf on Proj is the free graded shift with
+-- shift degree sum_i c_i*degree(f_i).  This is a certificate-producing
+-- optimization: failure to recognize that form returns null and leaves the
+-- general WeilDivisors construction unchanged.  In particular, this helper
+-- does not infer Cartierness from an expensive or incomplete test.
+principalHomogeneousShiftDegreeInternal = D -> (
+    if not instance(D,WeilDivisor) then return null;
+    R := ring D;
+    if not isHomogeneous D then return null;
+    n := degreeLength R;
+    delta := toList(n : 0);
+    P := primes D;
+    C := coefficients D;
+    ok := true;
+    scan(getPrimeCount D, i -> if ok then (
+        Pi := trim(P#i);
+        if numgens Pi != 1 then ok = false
+        else (
+            gi := first entries gens Pi;
+            if #gi != 1 or not isHomogeneous(gi#0) then ok = false
+            else (
+                di := degree(gi#0);
+                if #di != n then ok = false
+                else delta = apply(n,j -> delta#j + (C#i)*(di#j));
+                )
+            )
+        ));
+    if ok then delta else null
+    )
+
+principalHomogeneousShiftModule = D -> (
+    R := ring D;
+    delta := principalHomogeneousShiftDegreeInternal D;
+    if delta === null then null else R^{delta}
+    )
+
+-- A Cartier H may be presented as a sum of principal divisors whose support
+-- primes are not themselves principal in the quotient.  If its module is
+-- nevertheless visibly a single homogeneous shift, recover the class degree
+-- from the opposite sign of that module generator degree.  This is a cheap
+-- fallback used only for H; K never goes through this route.
+cartierClassDegreeInternal = H -> (
+    d := principalHomogeneousShiftDegreeInternal H;
+    if d =!= null then return d;
+    M := null;
+    try M = prune weilDivisorToModule H else return null;
+    ds := degrees M;
+    if #ds != 1 then return null;
+    -first ds
+    )
+
+-- Build the same graded free module from a caller-supplied divisor-class
+-- degree.  The extra list wrapper is required by M2 for one multidegree.
+gradedShiftModuleFromDegree = (R,d) -> (
+    shifts := {d};
+    R^shifts
+    )
+
+-- Construct one canonical ideal together with the degree of the homogeneous
+-- embedding omega_R -> R.  If I is the image of that embedding, then
+--
+--     O_X(mK_X+bH) ~= reflexivePower(m,I) ** R^{m*e+b*h}
+--
+-- whenever H is visibly principal of class degree h.  This replaces m
+-- repeated module double-duals by one canonical-module Ext/Hom computation
+-- plus ideal reflexive powers.  The data are cached on K because the nef
+-- search asks for several multipliers of the same canonical divisor.
+canonicalIdealSeedDataInternal = (R,K) -> (
+    if instance(K,WeilDivisor) and K#cache#?mmpCanonicalIdealSeedData then
+        return K#cache#mmpCanonicalIdealSeedData;
+    S := ambient R;
+    sourceVars := flatten entries vars S;
+    degreeList := if degreeLength S == 1
+        then apply(sourceVars,q -> (degree q)#0)
+        else apply(sourceVars,q -> degree q);
+    omegaShift := if degreeLength S == 1
+        then -sum degreeList
+        else -(sum degreeList);
+    omegaShiftList := if degreeLength S == 1
+        then {{omegaShift}}
+        else {omegaShift};
+    omegaShiftModule := S^omegaShiftList;
+    omega := (Ext^(dim S-dim R)(S^1/(ideal R),omegaShiftModule)) ** R;
+    dualOmega := Hom(omega,R^1);
+    if numgens dualOmega == 0 then return null;
+    embeddingDegree := (degrees dualOmega)#0;
+    embedding := homomorphism dualOmega_0;
+    canonicalIdeal := trim ideal matrix embedding;
+    if canonicalIdeal == ideal 0_R then return null;
+    result := new HashTable from {
+        "ring" => R,
+        "ideal" => canonicalIdeal,
+        "embeddingDegree" => embeddingDegree,
+        "certificate" => "canonical module Ext/Hom embedding and ideal reflexive powers"
+        };
+    if instance(K,WeilDivisor) then
+        K#cache#mmpCanonicalIdealSeedData = result;
+    result
+    )
+
+-- Return null when the chart/principal hypotheses needed for this shortcut
+-- are unavailable.  A non-null result is an exact BPF test under the normal
+-- domain hypotheses already required by canonicalDivisor/reflexivePower.
+canonicalIdealSeedBPFInternal = (R,K,kCoeff,hCoeff,H,B) -> (
+    if kCoeff <= 0 then return null;
+    hDegree := if hCoeff == 0
+        then toList(degreeLength R : 0)
+        else cartierClassDegreeInternal H;
+    if hDegree === null then return null;
+    seed := canonicalIdealSeedDataInternal(R,K);
+    if seed === null then return null;
+    answer := null;
+    try (
+        powerIdeal := reflexivePower(kCoeff,seed#"ideal");
+        shiftedModule := (powerIdeal*R^1) **
+            R^{kCoeff*(seed#"embeddingDegree") + hCoeff*hDegree};
+        answer = basePointFreeModuleInternal(shiftedModule,B);
+        ) else answer = null;
+    answer
+    )
+
+basePointFreeModuleInternal = (M,B) -> (
+    R := ring M;
+    zeroDegree := toList(degreeLength R : 0);
+    evaluationCokernel := coker basis(zeroDegree,M);
+    trim saturate(ann evaluationCokernel,B) == ideal 1_R
+    )
+
 -- isBasePointFreeDivisorInternal does NOT call WeilDivisors' baseLocus.  A
 -- second, separate defect was found while testing the plan's stated fix
 -- (saturating baseLocus's own output): baseLocus(Module) computes
@@ -290,9 +426,15 @@ effectiveNefMultiplier (ZZ,ZZ) := (d,N) -> (
 -- h^0 = 0 case above where the plan's literal fix is not.
 isBasePointFreeDivisorInternal = (D,B) -> (
     R := ring D;
-    zeroDegree := toList(degreeLength R : 0);
-    evaluationCokernel := coker basis(zeroDegree,weilDivisorToModule D);
-    trim saturate(ann evaluationCokernel,B) == ideal 1_R
+    -- A sum of homogeneous principal prime divisors has a certified Cox
+    -- degree.  In that case O(D) is the corresponding free graded shift and
+    -- constructing it does not require WeilDivisors' reflexive double dual.
+    -- The helper returns null unless every support prime is visibly principal
+    -- and homogeneous, so non-principal/non-Cartier divisors keep the exact
+    -- historical construction below.
+    M := principalHomogeneousShiftModule D;
+    if M === null then M = weilDivisorToModule D;
+    basePointFreeModuleInternal(M,B)
     )
 
 isBasePointFreeDivisor = method()
@@ -579,7 +721,7 @@ mmpGraphMorphism HashTable := graph -> (
 -- "nef"/"basePointFree" verdict was not.  B = null reproduces the previous
 -- behaviour (re-derive via multigradedBlockData) exactly, so every existing
 -- caller that does not pass B is completely unaffected.
-canonicalScaledNefDataInternal = (R,K,H,a,t,B) -> (
+canonicalScaledNefDataInternal = (R,K,H,a,t,B,classDegrees) -> (
     if t <= 0 then
         error "canonicalScaledNefData: t must be a positive rational number";
     p := if instance(t,ZZ) then t else numerator t;
@@ -622,15 +764,41 @@ canonicalScaledNefDataInternal = (R,K,H,a,t,B) -> (
         candidateDivisor := m*L;
         candidateBaseLocus := null;
         candidateBPF := false;
+        candidateModule := null;
+        if classDegrees =!= null then (
+            candidateDegree := q*a*(classDegrees#0)
+                + a*p*(classDegrees#1);
+            candidateModule = gradedShiftModuleFromDegree(
+                R,m*candidateDegree);
+            );
         if useNegativeCurveShortcut then (
             candidateBaseLocus = trim baseLocus candidateDivisor;
             candidateBPF = if B =!= null
                 then trim saturate(candidateBaseLocus,B) == ideal 1_R
                 else candidateBaseLocus == ideal 1_R;
-            )
-        else candidateBPF = if B =!= null
-            then isBasePointFreeDivisor(candidateDivisor,B)
-            else isBasePointFreeDivisor candidateDivisor;
+        )
+        else if candidateModule =!= null then
+            candidateBPF = if B =!= null
+                then basePointFreeModuleInternal(candidateModule,B)
+                else basePointFreeModuleInternal(candidateModule,
+                    (multigradedBlockData R)#"irrelevantIdeal")
+        else (
+            -- When no class-degree certificate was supplied, use the
+            -- canonical-ideal seed if H is visibly principal.  This tests
+            -- the complete degree-zero section space of the exact
+            -- reflexivePower ideal, so a false result is not accepted from
+            -- a mere subset of sections; unavailable/failed seed data fall
+            -- back to the historical divisorToModule path.
+            seedBPF := canonicalIdealSeedBPFInternal(
+                R,K,m*q*a,a*p,H,
+                if B =!= null then B
+                else (multigradedBlockData R)#"irrelevantIdeal");
+            candidateBPF = if seedBPF === null then (
+                if B =!= null
+                    then isBasePointFreeDivisor(candidateDivisor,B)
+                    else isBasePointFreeDivisor candidateDivisor
+                ) else seedBPF;
+            );
         multipliersTested = append(multipliersTested,m);
         if useNegativeCurveShortcut and not candidateBPF and m < guaranteedMultiplier then
             negativeCurveWitness = negativeBaseLocusCurveData(L,candidateBaseLocus);
@@ -674,7 +842,23 @@ canonicalScaledNefDataInternal = (R,K,H,a,t,B) -> (
 -- five entry points and is used here even where 4 types would have fit, for
 -- one consistent calling convention.  Default null preserves the exact
 -- previous re-derivation for every existing caller.
-canonicalScaledNefData = method(Options => {IrrelevantIdeal => null})
+normalizeDivisorClassDegrees = (R,data,label) -> (
+    if data === null then return null;
+    if not instance(data,List) or #data != 2 then
+        error (label | ": DivisorClassDegrees must be {degree(K),degree(H)}");
+    n := degreeLength R;
+    scan(0..1,i -> (
+        di := data#i;
+        if not instance(di,List) or #di != n then
+            error (label | ": every divisor class degree must have degreeLength(R) entries");
+        if any(di,x -> not instance(x,ZZ)) then
+            error (label | ": divisor class degrees must be integral");
+        ));
+    data
+    )
+
+canonicalScaledNefData = method(Options => {
+    IrrelevantIdeal => null, DivisorClassDegrees => null})
 canonicalScaledNefData (Ring,ZZ,QQ) := o -> (R,a,t) -> (
     if a <= 0 then
         error "canonicalScaledNefData: the index multiple must be positive";
@@ -682,10 +866,14 @@ canonicalScaledNefData (Ring,ZZ,QQ) := o -> (R,a,t) -> (
     if not isCartier(a*K,IsGraded=>true) then
         error "canonicalScaledNefData: a*K_X is not Cartier";
     H := (weightedAmpleDivisorData R)#"divisor";
-    canonicalScaledNefDataInternal(R,K,H,a,t,null)
+    classDegrees := normalizeDivisorClassDegrees(
+        R,o.DivisorClassDegrees,"canonicalScaledNefData");
+    canonicalScaledNefDataInternal(R,K,H,a,t,null,classDegrees)
     )
 canonicalScaledNefData (Ring,ZZ,ZZ) := o -> (R,a,t) ->
-    canonicalScaledNefData(R,a,t/1,IrrelevantIdeal=>o.IrrelevantIdeal)
+    canonicalScaledNefData(R,a,t/1,
+        IrrelevantIdeal=>o.IrrelevantIdeal,
+        DivisorClassDegrees=>o.DivisorClassDegrees)
 
 -- Stage 1 (T3): multigraded entry points.  The caller supplies the ample
 -- Cartier class H directly (plan section 3.5: deriving it automatically is
@@ -721,10 +909,14 @@ canonicalScaledNefData (Ring,ZZ,QQ,BasicDivisor) := o -> (R,a,t,H) -> (
         ) else (multigradedBlockData R)#"irrelevantIdeal";
     if not isCartierSaturatedInternal(a*K,B) then
         error "canonicalScaledNefData: a*K_X is not Cartier";
-    canonicalScaledNefDataInternal(R,K,H,a,t,B)
+    classDegrees := normalizeDivisorClassDegrees(
+        R,o.DivisorClassDegrees,"canonicalScaledNefData");
+    canonicalScaledNefDataInternal(R,K,H,a,t,B,classDegrees)
     )
 canonicalScaledNefData (Ring,ZZ,ZZ,BasicDivisor) := o -> (R,a,t,H) ->
-    canonicalScaledNefData(R,a,t/1,H,IrrelevantIdeal=>o.IrrelevantIdeal)
+    canonicalScaledNefData(R,a,t/1,H,
+        IrrelevantIdeal=>o.IrrelevantIdeal,
+        DivisorClassDegrees=>o.DivisorClassDegrees)
 
 -- Algorithm 1 of the paper.  First bracket the positive threshold by dyadic
 -- rationals, then enumerate the finite set supplied by the rationality
@@ -750,7 +942,7 @@ canonicalNefThresholdDataCore = (R,a,K,H,d,limit,B) -> (
     testAt := t -> (
         if testCache#?t then return testCache#t;
         if limit =!= null and testsRun >= limit then return null;
-        result := canonicalScaledNefDataInternal(R,K,H,a,t,B);
+        result := canonicalScaledNefDataInternal(R,K,H,a,t,B,null);
         testCache#t = result;
         tests = append(tests,result);
         testsRun = testsRun+1;
@@ -1976,13 +2168,29 @@ threefoldMMPData (Ring,ZZ,BasicDivisor) := o -> (initialRing,initialIndex,H) -> 
 -- inside canonicalScaledNefDataInternal), not only into whichever entry
 -- point's own Cartier/threefold gate built this call.  B = null reproduces
 -- the previous behaviour exactly.
-canonicalNefDataCore = (R,a,K,H,limit,B) -> (
+canonicalNefDataCore = (R,a,K,H,limit,B,classDegrees) -> (
     i := 1;
     while limit === null or i <= limit do (
         pluricanonical := i*a*K;
-        pluricanonicalBPF := if B =!= null
-            then isBasePointFreeDivisor(pluricanonical,B)
-            else isBasePointFreeDivisor pluricanonical;
+        pluricanonicalModule := if classDegrees =!= null
+            then gradedShiftModuleFromDegree(R,
+                i*a*(classDegrees#0))
+            else null;
+        pluricanonicalBPF := if pluricanonicalModule =!= null
+            then basePointFreeModuleInternal(pluricanonicalModule,
+                if B =!= null then B
+                else (multigradedBlockData R)#"irrelevantIdeal")
+        else (
+            seedBPF := canonicalIdealSeedBPFInternal(
+                R,K,i*a,0,H,
+                if B =!= null then B
+                else (multigradedBlockData R)#"irrelevantIdeal");
+            if seedBPF === null then (
+                if B =!= null
+                    then isBasePointFreeDivisor(pluricanonical,B)
+                    else isBasePointFreeDivisor pluricanonical
+                ) else seedBPF
+            );
         if pluricanonicalBPF then
             return new HashTable from {
                 "nef" => true,
@@ -1992,7 +2200,8 @@ canonicalNefDataCore = (R,a,K,H,limit,B) -> (
                 "witnessDivisor" => pluricanonical,
                 "canonicalDivisor" => K
                 };
-        scaledData := canonicalScaledNefDataInternal(R,K,H,a,1/(2^i),B);
+        scaledData := canonicalScaledNefDataInternal(
+            R,K,H,a,1/(2^i),B,classDegrees);
         if not scaledData#"nef" then
             return new HashTable from {
                 "nef" => false,
@@ -2014,7 +2223,10 @@ canonicalNefDataCore = (R,a,K,H,limit,B) -> (
         }
     )
 
-canonicalNefData = method(Options => {NefSearchLimit => null, IrrelevantIdeal => null})
+canonicalNefData = method(Options => {
+    NefSearchLimit => null,
+    IrrelevantIdeal => null,
+    DivisorClassDegrees => null})
 canonicalNefData (Ring,ZZ) := o -> (R,a) -> (
     if dim R - 1 != 3 then
         error "canonicalNefData: expected a projective threefold";
@@ -2028,7 +2240,9 @@ canonicalNefData (Ring,ZZ) := o -> (R,a) -> (
         error "canonicalNefData: a*K_X is not Cartier";
     ampleData := weightedAmpleDivisorData R;
     H := ampleData#"divisor";
-    result := canonicalNefDataCore(R,a,K,H,limit,null);
+    classDegrees := normalizeDivisorClassDegrees(
+        R,o.DivisorClassDegrees,"canonicalNefData");
+    result := canonicalNefDataCore(R,a,K,H,limit,null,classDegrees);
     new HashTable from join(pairs result,{"ampleData" => ampleData})
     )
 
@@ -2068,7 +2282,9 @@ canonicalNefData (Ring,ZZ,BasicDivisor) := o -> (R,a,H) -> (
     B := if suppliedB =!= null then suppliedB else blockData#"irrelevantIdeal";
     if not isCartierSaturatedInternal(a*K,B) then
         error "canonicalNefData: a*K_X is not Cartier";
-    result := canonicalNefDataCore(R,a,K,H,limit,B);
+    classDegrees := normalizeDivisorClassDegrees(
+        R,o.DivisorClassDegrees,"canonicalNefData");
+    result := canonicalNefDataCore(R,a,K,H,limit,B,classDegrees);
     extraKeys := if suppliedB =!= null then {
         "irrelevantIdeal" => B, "irrelevantIdealSource" => "caller-supplied"}
         else {"blockData" => blockData};
@@ -2079,7 +2295,9 @@ canonicalNefData (Ring,ZZ,BasicDivisor) := o -> (R,a,H) -> (
 
 isCanonicalNef = method(Options => options canonicalNefData)
 isCanonicalNef (Ring,ZZ) := o -> (R,a) -> (
-    result := canonicalNefData(R,a,NefSearchLimit=>o.NefSearchLimit);
+    result := canonicalNefData(R,a,
+        NefSearchLimit=>o.NefSearchLimit,
+        DivisorClassDegrees=>o.DivisorClassDegrees);
     if not result#"conclusive" then
         error "isCanonicalNef: the optional search limit was reached";
     result#"nef"
