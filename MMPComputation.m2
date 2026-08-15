@@ -728,9 +728,20 @@ canonicalScaledNefDataInternal = (R,K,H,a,t,B,classDegrees) -> (
     q := if instance(t,ZZ) then 1 else denominator t;
     -- Stage 1 (T3): the geometric dimension of a rank-r presentation is
     -- dim R - r, not dim R - 1 (plan section 3.4); multigradedBlockData (T1)
-    -- gives dim R - 1 exactly for r = 1, so this is behaviour-preserving for
-    -- every existing (monograded) caller.
-    d := (multigradedBlockData R)#"geometricDimension";
+    -- computes exactly this formula (dim R - degreeLength ambient R) as its
+    -- "geometricDimension" field, but only after first successfully deriving
+    -- a full block decomposition of the irrelevant ideal -- work this line
+    -- does not need and, found this session, cannot always get: a genuinely
+    -- non-block-decomposable multigraded ring (e.g. a VGIT/Cox-ring chamber
+    -- whose irrelevant ideal is not a product of per-degree-component block
+    -- ideals -- see docs/COMPACT-TORIC-FLIP-FAN-CONSTRUCTION-REPORT.md's
+    -- chamber B) makes multigradedBlockData error out unconditionally, even
+    -- when the caller has already supplied a correct B above and needs
+    -- nothing else from multigradedBlockData here.  Computing the same
+    -- arithmetic directly removes that unnecessary and, for such rings,
+    -- fatal dependency; behaviour is unchanged for every existing (block-
+    -- decomposable or monograded) caller since the formula is identical.
+    d := dim R - degreeLength R;
     N := a*q;
     L := q*a*K + a*p*H;
     guaranteedMultiplier := effectiveNefMultiplier(d,N);
