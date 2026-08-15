@@ -805,30 +805,79 @@ canonicalNefThresholdDataCore = (R,a,K,H,d,limit,B) -> (
     candidates = unique sort candidates;
     testsRunBeforeCandidates := testsRun;
 
-    -- Stage 1 (T4): binary search over the sorted candidate list, replacing
-    -- the previous linear scan.  Valid in dimension three (plan section
-    -- 4.4): canonicalScaledNefDataInternal always sets trialBound =
+    -- Stage 1 (T4) originally put a binary search here, over the sorted
+    -- candidate list, replacing a linear scan.  Phase C (docs/TORIC-
+    -- HYPERSURFACE-FLIP-MMP-DESIGN.md section 5) replaces the binary search
+    -- in turn: minimizing the *count* of tests silently assumes every test
+    -- costs the same, but a candidate t = p/q's BPF test constructs L =
+    -- q*a*K+a*p*H and tests N = a*q via the effective base-point-free
+    -- theorem, so both the divisor's coefficients and N grow with p and q --
+    -- large-denominator candidates can be far more expensive to test than
+    -- small-denominator ones, and minimizing wall-clock time is not the same
+    -- as minimizing test count.
+    --
+    -- The correctness argument for binary search is unchanged and is exactly
+    -- what licenses replacing *which* candidate is tested next while keeping
+    -- everything else: valid in dimension three (plan section 4.4),
+    -- canonicalScaledNefDataInternal always sets trialBound =
     -- guaranteedMultiplier there (guaranteedMultiplier <= 8, see
     -- effectiveNefMultiplier) and tests every multiplier up to it, so "nef"
     -- is a genuine decision procedure rather than a one-sided certificate,
     -- and it is monotone in t; beta is itself always a candidate (v = beta,
     -- u = 1, gcd(beta,1) = 1) and is already known nef, so the candidate
-    -- list always has a nef candidate at its top, and the first one testing
-    -- nef in ascending order is the threshold.  If canonicalScaledNef-
-    -- DataInternal's negative-curve shortcut is ever active instead (only
-    -- possible outside dimension three, where guaranteedMultiplier can
-    -- exceed 8), that decision-procedure property is not established and
-    -- binary search would not be valid; every entry point in this package
-    -- is for dimension three, so that case does not arise here.
+    -- list always has a nef candidate at its top.  Monotonicity is what
+    -- makes lo/hi a valid exclusion window regardless of which interior
+    -- index is tested next: testing index i and getting non-nef excludes
+    -- every index < i (all non-nef, since nef is upward-closed in t), and
+    -- getting nef excludes every index > i from being the threshold (i is
+    -- itself already at least as good a witness), so lo/hi converge to the
+    -- threshold index whatever order the interior is probed in.  If
+    -- canonicalScaledNefDataInternal's negative-curve shortcut is ever
+    -- active instead (only possible outside dimension three, where
+    -- guaranteedMultiplier can exceed 8), that decision-procedure property is
+    -- not established and this search would not be valid; every entry point
+    -- in this package is for dimension three, so that case does not arise
+    -- here (see also the design note's section 5.3: connecting the negative-
+    -- curve shortcut to the ordinary dimension-three path, so a single
+    -- witness curve can rule out a whole sub-interval of high-denominator
+    -- candidates at once instead of testing each one, remains open).
+    --
+    -- The cost model used to pick the next candidate is deliberately the
+    -- simplest one the design note allows (section 5.2: "at least this
+    -- lexicographic order is fine"): (denominator q, numerator p) in
+    -- lexicographic order, packed into one integer via
+    -- q*(numeratorBound+1)+p (numerator p is always < numeratorBound+1, so
+    -- this preserves the lexicographic order exactly).  This needs no
+    -- section-strand estimate up front -- only q and p, already in hand from
+    -- the candidate list -- and a refined cost model (built from
+    -- testLog's recorded actualCpuTime, per section 7's "record ... so
+    -- future cost models can be improved") can replace it later without
+    -- changing anything else here.
     threshold := null;
     thresholdTest := null;
+    testLog := {};
     if #candidates > 0 then (
         lo := 0;
-        hi := #candidates-1;
+        hi := #candidates-1; -- candidates#hi is already known nef (see above)
         stalled := false;
         while lo < hi and not stalled do (
-            mid := lo + (hi-lo)//2;
-            midTest := testAt(candidates#mid);
+            remaining := toList(lo..hi-1);
+            costOf := i -> (denominator candidates#i)*(numeratorBound+1)
+                + numerator candidates#i;
+            costs := apply(remaining,costOf);
+            bestPos := position(costs,c -> c == min costs);
+            mid := remaining#bestPos;
+            midCost := costs#bestPos;
+            elapsed := timing testAt(candidates#mid);
+            midTest := elapsed#1;
+            testLog = append(testLog,new HashTable from {
+                "candidate" => candidates#mid,
+                "denominator" => denominator candidates#mid,
+                "estimatedCost" => midCost,
+                "actualCpuTime" => elapsed#0,
+                "nefCertificate" =>
+                    if midTest === null then null else midTest#"certificateType"
+                });
             if midTest === null then stalled = true
             else if midTest#"nef" then hi = mid
             else lo = mid+1;
@@ -844,7 +893,9 @@ canonicalNefThresholdDataCore = (R,a,K,H,d,limit,B) -> (
     -- The number of tests a linear scan of the same sorted candidate list
     -- would have needed to reach the same threshold, for direct comparison
     -- with testsRun (see docs/STAGE1-MEASUREMENT-RESULTS.md); null when no
-    -- threshold was found.
+    -- threshold was found.  Cost-aware search trades test *count* for lower
+    -- test *cost* (see above), so unlike the binary search it replaces, it
+    -- has no general guarantee of testsRun <= linearTestsRunEquivalent.
     linearTestsRunEquivalent := if threshold === null then null
         else testsRunBeforeCandidates + 1 + #(select(candidates,t -> t < threshold));
     if threshold === null and limit === null then
@@ -861,6 +912,7 @@ canonicalNefThresholdDataCore = (R,a,K,H,d,limit,B) -> (
             "tests" => tests,
             "testsRun" => testsRun,
             "linearTestsRunEquivalent" => linearTestsRunEquivalent,
+            "testLog" => testLog,
             "canonicalDivisor" => K,
             "warning" => "the optional threshold search limit was reached"
             };
@@ -875,6 +927,7 @@ canonicalNefThresholdDataCore = (R,a,K,H,d,limit,B) -> (
         "tests" => tests,
         "testsRun" => testsRun,
         "linearTestsRunEquivalent" => linearTestsRunEquivalent,
+        "testLog" => testLog,
         "canonicalDivisor" => K
         }
     )
