@@ -734,3 +734,84 @@ height-one prime を組み合わせた因子で急激にコスト増大すると
   で確認済みの GF(p) 還元は境界1.2--2.3倍止まりであり、この規模の増大には
   桁違いに足りない）。より大きい投資として、`Ext`/double-dual 計算の
   アルゴリズムを見直す必要がある。
+
+### 10.6 `divisorToModule` の内部を段階ごとに計測し、多重次数の寄与を切り分けた
+
+[`scripts/toric-hypersurface-divisortomodule-profile.m2`](../scripts/toric-hypersurface-divisortomodule-profile.m2)
+で、`divisorToModule`（832--861行、`WeilDivisors.m2`）と
+`isBasePointFreeDivisorInternal`（291--296行、`MMPComputation.m2`）の全ステップを
+インラインで再実装し、$m=2$（先に約69秒だったケース）の各ステップに
+`cpuTime()` スタンプを挿入して計測した。
+
+| ステップ | 所要 cpu 時間 | 割合 |
+| --- | ---: | ---: |
+| `positivePart`/`negativePart` | 瞬時 | – |
+| prime 構造の確認（`positivePart`は2つの、`negativePart`は1つの height-one prime に分解、いずれも`codim=1`） | 瞬時 | – |
+| `idealPower` と積（`prodE`, `prodF`） | 瞬時 | – |
+| `Hom(prodF*R^1,R^1)`（negativePart側、principal idealなので自明） | 瞬時 | – |
+| テンソル積（`dualModule`） | 瞬時 | – |
+| **`Hom(dualModule,R^1)`（最終二重双対 = reflexive hull）** | **約59.5秒** | **84%** |
+| `basis(zeroDegree,M)` | 約4.9秒 | 7% |
+| `coker` | 瞬時 | – |
+| `ann` | 約5.4秒 | 7.6% |
+| `saturate` | 瞬時 | – |
+| 合計 | 約70.9秒 | 100% |
+
+`positivePart`は期待どおり `x=0` の2つの既約成分（$\{$quadratic(u)=0$\}$と
+$\{$quartic(y)=0$\}$、いずれも予想通り $u_0$ の因子とは別の height-one prime）
+に分解しており、10.5節までの推測を裏付けた。査定側（`ann`/`saturate`、
+合計約7.6%）は[bpf-construction-dominates-assessment]の既存知見どおり小さく、
+コストのほぼ全てが**「3つの異なる height-one prime を組み合わせた後の
+最終 `Hom`（二重双対）」という一箇所**に集中していることが判明した。
+
+### 10.7 多重次数のランク自体は原因ではないことを確認
+
+10.6節の結果が「多重次数（rank 2）であること自体」に起因するのか、それとも
+「3つの prime を組み合わせる」構造に起因するのかを切り分けるため、同じ
+超曲面方程式を変数名だけ変えて（`u0,u1,x,y0,y1,y2` → `v0,v1,vx,w0,w1,w2`）、
+rank 1 の単一次数（線形汎関数 $(a,b)\mapsto a+2b$、すなわち
+`Degrees=>{1,1,2,1,1,1}`）で構成し直した
+[`scripts/toric-hypersurface-monograded-comparison-profile.m2`](../scripts/toric-hypersurface-monograded-comparison-profile.m2)
+で同じ手順を計測した。この汎関数は $F$ の斉次性を自動的に保つ（元の次数
+$(-2,4)$ から $-2+2\cdot4=6$ に写るだけで、新たな isPrime/isNormal 検査は
+不要）よう選んだ。
+
+`canonicalDivisor` が今回はたまたま別の prime（`w2`）を $K$ の代表元に選んだ
+ため、`positivePart`/`negativePart` の内訳（3個+1個、係数`{2,2,2}`と`{4}`）は
+rank-2 版（2個+1個、係数`{2,2}`と`{2}`）と完全には一致しなかったが、いずれも
+「複数の異なる height-one prime を組み合わせる」という構造は同じである。
+
+結果：
+
+| ステップ | rank 2（10.6節） | rank 1（この節） |
+| --- | ---: | ---: |
+| `Hom(dualModule,R^1)` | 約59.5秒 | **約59.5秒** |
+| `basis(0,M)` | 約4.9秒 | 約5.0秒 |
+| `ann` | 約5.4秒 | 約5.5秒 |
+| 合計 | 約70.9秒 | 約71.1秒 |
+
+**ほぼ完全に一致した。** この`Hom`計算はirrelevant ideal `B`を一切参照せず
+（`B`は後続の`ann`/`saturate`でのみ使われる）、純粋に環の次数構造と
+`dualModule`の加群としての複雑さだけに依存するため、この比較はrank以外の
+条件を実質的に揃えたクリーンな実験になっている。
+
+（注：末尾の`BPF result`はrank 2で`false`、rank 1で`true`と異なったが、これは
+`B2`をrank-1環に対しても元のブロック irrelevant ideal のまま流用したためで、
+rank-1の単一次数環に対する正しいirrelevant ideal（本来は全変数の生成する
+極大イデアル）ではない。この不一致は`Hom`計算そのものの比較対象外であり、
+今回の計測の結論には影響しない。）
+
+**結論：多重次数のランクそのものはこのコストの要因ではない。** ボトルネックは
+`divisorToModule`が呼ぶ`Hom(Module,R^1)`という、**Macaulay2コア自体の
+Hom/Ext実装**（`WeilDivisors`や`MMPComputation`のロジックではない）が、
+組み合わされる height-one prime の個数・複雑さに応じてコスト増大すること
+にあり、grading rankとは独立である。
+
+これは[[ITERATED-MULTIGRADING-MMP-PLAN.md]]の中心仮説（「単次数への
+恒久的flatteningを避ければ、循環被覆例のBPF/nef判定コストが改善する」）が、
+**少なくともこの特定のボトルネックに関しては成り立たない**ことを意味する。
+Phase 1--3で実装した「grading保存のtop-level入口」自体はソフトウェア設計
+として妥当だが、rank保存が循環被覆例やtoric hypersurface例のnef判定停滞を
+解消するという期待は、この実験により反証された。真のレバーは`Hom`の
+coarse-grained cost model（primeの個数・次数・codimへの依存）を理解し、
+そこを直接改善するか回避することにある。
