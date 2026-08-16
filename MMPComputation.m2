@@ -2430,6 +2430,45 @@ Node
       dimension three}.  The first implemented stage is the canonical-divisor
       nefness test of Proposition 3.8.
 
+      The functions below are grouped by pipeline stage; each one's own page
+      has a runnable example.  @TO threefoldMMPData@ is the single top-level
+      entry point that runs the whole pipeline; the rest are its building
+      blocks, usable on their own.
+  Subnodes
+    :Ample divisor and base-point-freeness
+    weightedAmpleDivisorData
+    effectiveNefMultiplier
+    isBasePointFreeDivisor
+    :Canonical-divisor nefness
+    canonicalNefData
+    isCanonicalNef
+    canonicalScaledNefData
+    :Nef threshold
+    canonicalNefThresholdData
+    canonicalNefThreshold
+    :Contraction
+    canonicalContractionData
+    canonicalContractionAtThresholdData
+    contractionTypeData
+    completeLinearSystemGraphData
+    mmpGraphMorphism
+    :Relative canonical model and flips
+    relativeCanonicalModelData
+    relativeCanonicalModelFromBaseData
+    relativeCanonicalModelIsomorphismData
+    relativeModelInverseRationalMapData
+    :Smallness and step records
+    contractionSmallnessData
+    contractionGraphSmallnessData
+    mmpStepRecordData
+    :Top-level MMP driver
+    threefoldMMPData
+    canonicalIndexData
+    :Multigraded (non-flattened) presentations
+    diagonalSubalgebraData
+    completeLinearSystemGraphDataMultigraded
+    negativeCurveWitnessData
+
 Node
   Key
     mmpGraphMorphism
