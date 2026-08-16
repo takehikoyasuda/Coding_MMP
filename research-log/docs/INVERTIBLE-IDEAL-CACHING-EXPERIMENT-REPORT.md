@@ -175,4 +175,4 @@ The diagnosis of *where* the old path's cost originates (the double-dual reflexi
 - Related prior work:
   - `STAGE2-MEASUREMENT-RESULTS.md` (Stage 2 measurements)
   - `tests/multigraded-skew-cartier.m2` (Z construction, correctness regression)
-  - `docs/STAGE2-SINGULAR-MEASUREMENT-PLAN.md` (planning notes)
+  - Stage 2 planning notes
