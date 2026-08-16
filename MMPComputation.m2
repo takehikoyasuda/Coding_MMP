@@ -351,8 +351,21 @@ canonicalIdealSeedDataInternal = (R,K) -> (
     omega := (Ext^(dim S-dim R)(S^1/(ideal R),omegaShiftModule)) ** R;
     dualOmega := Hom(omega,R^1);
     if numgens dualOmega == 0 then return null;
-    embeddingDegree := (degrees dualOmega)#0;
-    embedding := homomorphism dualOmega_0;
+    -- Which generator of Hom(omega,R^1) is chosen matters enormously: an
+    -- arbitrary generator can embed omega_R at a much higher degree than
+    -- necessary, and the resulting ideal's generators (hence every downstream
+    -- trim/reflexivePower call) inherit that degree.  third_party/flip-
+    -- computation/FlipComputation/divisors.m2's canonicalIdeal already solved
+    -- this for the monograded case (its own comment: "the whole computation
+    -- drops from 'unfinished after seventeen minutes' to a twentieth of a
+    -- second" from this alone) by picking the least-degree generator instead
+    -- of an arbitrary one; this generalizes that choice to the multigraded
+    -- case via sum-of-multidegree as the comparison key (identical to their
+    -- criterion when degreeLength = 1).
+    degreeSums := apply(numgens dualOmega, i -> sum (degrees dualOmega)#i);
+    bestIndex := minPosition degreeSums;
+    embeddingDegree := (degrees dualOmega)#bestIndex;
+    embedding := homomorphism dualOmega_bestIndex;
     canonicalIdeal := trim ideal matrix embedding;
     if canonicalIdeal == ideal 0_R then return null;
     result := new HashTable from {
