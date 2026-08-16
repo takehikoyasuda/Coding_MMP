@@ -90,7 +90,7 @@ assert(not divisorialStep#"contractionIsSmall");  -- E is a genuine divisor, cod
 
 birationalMMP = threefoldMMPData(cd#"ring",1,{divisorialStep});
 assert(birationalMMP#"conclusive");
-assert(birationalMMP#"terminationType" == "Mori fibre space");
+assert(birationalMMP#"terminationType" == "K-negative fibration");
 assert(birationalMMP#"numberOfSteps" == 2);
 assert((birationalMMP#"steps")#0#"stepType" == "divisorial");
 assert((birationalMMP#"steps")#1#"stepType" == "fibration");

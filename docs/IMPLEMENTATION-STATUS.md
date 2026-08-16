@@ -38,7 +38,7 @@ The source repositories had the following local state at import time:
 | Weighted relative-model graph | `b2mDiagonalData`, `b2mToGraphMorphism` | skew Rees degrees use an interior positive diagonal; weighted toric flip passes end to end |
 | Contraction smallness | `contractionGraphSmallnessData`, `contractionSmallnessData` | exterior-power criterion audited; blow-up divisor, ODP small resolution, and identity regressions pass |
 | MMP step records | `mmpStepRecordData` | graph-preserving divisorial/flipping/mixed records with automatic smallness |
-| Top-level threefold MMP loop | `threefoldMMPData` | P3 Mori-fibre, quintic minimal-model, and certified Bl_L(P3) birational-continuation regressions pass |
+| Top-level threefold MMP loop | `threefoldMMPData` | P3 K-negative-fibration, quintic minimal-model, and certified Bl_L(P3) birational-continuation regressions pass |
 
 ## Stein graph correction
 

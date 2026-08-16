@@ -1,4 +1,9 @@
-.PHONY: test test-core test-slow test-upstreams status
+.PHONY: install test test-core test-slow test-upstreams status
+
+install:
+	M2 --no-readline --stop -q -e 'installPackage("SteinFactorization",FileName=>"third_party/SteinFactorizationM2/SteinFactorization.m2",MakeDocumentation=>false,RunExamples=>false); exit 0'
+	M2 --no-readline --stop -q -e 'installPackage("FlipComputation",FileName=>"third_party/flip-computation/FlipComputation.m2",MakeDocumentation=>false,RunExamples=>false); exit 0'
+	M2 --no-readline --stop -q -e 'installPackage("MMPComputation",FileName=>"MMPComputation.m2"); exit 0'
 
 test: test-core test-upstreams
 

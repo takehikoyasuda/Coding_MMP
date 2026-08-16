@@ -131,7 +131,7 @@ assert(#normalizedIdentityGraph#baseVariables == 2);
 -- Continue the top-level driver after the independently certified divisorial
 -- contraction Bl_L(P3)->P3.  The retained first graph is followed by the
 -- canonical contraction P3->point, so this exercises the birational state
--- transition and the subsequent Mori-fibre termination in one driver result.
+-- transition and the subsequent K-negative fibration in one driver result.
 P3Target = directTargetRing;
 divisorialContraction = new HashTable from {
     "conclusive" => true,
@@ -145,7 +145,7 @@ assert(divisorialStep#"stepType" == "divisorial");
 assert(not divisorialStep#"contractionIsSmall");
 birationalMMP = threefoldMMPData(P3Target,1,{divisorialStep});
 assert(birationalMMP#"conclusive");
-assert(birationalMMP#"terminationType" == "Mori fibre space");
+assert(birationalMMP#"terminationType" == "K-negative fibration");
 assert(birationalMMP#"numberOfSteps" == 2);
 assert((birationalMMP#"steps")#0#"stepType" == "divisorial");
 assert((birationalMMP#"steps")#0#"contractionGraph" === directGraph);

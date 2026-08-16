@@ -50,7 +50,7 @@ assert(pointContraction#"steinFactorizationType" == "trivial point target");
 assert(instance(pointContraction#"contractionGraph",GraphMorphism));
 p3MMP = threefoldMMPData(R,1);
 assert(p3MMP#"conclusive");
-assert(p3MMP#"terminationType" == "Mori fibre space");
+assert(p3MMP#"terminationType" == "K-negative fibration");
 assert(p3MMP#"numberOfSteps" == 1);
 assert((p3MMP#"steps")#0#"stepType" == "fibration");
 
@@ -84,4 +84,4 @@ print "OK P3: the N=2 scaled nef test uses guaranteed multiplier 6.";
 print "OK P3: the threshold divisor gives the contraction to a point.";
 print "OK P(1,1,1,2): the constructed ample Cartier degree is 2.";
 print "OK quintic threefold: K=0 is certified nef at the first iteration.";
-print "OK MMP driver: P3 stops at a Mori fibre space; the quintic stops as a minimal model.";
+print "OK MMP driver: P3 stops at a K-negative fibration; the quintic stops as a minimal model.";

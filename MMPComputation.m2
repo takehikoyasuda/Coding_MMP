@@ -1,8 +1,20 @@
 -- -*- coding: utf-8 -*-
-needsPackage("SteinFactorization",
-    FileName=>"third_party/SteinFactorizationM2/SteinFactorization.m2");
-needsPackage("FlipComputation",
-    FileName=>"third_party/flip-computation/FlipComputation.m2");
+if fileExists (currentFileDirectory |
+        "third_party/SteinFactorizationM2/SteinFactorization.m2") then (
+    needsPackage("SteinFactorization",
+        FileName=>currentFileDirectory |
+            "third_party/SteinFactorizationM2/SteinFactorization.m2");
+    ) else (
+    needsPackage "SteinFactorization";
+    );
+if fileExists (currentFileDirectory |
+        "third_party/flip-computation/FlipComputation.m2") then (
+    needsPackage("FlipComputation",
+        FileName=>currentFileDirectory |
+            "third_party/flip-computation/FlipComputation.m2");
+    ) else (
+    needsPackage "FlipComputation";
+    );
 newPackage(
     "MMPComputation",
     Version => "0.1.0",
@@ -2114,7 +2126,7 @@ threefoldMMPData (Ring,ZZ,List) := o -> (initialRing,initialIndex,initialSteps) 
             records = append(records,record);
             return new HashTable from {
                 "conclusive" => true,
-                "terminationType" => "Mori fibre space",
+                "terminationType" => "K-negative fibration",
                 "finalRing" => currentRing,
                 "finalIndex" => currentIndex,
                 "steps" => records,
@@ -2218,7 +2230,7 @@ threefoldMMPData (Ring,ZZ,BasicDivisor) := o -> (initialRing,initialIndex,H) -> 
         record := mmpStepRecordData contraction;
         return new HashTable from {
             "conclusive" => true,
-            "terminationType" => "Mori fibre space",
+            "terminationType" => "K-negative fibration",
             "finalRing" => initialRing,
             "finalIndex" => initialIndex,
             "steps" => {record},
@@ -2427,27 +2439,69 @@ Node
     Text
       This research package implements the integration-layer algorithms in
       Takehiko Yasuda, {em An algorithm for the minimal model program in
-      dimension three}.  The first implemented stage is the canonical-divisor
-      nefness test of Proposition 3.8.
+      dimension three}.  It can test canonical nefness, find the nef
+      threshold, construct the associated contraction and relative canonical
+      model, and iterate these operations until it reaches a minimal model or
+      a $K_X$-negative fibration.
 
-      The functions below are grouped by pipeline stage; each one's own page
-      has a runnable example.  @TO threefoldMMPData@ is the single top-level
-      entry point that runs the whole pipeline; the rest are its building
-      blocks, usable on their own.
+      For a first computation, load the package, define the homogeneous
+      coordinate ring @TT "R"@, and call @TO threefoldMMPData@.  Its second
+      argument is a known positive integer @TT "a"@ for which $aK_X$ is
+      Cartier.  Use @TO canonicalIndexData@ first if this integer is unknown.
+      For example:
+    Example
+      needsPackage("MMPComputation", FileName => "MMPComputation.m2");
+      S = QQ[z00,z01,z02,z10,z11,z12];
+      X = S/minors(2,matrix{{z00,z01,z02},{z10,z11,z12}});
+      segreResult = threefoldMMPData(X,1);
+      segreResult#"terminationType"
+      segreResult#"finalContraction"#"threshold"
+      segreResult#"finalContraction"#"targetDimension"
+    Text
+      Here is a nontrivial quotient-ring example.  Let $X$ be the Segre
+      embedding of $\mathbb{P}^1\times\mathbb{P}^2$ in $\mathbb{P}^5$.
+      Its canonical divisor is $\mathcal{O}_X(-2,-3)$ and the hyperplane
+      class is $H=\mathcal{O}_X(1,1)$.  The package finds the threshold 3;
+      the threshold divisor $K_X+3H=\mathcal{O}_X(1,0)$ gives the projection
+      to $\mathbb{P}^1$.
+    Text
+      All main entry points assume that $\operatorname{Proj}(R)$ is a normal
+      log terminal projective threefold; they do not prove these hypotheses.
+      Since a projective threefold has a four-dimensional homogeneous
+      coordinate ring, the package checks @TT "dim R - 1 == 3"@.
+
+      A returned table with @TT "conclusive"@ set to @TT "true"@ contains a
+      certified answer.  If an optional search bound is reached, the value is
+      false, @TT "phase"@ says where computation stopped, and the table retains
+      the partial results.  This is not a mathematical counterexample.
+
+      Most users need only @TO threefoldMMPData@: read its
+      @TT "terminationType"@ and @TT "numberOfSteps"@ fields first.  To ask
+      just one question, use @TO isCanonicalNef@ for a Boolean answer or,
+      after obtaining false, @TO canonicalNefThreshold@ for the rational
+      threshold.
+
+      Functions whose names end in @TT "Data"@ return a @TO HashTable@ of
+      intermediate objects and certificates.  They are intended for checking
+      how an answer was obtained, not as the first introduction to the
+      package.  @TO canonicalIndexData@ is the one setup exception: when
+      @TT "a"@ is unknown, call it and read its @TT "index"@ field.
   Subnodes
-    :Ample divisor and base-point-freeness
+    :Start here: run the program
+    threefoldMMPData
+    canonicalIndexData
+    :Short answers
+    isCanonicalNef
+    canonicalNefThreshold
+    isBasePointFreeDivisor
+    :Detailed results and certificates
+    canonicalNefData
+    canonicalNefThresholdData
+    canonicalContractionData
+    :Individual pipeline stages
     weightedAmpleDivisorData
     effectiveNefMultiplier
-    isBasePointFreeDivisor
-    :Canonical-divisor nefness
-    canonicalNefData
-    isCanonicalNef
     canonicalScaledNefData
-    :Nef threshold
-    canonicalNefThresholdData
-    canonicalNefThreshold
-    :Contraction
-    canonicalContractionData
     canonicalContractionAtThresholdData
     contractionTypeData
     completeLinearSystemGraphData
@@ -2461,9 +2515,6 @@ Node
     contractionSmallnessData
     contractionGraphSmallnessData
     mmpStepRecordData
-    :Top-level MMP driver
-    threefoldMMPData
-    canonicalIndexData
     :Multigraded (non-flattened) presentations
     diagonalSubalgebraData
     completeLinearSystemGraphDataMultigraded
@@ -2501,12 +2552,24 @@ Node
     result = threefoldMMPData(R,a)
     result = threefoldMMPData(R,a,steps)
     result = threefoldMMPData(R,a,H)
+  Inputs
+    R:Ring
+      the homogeneous coordinate ring of the current projective threefold
+    a:ZZ
+      a positive integer such that $aK_X$ is Cartier
+    steps:List
+      optional certified, nonterminal step records from an earlier run
+    H:BasicDivisor
+      optional ample Cartier divisor for a multigraded presentation
+  Outputs
+    :HashTable
+      the termination status, final ring, and ordered list of MMP step records
   Description
     Text
       Starting with a positive Cartier index multiple for $K_X$, iterate the
       nefness, threshold, contraction, relative-model, smallness, and index
       computations.  Return the graph-preserving step sequence and stop at a
-      minimal model or a Mori fibre space.  The three-argument form with a
+      minimal model or a $K_X$-negative fibration.  The three-argument form with a
       @TO List@ continues from a current model while retaining certified
       preceding nonterminal step records; the last record must lead to the
       supplied current ring.  The three-argument form with a
@@ -2518,9 +2581,24 @@ Node
       monograded (a current limitation of @TO relativeCanonicalModelData@,
       not of this entry point), so later iterations fall back to the
       @TO List@ form automatically.
+
+      In a conclusive result, @TT "terminationType"@ is either
+      @TT "minimal model"@ or @TT "K-negative fibration"@, and @TT "steps"@ is
+      the complete ordered step list.  @TT "finalRing"@ and
+      @TT "finalIndex"@ describe the terminal presentation.  In an
+      inconclusive result, @TT "phase"@ identifies the search limit that was
+      reached and @TT "steps"@ still contains every completed step.
+
+      The fibration conclusion means that the final morphism is surjective
+      with connected fibres, its target has smaller dimension, and $-K_X$ is
+      relatively ample.  The package does not compute the relative Picard
+      number and therefore makes no relative-Picard-number-one conclusion.
     Example
-      R = QQ[x0,x1,x2,x3];
-      threefoldMMPData(R,1)
+      S = QQ[z00,z01,z02,z10,z11,z12];
+      X = S/minors(2,matrix{{z00,z01,z02},{z10,z11,z12}});
+      result = threefoldMMPData(X,1);
+      result#"terminationType"
+      result#"numberOfSteps"
 
 Node
   Key
@@ -2535,15 +2613,17 @@ Node
       the homogeneous coordinate ring of a normal projective variety
   Outputs
     :HashTable
-      the least positive integer index for which index*K_X is Cartier
+      a table whose @TT "index"@ field is the least positive integer $r$ for
+      which $rK_X$ is Cartier
   Description
     Text
       Search increasing multiples of $K_X$ for the first one that is
       Cartier, using cheap sufficient certificates before falling back to
       the general test.  A smooth variety always has index 1.
     Example
-      R = QQ[x0,x1,x2,x3];
-      canonicalIndexData R
+      S = QQ[y0,y1,y2,y3,y4];
+      X = S/ideal(y0^5+y1^5+y2^5+y3^5+y4^5);
+      (canonicalIndexData X)#"index"
 
 Node
   Key
@@ -2556,7 +2636,8 @@ Node
   Description
     Text
       For a nonidentity relative canonical model $Z \longrightarrow W$
-      constructed as a Rees Proj, substitute the Rees-ideal generators for the
+      constructed as a relative $\operatorname{Proj}$ of a Rees algebra,
+      substitute the Rees-ideal generators for the
       fibre variables in the Segre coordinates.  The result records homogeneous
       coordinates for $W \dashrightarrow Z$, verifies the model and graph
       equations, and certifies that their base locus is the Rees centre after
@@ -2596,6 +2677,11 @@ Node
       saturation, the contraction is small precisely when that locus has
       codimension at least two in the source.  The graph is assumed integral
       and the birational extension separable.
+    Example
+      ODP = QQ[o0,o1,o2,o3,o4]/ideal(o0*o1-o2*o3);
+      smallGraph = b2mToGraphMorphism bigradedReesProjection ideal(o0,o2);
+      smallness = contractionGraphSmallnessData smallGraph;
+      {smallness#"isSmall",smallness#"exceptionalCodimension"}
 
 Node
   Key
@@ -2605,6 +2691,17 @@ Node
     test smallness of a computed birational contraction
   Usage
     result = contractionSmallnessData contraction
+  Description
+    Text
+      Apply @TO contractionGraphSmallnessData@ to the graph stored in a
+      conclusive birational contraction result.
+    Example
+      ODP = QQ[o0,o1,o2,o3,o4]/ideal(o0*o1-o2*o3);
+      smallGraph = b2mToGraphMorphism bigradedReesProjection ideal(o0,o2);
+      contraction = new HashTable from {
+          "conclusive" => true, "isBirational" => true,
+          "contractionGraph" => smallGraph};
+      (contractionSmallnessData contraction)#"isSmall"
   SeeAlso
     contractionGraphSmallnessData
 
@@ -2625,16 +2722,18 @@ Node
       original contraction is supplied, and otherwise as flipping-or-mixed.
       Both the contraction graph and relative-model graph remain in the record.
     Example
-      P3 = QQ[p0,p1,p2,p3];
-      identityHyperplane = (weightedAmpleDivisorData P3)#"divisor";
+      S = QQ[y1,y2,y3,y4,y5,w];
+      W = S/ideal(y4^2-y2*y5,y3*y4-y1*y5,y2*y3-y1*y4);
+      model = relativeCanonicalModelFromBaseData(
+          W,RelativeCanonicalMultipliers=>{1});
       contraction = new HashTable from {
           "conclusive" => true,
           "isBirational" => true,
-          "contractionGraph" => (completeLinearSystemGraphData identityHyperplane)#"graph",
-          "steinAlgebraData" => new HashTable from {"ring" => P3}
+          "contractionGraph" => model#"relativeModelGraph"
           };
-      model = relativeCanonicalModelFromBaseData P3;
-      mmpStepRecordData(contraction,model)
+      stepResult = mmpStepRecordData(
+          contraction,model,ContractionIsSmall=>true);
+      {stepResult#"stepType",stepResult#"inverseRelativeModelRequired"}
 
 Node
   Key
@@ -2650,8 +2749,10 @@ Node
       blow-up ideal is locally free of rank one.  The model computation tests
       this using the first Fitting ideal and saturation by the irrelevant ideal.
     Example
-      P3 = QQ[p0,p1,p2,p3];
-      model = relativeCanonicalModelFromBaseData P3;
+      S = QQ[y1,y2,y3,y4,y5,w];
+      W = S/ideal(y4^2-y2*y5,y3*y4-y1*y5,y2*y3-y1*y4);
+      model = relativeCanonicalModelFromBaseData(
+          W,RelativeCanonicalMultipliers=>{1});
       relativeCanonicalModelIsomorphismData model
 
 Node
@@ -2666,7 +2767,17 @@ Node
     Text
       If the canonical module of the projective threefold $W$ embeds as the
       unit ideal, return the identity model.  Otherwise run the relative
-      canonical algebra computation and return its graph morphism.
+      canonical algebra computation and return its graph morphism.  In the
+      example below, @TT "W"@ is a non-$\mathbb{Q}$-Gorenstein projective
+      toric threefold.  Thus its relative canonical model is genuinely
+      computed, rather than returned as an identity model.
+    Example
+      S = QQ[y1,y2,y3,y4,y5,w];
+      W = S/ideal(y4^2-y2*y5,y3*y4-y1*y5,y2*y3-y1*y4);
+      model = relativeCanonicalModelFromBaseData(
+          W,RelativeCanonicalMultipliers=>{1});
+      model#"relativeModelType"
+      dim model#"relativeModelRing"-1
 
 Node
   Key
@@ -2680,17 +2791,21 @@ Node
     Text
       Extract the contraction target from @TT "contraction"@ and delegate to
       @TO relativeCanonicalModelFromBaseData@.  This is the form used by
-      @TO threefoldMMPData@ between successive birational steps.
+      @TO threefoldMMPData@ between successive birational steps.  The example
+      supplies the relevant fields of a birational contraction whose target
+      is the same non-$\mathbb{Q}$-Gorenstein toric threefold used in
+      @TO relativeCanonicalModelFromBaseData@.
     Example
-      P3 = QQ[p0,p1,p2,p3];
-      identityHyperplane = (weightedAmpleDivisorData P3)#"divisor";
+      S = QQ[y1,y2,y3,y4,y5,w];
+      W = S/ideal(y4^2-y2*y5,y3*y4-y1*y5,y2*y3-y1*y4);
       contraction = new HashTable from {
           "conclusive" => true,
           "isBirational" => true,
-          "contractionGraph" => (completeLinearSystemGraphData identityHyperplane)#"graph",
-          "steinAlgebraData" => new HashTable from {"ring" => P3}
+          "steinAlgebraData" => new HashTable from {"ring" => W}
           };
-      relativeCanonicalModelData contraction
+      model = relativeCanonicalModelData(
+          contraction,RelativeCanonicalMultipliers=>{1});
+      {model#"relativeModelType",model#"isIdentity"}
   SeeAlso
     relativeCanonicalModelFromBaseData
     canonicalContractionData
@@ -2720,6 +2835,17 @@ Node
     construct the graph of a complete base-point-free linear system
   Usage
     graphData = completeLinearSystemGraphData D
+  Description
+    Text
+      Construct the closure of the graph of the morphism defined by the
+      complete linear system of @TT "D"@.  The returned @TT "graph"@ uses the
+      package-wide @TO GraphMorphism@ representation.
+    Example
+      S = QQ[z00,z01,z02,z10,z11,z12];
+      X = S/minors(2,matrix{{z00,z01,z02},{z10,z11,z12}});
+      H = (weightedAmpleDivisorData X)#"divisor";
+      graphData = completeLinearSystemGraphData H;
+      {graphData#"targetVariableCount",dim graphData#"graph"#totalRing}
 
 Node
   Key
@@ -2797,10 +2923,15 @@ Node
     result = canonicalContractionAtThresholdData(R,a,lambda)
   Description
     Text
-      Find a base-point-free multiple of $K_X+lambda H$, construct its
+      Find a base-point-free multiple of $K_X+\lambda H$, construct its
       complete-linear-system graph, and compute its Stein factorization.  The
       function tests small multiples first and is guaranteed to stop at the
       effective multiplier from the scaled nefness theorem.
+    Example
+      S = QQ[z00,z01,z02,z10,z11,z12];
+      X = S/minors(2,matrix{{z00,z01,z02},{z10,z11,z12}});
+      contraction = canonicalContractionAtThresholdData(X,1,3);
+      {contraction#"sourceDimension",contraction#"targetDimension"}
 
 Node
   Key
@@ -2810,16 +2941,30 @@ Node
     compute the canonical nef threshold and its extremal-face contraction
   Usage
     result = canonicalContractionData(R,a)
+  Inputs
+    R:Ring
+      the homogeneous coordinate ring of a normal log terminal threefold
+    a:ZZ
+      a positive integer such that $aK_X$ is Cartier
+  Outputs
+    :HashTable
+      the threshold, contraction graph, dimensions, and contraction type
   Description
     Text
       Compute the canonical nef threshold with @TO canonicalNefThresholdData@,
       then construct the contraction at that threshold.  Assumes $K_X$ is not
-      already nef.
+      already nef.  In a conclusive result, inspect @TT "threshold"@,
+      @TT "contractionType"@, @TT "sourceDimension"@,
+      @TT "targetDimension"@, and @TT "contractionGraph"@.  The example is
+      the Segre threefold $\mathbb{P}^1\times\mathbb{P}^2$: the computed
+      threshold is 3 and $K_X+3H=\mathcal{O}_X(1,0)$ contracts it to
+      $\mathbb{P}^1$.
     Example
       S = QQ[z00,z01,z02,z10,z11,z12];
       X = S/minors(2,matrix{{z00,z01,z02},{z10,z11,z12}});
       contraction = canonicalContractionData(X,1);
-      contraction#"contractionType"
+      {contraction#"threshold",contraction#"contractionType",
+          contraction#"targetDimension"}
   SeeAlso
     canonicalNefThresholdData
     canonicalContractionAtThresholdData
@@ -2832,16 +2977,29 @@ Node
     compute the canonical nef threshold and its search data
   Usage
     result = canonicalNefThresholdData(R,a)
+  Inputs
+    R:Ring
+      the homogeneous coordinate ring of a normal log terminal threefold
+    a:ZZ
+      a positive integer such that $aK_X$ is Cartier
+  Outputs
+    :HashTable
+      the rational threshold in @TT "threshold"@ and its search certificates
   Description
     Text
       Assuming that $K_X$ is not nef, compute the first positive rational
       $t$ for which $K_X+tH$ is nef.  The function implements Algorithm 1:
       dyadic searches bracket the threshold and the rationality theorem gives
       a finite candidate list.  The ample Cartier divisor $H$ is the one
-      returned by {tt weightedAmpleDivisorData}.
+      returned by {tt weightedAmpleDivisorData}.  Call this only after
+      @TO canonicalNefData@ has shown that $K_X$ is not nef.  If a search
+      bound is reached, @TT "threshold"@ is null and @TT "phase"@
+      identifies the unfinished part of the search.
     Example
-      R = QQ[x0,x1,x2,x3];
-      canonicalNefThresholdData(R,1)
+      S = QQ[z00,z01,z02,z10,z11,z12];
+      X = S/minors(2,matrix{{z00,z01,z02},{z10,z11,z12}});
+      thresholdData = canonicalNefThresholdData(X,1);
+      {thresholdData#"threshold",thresholdData#"testsRun"}
   SeeAlso
     canonicalNefThreshold
     canonicalScaledNefData
@@ -2855,9 +3013,14 @@ Node
   Usage
     lambda = canonicalNefThreshold(R,a)
   Description
+    Text
+      Return only the rational number stored in the @TT "threshold"@ field
+      of @TO canonicalNefThresholdData@.  Use the data-returning form when
+      search diagnostics or certificates are needed.
     Example
-      R = QQ[x0,x1,x2,x3];
-      canonicalNefThreshold(R,1)
+      S = QQ[z00,z01,z02,z10,z11,z12];
+      X = S/minors(2,matrix{{z00,z01,z02},{z10,z11,z12}});
+      canonicalNefThreshold(X,1)
   SeeAlso
     canonicalNefThresholdData
 
@@ -2876,7 +3039,8 @@ Node
       a positive integer such that $aK_X$ is Cartier
   Outputs
     :HashTable
-      the Boolean answer and the base-point-free or non-nef witness
+      @TT "nef"@, @TT "conclusive"@, and the base-point-free or non-nef
+      witness supporting the answer
   Description
     Text
       The function alternates the two searches in Proposition 3.8.  It tests
@@ -2884,9 +3048,14 @@ Node
       positive perturbations $K_X+2^{-j}H$ by the effective multiplier of
       Proposition 3.1.  The hypotheses that $X$ is normal and log terminal are
       mathematical input requirements and are not certified by this function.
+      When @TT "conclusive"@ is true, @TT "nef"@ is the Boolean answer and
+      @TT "witnessType"@ explains its certificate.  A null @TT "nef"@
+      means only that the optional search limit was reached.
     Example
-      R = QQ[x_0..x_3];
-      canonicalNefData(R,1)
+      S = QQ[z00,z01,z02,z10,z11,z12];
+      X = S/minors(2,matrix{{z00,z01,z02},{z10,z11,z12}});
+      nefData = canonicalNefData(X,1);
+      {nefData#"nef",nefData#"witnessType"}
   Caveat
     With no search limit the algorithm terminates under the stated threefold
     hypotheses by abundance.  Passing {	t NefSearchLimit} makes the computation
@@ -2901,6 +3070,11 @@ Node
   Usage
     answer = isCanonicalNef(R,a)
   Description
+    Text
+      Convenience wrapper returning only the Boolean @TT "nef"@ value from
+      @TO canonicalNefData@.  With a bounded search it raises an error instead
+      of returning an inconclusive value; use @TO canonicalNefData@ to retain
+      partial search information.
     Example
       Q = QQ[y0,y1,y2,y3,y4]/ideal(y0^5+y1^5+y2^5+y3^5+y4^5);
       isCanonicalNef(Q,1)
@@ -2922,6 +3096,11 @@ Node
       nefness; a negative intersection with a curve obtained from its base
       locus proves non-nefness.  If neither short certificate is found, use the
       effective base-point-free multiplier from Proposition 3.1.
+    Example
+      S = QQ[z00,z01,z02,z10,z11,z12];
+      X = S/minors(2,matrix{{z00,z01,z02},{z10,z11,z12}});
+      scaled = canonicalScaledNefData(X,1,3);
+      {scaled#"nef",scaled#"certificateType"}
   SeeAlso
     effectiveNefMultiplier
     weightedAmpleDivisorData
@@ -2977,8 +3156,9 @@ Node
       corresponding weighted-homogeneous ample divisor together with its
       Cartier degree.
     Example
-      R = QQ[x0,x1,x2,x3];
-      weightedAmpleDivisorData R
+      W = QQ[z0,z1,z2,z3,Degrees=>{1,1,1,2}];
+      ample = weightedAmpleDivisorData W;
+      {ample#"weights",ample#"cartierDegree"}
 
 Node
   Key
@@ -3005,9 +3185,13 @@ Node
   Usage
     answer = isBasePointFreeDivisor D
   Description
+    Text
+      Return true precisely when the base locus of the complete linear system
+      is empty on the projective variety.
     Example
-      R = QQ[x0,x1,x2,x3];
-      ample = weightedAmpleDivisorData R;
+      S = QQ[z00,z01,z02,z10,z11,z12];
+      X = S/minors(2,matrix{{z00,z01,z02},{z10,z11,z12}});
+      ample = weightedAmpleDivisorData X;
       isBasePointFreeDivisor ample#"divisor"
 
 Node
