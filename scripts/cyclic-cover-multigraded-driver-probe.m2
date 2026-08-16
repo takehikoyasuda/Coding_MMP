@@ -55,42 +55,21 @@ stamp("natural presentation assembled");
 -- this genuinely multigraded, non-flattened presentation, with no hand-built
 -- contraction graph at all?
 print "--- canonicalNefData probe ---";
-nefResult = try canonicalNefData(Xnatural,2,Hnatural,
-    IrrelevantIdeal=>Bnatural,NefSearchLimit=>6)
-    else "ERRORED";
-if instance(nefResult,String) then print("canonicalNefData: " | nefResult)
-else (
-    print("canonicalNefData: conclusive=" | toString nefResult#"conclusive"
-        | " nef=" | toString nefResult#"nef");
-    );
+nefResult = try (canonicalNefData(Xnatural,2,Hnatural,IrrelevantIdeal=>Bnatural,NefSearchLimit=>6)) else "ERRORED";
+(if instance(nefResult,String) then print("canonicalNefData: " | nefResult) else print("canonicalNefData: conclusive=" | toString nefResult#"conclusive" | " nef=" | toString nefResult#"nef"));
 stamp("canonicalNefData probe");
 
 print "--- canonicalNefThresholdData probe ---";
-thresholdResult = try canonicalNefThresholdData(Xnatural,2,Hnatural,
-    IrrelevantIdeal=>Bnatural,ThresholdSearchLimit=>6)
-    else "ERRORED";
-if instance(thresholdResult,String) then
-    print("canonicalNefThresholdData: " | thresholdResult)
-else print("canonicalNefThresholdData: conclusive="
-    | toString thresholdResult#"conclusive");
+thresholdResult = try (canonicalNefThresholdData(Xnatural,2,Hnatural,IrrelevantIdeal=>Bnatural,ThresholdSearchLimit=>6)) else "ERRORED";
+(if instance(thresholdResult,String) then print("canonicalNefThresholdData: " | thresholdResult) else print("canonicalNefThresholdData: conclusive=" | toString thresholdResult#"conclusive"));
 stamp("canonicalNefThresholdData probe");
 
 print "--- canonicalContractionData probe ---";
-contractionResult = try canonicalContractionData(Xnatural,2,Hnatural,
-    ThresholdSearchLimit=>6,IrrelevantIdeal=>Bnatural)
-    else "ERRORED";
-if instance(contractionResult,String) then
-    print("canonicalContractionData: " | contractionResult)
-else print("canonicalContractionData: conclusive="
-    | toString contractionResult#"conclusive");
+contractionResult = try (canonicalContractionData(Xnatural,2,Hnatural,ThresholdSearchLimit=>6,IrrelevantIdeal=>Bnatural)) else "ERRORED";
+(if instance(contractionResult,String) then print("canonicalContractionData: " | contractionResult) else print("canonicalContractionData: conclusive=" | toString contractionResult#"conclusive"));
 stamp("canonicalContractionData probe");
 
 print "--- threefoldMMPData probe (the new top-level entry point) ---";
-mmpResult = try threefoldMMPData(Xnatural,2,Hnatural,
-    IrrelevantIdeal=>Bnatural,NefSearchLimit=>6,ThresholdSearchLimit=>6,
-    MMPMaxSteps=>1)
-    else "ERRORED";
-if instance(mmpResult,String) then print("threefoldMMPData: " | mmpResult)
-else print("threefoldMMPData: conclusive=" | toString mmpResult#"conclusive"
-    | " phase=" | toString (if mmpResult#?"phase" then mmpResult#"phase" else null));
+mmpResult = try (threefoldMMPData(Xnatural,2,Hnatural,IrrelevantIdeal=>Bnatural,NefSearchLimit=>6,ThresholdSearchLimit=>6,MMPMaxSteps=>1)) else "ERRORED";
+(if instance(mmpResult,String) then print("threefoldMMPData: " | mmpResult) else print("threefoldMMPData: conclusive=" | toString mmpResult#"conclusive" | " phase=" | toString (if mmpResult#?"phase" then mmpResult#"phase" else null)));
 stamp("threefoldMMPData probe");
