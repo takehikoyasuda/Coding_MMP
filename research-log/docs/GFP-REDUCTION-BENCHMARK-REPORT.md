@@ -9,11 +9,11 @@
 
 ## 背景・目的
 
-`docs/algorithmic_mmp_bpf_fastpath_notes.md` §3 は、Gröbner基底・saturation・syzygy等の計算が
+`algorithmic_mmp_bpf_fastpath_notes.md` §3 は、Gröbner基底・saturation・syzygy等の計算が
 QQ より F_p 上で大幅に速くなることが多い（coefficient swellと多倍長整数演算を避けられるため）
 という一般論から、QQ→F_p 還元を有力な高速化レバーとして提案している。
 
-`docs/BPF-CONSTRUCTION-VS-ASSESSMENT-BREAKDOWN.md` で、既存の `isBasePointFreeDivisorInternal`
+`BPF-CONSTRUCTION-VS-ASSESSMENT-BREAKDOWN.md` で、既存の `isBasePointFreeDivisorInternal`
 （`weilDivisorToModule` 構成 + `ann`/`saturate` 査定）のコストが n（$D=nK$ の $n$）とともに
 ほぼ全面的に構成側に集中することを確認済みである。本実験は、**既存パイプラインの形を一切変えず**、
 係数体だけを QQ から `ZZ/p` に置き換えて同じ計測を行い、実際にどれだけ速くなるか、その効果が
@@ -24,7 +24,7 @@ n とともにどう推移するかを直接測定する。
 ## 環境・手法
 
 - Macaulay2 1.26.06
-- `docs/STAGE2-MEASUREMENT-RESULTS.md` / `docs/BPF-CONSTRUCTION-VS-ASSESSMENT-BREAKDOWN.md` と
+- `STAGE2-MEASUREMENT-RESULTS.md` / `BPF-CONSTRUCTION-VS-ASSESSMENT-BREAKDOWN.md` と
   全く同じ singular な多重次数環 `Z`（canonical index 2）の構成を、係数体だけ `kk = ZZ/p` に
   置き換えて再構築（コーン・Hilbert basis等の組合せ論的な部分は体に依存しないため不変）。
 - `n*K` に対する構成（`weilDivisorToModule`）と査定（`basis`+`coker`+`ann`+`saturate`）を
@@ -69,7 +69,7 @@ n とともにどう推移するかを直接測定する。
 | 14 | 70.738 | 1.0584 | 71.796 | 98.5% |
 
 構成側の割合の推移はQQ版（n=1で41.6%→n=14で98.9%）とほぼ同じパターン（n=1で17.7%→n=14で
-98.5%）を辿る。したがって `docs/BPF-CONSTRUCTION-VS-ASSESSMENT-BREAKDOWN.md` の結論
+98.5%）を辿る。したがって `BPF-CONSTRUCTION-VS-ASSESSMENT-BREAKDOWN.md` の結論
 （ボトルネックの実質はほぼ全面的に構成側にある）は、GF(p) 上でも変わらない。
 
 ### QQ版との直接比較
@@ -111,17 +111,17 @@ n=9〜14では**約2.3〜2.4倍という狭い帯で頭打ち**になる。n=8�
 - **正しさは確認された**: 全14nでbpf結果がQQ版と完全一致。invertible-ideal実験のような
   「正しいが遅い」結果ではなく、「正しく、かつ速い」という肯定的な結果である。
 - **ただし、これは定数倍の改善であり、成長曲線の形そのものを変えるものではない**。
-  `docs/BPF-CONSTRUCTION-VS-ASSESSMENT-BREAKDOWN.md` で確認された、構成側（`weilDivisorToModule`）
+  `BPF-CONSTRUCTION-VS-ASSESSMENT-BREAKDOWN.md` で確認された、構成側（`weilDivisorToModule`）
   が支配する急増パターンはGF(p)上でも同様に残る。約2.3倍の一定倍率は、n方向の成長を
   1ステップ弱ほど後ろにずらす程度の効果に相当する。
 - **まだ rigorous な証明にはなっていない**: ここで確認したのは「mod pでの計算が速く、
   boolean の答えがQQ版と一致する」という経験的事実のみである。
-  `docs/algorithmic_mmp_bpf_fastpath_notes.md` §3 が要求する
+  `algorithmic_mmp_bpf_fastpath_notes.md` §3 が要求する
   「$H^1(X_p,L_p)=0$ の確認によるcharacteristic 0への厳密な持ち上げ」は本実験では
   一切実装・検証していない。したがって現時点でのGF(p)還元は、production的に「証明された
   BPF判定」として使えるものではなく、強いヒューリスティックな傍証にとどまる。
 - 構成/査定の比率がQQ版と同じ推移を辿ることから、GF(p)還元は
-  `docs/BPF-CONSTRUCTION-VS-ASSESSMENT-BREAKDOWN.md` の結論（§17の「4本のsection」案の
+  `BPF-CONSTRUCTION-VS-ASSESSMENT-BREAKDOWN.md` の結論（§17の「4本のsection」案の
   効果上限が小さいこと、構成側の回避が本命であること）と矛盾せず、**直交する独立の改善**
   として、将来 character/jet ベースの section oracle 設計と組み合わせられる可能性がある。
 
@@ -134,6 +134,6 @@ n=9〜14では**約2.3〜2.4倍という狭い帯で頭打ち**になる。n=8�
 - 各nの生ログ: `gflog_n1.txt` 〜 `gflog_n14.txt`
 - 比較対象（既存・不変）: `bpf-breakdown-single.m2`, `log_n1.txt` 〜 `log_n14.txt`
 - 関連する既存文書:
-  - `docs/BPF-CONSTRUCTION-VS-ASSESSMENT-BREAKDOWN.md`
-  - `docs/algorithmic_mmp_bpf_fastpath_notes.md`（§3）
-  - `docs/INVERTIBLE-IDEAL-CACHING-EXPERIMENT-REPORT.md`
+  - `BPF-CONSTRUCTION-VS-ASSESSMENT-BREAKDOWN.md`
+  - `algorithmic_mmp_bpf_fastpath_notes.md`（§3）
+  - `INVERTIBLE-IDEAL-CACHING-EXPERIMENT-REPORT.md`

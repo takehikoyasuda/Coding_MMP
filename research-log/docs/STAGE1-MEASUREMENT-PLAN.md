@@ -363,7 +363,7 @@ result is itself the answer to the question being asked.
 
 1. The code changes, each task a separate commit on a branch (do not commit to
    `main`).
-2. A results file `docs/STAGE1-MEASUREMENT-RESULTS.md` containing the tables of
+2. A results file `STAGE1-MEASUREMENT-RESULTS.md` containing the tables of
    5.2 and 5.3, the environment (M2 version, machine), and a short section
    "what this does and does not establish".
 3. The update to `docs/MULTIGRADED-DESIGN.md` required by criterion 5.

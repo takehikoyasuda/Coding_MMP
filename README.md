@@ -35,6 +35,7 @@ The current development environment uses Macaulay2 1.26.06.
 | `docs/IMPLEMENTATION-STATUS.md` | trusted scope, known failures, and paper-to-code map |
 | `docs/ROADMAP.md` | implementation order for the full MMP |
 | `scripts/test-upstreams.sh` | reproducible baseline test runner |
+| [`research-log/`](research-log/README.md) | archived cost measurements, root-cause investigations, and negative results from performance work; not required reading to use the package |
 
 ## Stein graph status
 
@@ -99,8 +100,29 @@ graph sequence and terminates at either a minimal model or a Mori fibre space.
 independently certified nonterminal prefix, which is useful for long computed
 birational steps and checkpointed runs.
 
+## Documentation
+
+`MMPComputation.m2` carries a standard Macaulay2 package manual (`doc ///...///`
+blocks after `beginDocumentation()`) describing each public function's usage,
+inputs, and outputs, with runnable examples for the top-level API. Build and
+browse it with
+
+```m2
+needsPackage("MMPComputation", FileName => "MMPComputation.m2");
+installPackage "MMPComputation";
+viewHelp "MMPComputation";
+```
+
+`installPackage` also runs and validates every documented example as part of
+building the manual.
+
+Regression tests in `tests/` are run with `make test-core`; a separate slow
+capstone test (a two-step MMP computed end to end, `~15` minutes of cpu time)
+is run on demand with `make test-slow`.
+
 ## License
 
-The two implementation submodules are dedicated to the public domain under
-CC0 1.0. A license for new integration-layer code will be added before its
-first public release.
+This repository's integration-layer code (`MMPComputation.m2`, `tests/`,
+`scripts/`, `research-log/`) is dedicated to the public domain under CC0 1.0,
+the same license as both pinned implementation submodules; see
+[LICENSE](LICENSE).

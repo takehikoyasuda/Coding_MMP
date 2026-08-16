@@ -3,7 +3,7 @@
 -- Wall time is dominated by mmpStepRecordData's contractionSmallnessData
 -- call below, which took roughly 13-14 minutes of cpu time when this file
 -- was written (2026-08-14, Macaulay2 1.26.06, Darwin arm64).  See
--- docs/STEIN-FACTORIZATION-COST-EXPERIMENT-REPORT.md's "Capstone" section
+-- research-log/docs/STEIN-FACTORIZATION-COST-EXPERIMENT-REPORT.md's "Capstone" section
 -- for the full cost breakdown and the reasoning behind every step below.
 --
 -- This is the first nontrivial (more than one step) smooth MMP example in
@@ -12,7 +12,7 @@
 -- Bl_L(P3)/Bl_p(P3) birational-continuation regressions in
 -- tests/contraction.m2, which both require the first contraction graph to
 -- be built by hand because the natural monograded (Rees-Proj) presentation
--- of the blow-up stalls (docs/BOTTLENECKS-AND-MULTIGRADING.md).
+-- of the blow-up stalls (research-log/docs/BOTTLENECKS-AND-MULTIGRADING.md).
 --
 -- Bl_p(P3) is presented in P3 x P2 as the incidence variety
 --   {(x,u) : rank of matrix{{x1,x2,x3},{u0,u1,u2}} <= 1},

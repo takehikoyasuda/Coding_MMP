@@ -1,7 +1,7 @@
 needsPackage("MMPComputation",FileName=>"MMPComputation.m2");
 needsPackage("WeilDivisors");
 
--- docs/TORIC-HYPERSURFACE-FLIP-MMP-DESIGN.md sections 5 and 7 (Phase C):
+-- research-log/docs/TORIC-HYPERSURFACE-FLIP-MMP-DESIGN.md sections 5 and 7 (Phase C):
 -- canonicalNefThresholdDataCore's candidate-search step now picks the
 -- cheapest untested candidate (by denominator, then numerator) instead of
 -- the sorted list's middle index, and records enough per-test diagnostic
@@ -54,7 +54,7 @@ print "OK cost-aware threshold search: Bl_p(P3) tries the denominator-2 candidat
 
 -- Segre P1xP2: candidates = {3,4}, the same "window of exactly one" shape
 -- as P3 -- included so both of the plan's rank-2 measurement inputs
--- (docs/STAGE1-MEASUREMENT-PLAN.md section 5.1) are covered here, not just
+-- (research-log/docs/STAGE1-MEASUREMENT-PLAN.md section 5.1) are covered here, not just
 -- the monograded case.
 S = QQ[s,t,u,v,w1, Degrees => {{1,0},{1,0},{0,1},{0,1},{0,1}}];
 H = divisor(s) + divisor(u);

@@ -1,6 +1,6 @@
 # Stage 1 measurement results
 
-Results of carrying out `docs/STAGE1-MEASUREMENT-PLAN.md`.  All numbers below
+Results of carrying out `STAGE1-MEASUREMENT-PLAN.md`.  All numbers below
 were measured on 2026-08-13 on this checkout, on the branch
 `feature/multigraded-stage1`, after tasks T1-T5 (and T4) landed as separate
 commits.  Scripts used to produce these numbers were run from a scratch
@@ -120,7 +120,7 @@ the plan's own preliminary measurements (section 2) reported for the
 
 ## 4. Segre monograded comparison (already measured; not re-derived)
 
-Per the task's supplied verified facts and `docs/BOTTLENECKS-AND-MULTIGRADING.md`,
+Per the task's supplied verified facts and `BOTTLENECKS-AND-MULTIGRADING.md`,
 the monograded Segre presentation `QQ[y0..y5]/I_2(...)`, `H = O(1)`,
 `D = 2K+H`, costs to build `OO(m*D)`:
 

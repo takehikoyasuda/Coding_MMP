@@ -9,7 +9,7 @@
 
 ## 背景・目的
 
-`docs/algorithmic_mmp_bpf_fastpath_notes.md` §7–16 は、$D=aK_X+bH$ 型divisorのBPF判定を、
+`algorithmic_mmp_bpf_fastpath_notes.md` §7–16 は、$D=aK_X+bH$ 型divisorのBPF判定を、
 `weilDivisorToModule`によるfull reflexive hull構成を避け、各terminal特異点でのcanonical cover
 上のcharacter/jet条件から直接section を構成する、という設計（"section oracle"）を提案していた。
 その本命の仮説（§16）は:
@@ -19,7 +19,7 @@ $$0\to F_a\to\omega_X^{[a]}\to Q_a\to0,\qquad F_a=(\omega_X^{\otimes a})/\text{t
 において、特異点にsupportを持つ有限長層 $Q_a$ は「特異点の型と $a\bmod r$（$r$=局所index）
 だけで決まり、事前計算・table化できる」というものだった。
 
-`docs/BPF-CONSTRUCTION-VS-ASSESSMENT-BREAKDOWN.md` で、実際のボトルネックが
+`BPF-CONSTRUCTION-VS-ASSESSMENT-BREAKDOWN.md` で、実際のボトルネックが
 `weilDivisorToModule`のreflexive hull構成そのもの（n=14で全体の98.9%）にあることを確認済み
 であり、この $Q_a$ のtable化が本当に機能するかどうかが、`algorithmic_mmp_bpf_fastpath_notes.md`
 の設計全体（§7–17）の投資価値を決める試金石だった。
@@ -99,7 +99,7 @@ $\{1,7,22,50,95,\dots\}$は増加し続ける）。成長は漸近的に $\Theta
 ### 決定的な問題: これは既に否定済みのアイデアと同一
 
 「$a$を$\bmod r$に縮約し、cacheした invertible ideal $\mathcal O(rK)^q$ を掛ける」という、
-この局所実験が唯一正当化できる高速化案は、**`docs/INVERTIBLE-IDEAL-CACHING-EXPERIMENT-REPORT.md`
+この局所実験が唯一正当化できる高速化案は、**`INVERTIBLE-IDEAL-CACHING-EXPERIMENT-REPORT.md`
 で既に実験・否定済みのアイデアと全く同一**である。あちらの実験は、この同じアイデアを
 Stage 2のグローバルな次数付き環で実際に試し、「正しいが4–6倍遅い」（`ann`/`saturate`側の
 コストがグローバル設定で爆発する）という結果を得ていた。今回の局所的な正しさの確認は、
@@ -139,7 +139,7 @@ character予測は既存package比で約20倍、素朴なreflexive powerに対�
   §10自身の限界が、今回の実験で速度面からも裏付けられた）
 
 このセッションを通じて残る、実際に投資価値のある方向は:
-- **`docs/GFP-REDUCTION-BENCHMARK-REPORT.md`**（GF(p)還元、検証済みの約2.3倍の定数倍改善、
+- **`GFP-REDUCTION-BENCHMARK-REPORT.md`**（GF(p)還元、検証済みの約2.3倍の定数倍改善、
   ただしcharacteristic 0への厳密な持ち上げは未実装）
 - **§7.1（truncated Ext、$a=1$/Gorenstein/index-1の場合に限定した、canonical moduleの
   次数を絞った計算）**——これは今回の実験が扱った「$a>1$の反射べき」問題とは別物であり、
@@ -157,7 +157,7 @@ character予測は既存package比で約20倍、素朴なreflexive powerに対�
 - `step4.m2`/`step4.log` — one-step/$r$-step補正の周期性
 - `step5.m2`/`step5.log` — $\operatorname{length}Q_a$の成長、$a=14$まで
 - 関連する既存文書:
-  - `docs/algorithmic_mmp_bpf_fastpath_notes.md`（§7–16）
-  - `docs/INVERTIBLE-IDEAL-CACHING-EXPERIMENT-REPORT.md`
-  - `docs/BPF-CONSTRUCTION-VS-ASSESSMENT-BREAKDOWN.md`
-  - `docs/GFP-REDUCTION-BENCHMARK-REPORT.md`
+  - `algorithmic_mmp_bpf_fastpath_notes.md`（§7–16）
+  - `INVERTIBLE-IDEAL-CACHING-EXPERIMENT-REPORT.md`
+  - `BPF-CONSTRUCTION-VS-ASSESSMENT-BREAKDOWN.md`
+  - `GFP-REDUCTION-BENCHMARK-REPORT.md`

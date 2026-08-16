@@ -18,7 +18,7 @@ project as a whole.
 
 ## Executive Summary
 
-`docs/SIMPLE-FLIP-NEF-TRACTABILITY-REPORT.md` found that `tests/relative-model.m2`'s toric-circuit examples, run through `canonicalNefData`, complete (~510-530s) but always land on `nef=false`, across every variant tried. That report's compactification method -- adjoining one extra variable `w` to the affine toric cone's coordinate ring and using Macaulay2's default (standard) grading -- was flagged as a likely culprit: it was built only to give `computeFlip` a projective input to test, not to encode a specific compact toric variety with a controlled nef cone.
+`SIMPLE-FLIP-NEF-TRACTABILITY-REPORT.md` found that `tests/relative-model.m2`'s toric-circuit examples, run through `canonicalNefData`, complete (~510-530s) but always land on `nef=false`, across every variant tried. That report's compactification method -- adjoining one extra variable `w` to the affine toric cone's coordinate ring and using Macaulay2's default (standard) grading -- was flagged as a likely culprit: it was built only to give `computeFlip` a projective input to test, not to encode a specific compact toric variety with a controlled nef cone.
 
 This experiment replaces that ad hoc device with a genuine, explicit **fan**, built and verified with the `NormalToricVarieties` package, and asks the same question using **exact combinatorial nef-checking** (`isNef`) instead of the general, slow `canonicalNefData` search.
 

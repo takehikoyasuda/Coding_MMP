@@ -64,7 +64,7 @@ weilDivisorsPackage := needsPackage "WeilDivisors";
 weilDivisorToModule := value(
     weilDivisorsPackage#"private dictionary"#"divisorToModule");
 
--- docs/TORIC-HYPERSURFACE-FLIP-MMP-DESIGN.md section 6.3: WeilDivisors'
+-- research-log/docs/TORIC-HYPERSURFACE-FLIP-MMP-DESIGN.md section 6.3: WeilDivisors'
 -- mapToProjectiveSpace defends against the D = 0 case (embedAsIdeal's
 -- returned degree shift d1 is the zero degree, so the naive map's kernel
 -- would be inhomogeneous) by checking only d1#0 == 0, i.e. only the first
@@ -125,7 +125,7 @@ mapToProjectiveSpaceInternal BasicDivisor := RingMap => o -> D1 -> (
     map(R1,S1,varTargetList)
     )
 
--- Stage 1 (T1) of docs/STAGE1-MEASUREMENT-PLAN.md: block structure and the
+-- Stage 1 (T1) of research-log/docs/STAGE1-MEASUREMENT-PLAN.md: block structure and the
 -- irrelevant ideal of a (possibly multigraded) presentation.  Unexported by
 -- design -- this is bookkeeping consumed by T2/T3/T5, not a public entry
 -- point.
@@ -256,7 +256,7 @@ effectiveNefMultiplier (ZZ,ZZ) := (d,N) -> (
     )
 
 -- Stage 1 (T2): saturated versions of the two WeilDivisors predicates
--- diagnosed in docs/STAGE1-MEASUREMENT-PLAN.md section 3.  Both compare a
+-- diagnosed in research-log/docs/STAGE1-MEASUREMENT-PLAN.md section 3.  Both compare a
 -- cone ideal with the unit ideal; that comparison is only correct when the
 -- irrelevant ideal is the maximal ideal, i.e. r = 1.  Multigraded, the cone
 -- ideal must be saturated against B = B_1*...*B_r (T1) first.
@@ -411,8 +411,9 @@ principalShiftCartierCertificateInternal = D ->
     principalHomogeneousShiftDegreeInternal D =!= null
 
 -- Sufficient (not necessary) certificate that kCoeff*K is Cartier, found
--- while root-causing the canonicalIndexData/isCartier bottleneck (memory
--- hom-fastpath-scope-excludes-iscartier): if the kCoeff-th reflexive power
+-- while root-causing the canonicalIndexData/isCartier bottleneck (see
+-- research-log/docs/CARTIER-INDEX-FASTPATH-AND-CYCLIC-COVER-INVESTIGATION.md):
+-- if the kCoeff-th reflexive power
 -- of the cached canonical-ideal seed (canonicalIdealSeedDataInternal) is
 -- itself principal (a single generator after trim), the corresponding
 -- module is free of rank 1, so kCoeff*K is Cartier -- again unconditionally,
@@ -549,7 +550,7 @@ isCartierSaturatedInternal = (D,B) -> (
 -- the caller-supplied-B overloads below; isCartierMultigraded(D) alone is
 -- unchanged behaviour for every existing (unexported, internal-only) caller
 -- -- grep confirms it has none in this package or tests/, only mentions in
--- docs/STAGE1-MEASUREMENT-RESULTS.md's prose.
+-- research-log/docs/STAGE1-MEASUREMENT-RESULTS.md's prose.
 isCartierMultigraded = method()
 isCartierMultigraded BasicDivisor := D ->
     isCartierSaturatedInternal(D,(multigradedBlockData ring D)#"irrelevantIdeal")
@@ -620,7 +621,7 @@ negativeBaseLocusCurveData = (D,B) -> (
     witness
     )
 
--- Iterated multigrading, Phase 4 idea (docs/ITERATED-MULTIGRADING-MMP-PLAN.md
+-- Iterated multigrading, Phase 4 idea (research-log/docs/ITERATED-MULTIGRADING-MMP-PLAN.md
 -- section "Stein factorization との境界" and the 2026-08-15 discussion of
 -- cheaper non-nef certificates): the multigraded generalization of
 -- negativeBaseLocusCurveData above.  That function is hardcoded to
@@ -779,7 +780,7 @@ mmpGraphMorphism HashTable := graph -> (
 -- Stage 2 (T1, completing Stage 1's T1/T3): the trailing B argument is the
 -- known-correct irrelevant ideal (an Ideal, or null), threaded through from
 -- whichever entry point built this call.  This is genuinely completing
--- Stage 1's T1/T3, not new Stage 2 work: docs/STAGE1-MEASUREMENT-PLAN.md's
+-- Stage 1's T1/T3, not new Stage 2 work: research-log/docs/STAGE1-MEASUREMENT-PLAN.md's
 -- T1 already anticipated "prefer [a provenance] irrelevantIdeal field over
 -- recomputing", but no caller-supplied-B entry point threaded that value
 -- into this function's OWN base-point-free tests below -- every one of them
@@ -804,7 +805,7 @@ canonicalScaledNefDataInternal = (R,K,H,a,t,B,classDegrees) -> (
     -- does not need and, found this session, cannot always get: a genuinely
     -- non-block-decomposable multigraded ring (e.g. a VGIT/Cox-ring chamber
     -- whose irrelevant ideal is not a product of per-degree-component block
-    -- ideals -- see docs/COMPACT-TORIC-FLIP-FAN-CONSTRUCTION-REPORT.md's
+    -- ideals -- see research-log/docs/COMPACT-TORIC-FLIP-FAN-CONSTRUCTION-REPORT.md's
     -- chamber B) makes multigradedBlockData error out unconditionally, even
     -- when the caller has already supplied a correct B above and needs
     -- nothing else from multigradedBlockData here.  Computing the same
@@ -1165,7 +1166,7 @@ canonicalNefThresholdDataCore = (R,a,K,H,d,limit,B) -> (
         );
     -- The number of tests a linear scan of the same sorted candidate list
     -- would have needed to reach the same threshold, for direct comparison
-    -- with testsRun (see docs/STAGE1-MEASUREMENT-RESULTS.md); null when no
+    -- with testsRun (see research-log/docs/STAGE1-MEASUREMENT-RESULTS.md); null when no
     -- threshold was found.  Cost-aware search trades test *count* for lower
     -- test *cost* (see above), so unlike the binary search it replaces, it
     -- has no general guarantee of testsRun <= linearTestsRunEquivalent.
@@ -1348,7 +1349,7 @@ completeLinearSystemGraphData BasicDivisor := D -> (
 -- literally the polarization the multigraded presentation was built from --
 -- the result is an isomorphic (as varieties) singly graded presentation of
 -- the same X; this is not verified in general (see
--- docs/STAGE1-MEASUREMENT-RESULTS.md).
+-- research-log/docs/STAGE1-MEASUREMENT-RESULTS.md).
 diagonalSubalgebraData = (R,w) -> (
     if ring w =!= R then
         error "diagonalSubalgebraData: w must be a divisor on R";
@@ -1979,16 +1980,16 @@ mmpStepRecordData (HashTable,HashTable) := o -> (contraction,model) -> (
     )
 
 -- The IrrelevantIdeal option (added while extending the BPF fastpath's
--- canonical-ideal-seed idea to isCartier itself; see memory
--- hom-fastpath-scope-excludes-iscartier) is purely additive: when null
--- (every existing caller), the fallback below is the exact original
--- isCartier(i*K,IsGraded=>true) call, so behaviour is unchanged wherever the
--- new cheap certificates below do not apply.  When supplied, the fallback
--- uses isCartierSaturatedInternal(i*K,B) instead of the generic isCartier,
--- which also fixes a separate, independently documented correctness gap
--- (WeilDivisors' own getIrrelevantIdeal(R) can be wrong on mixed-sign
--- multigraded rings; see memory chamberb-coxring-driver-probe) for any
--- caller that does supply a known-correct B.
+-- canonical-ideal-seed idea to isCartier itself; see
+-- research-log/docs/CARTIER-INDEX-FASTPATH-AND-CYCLIC-COVER-INVESTIGATION.md)
+-- is purely additive: when null (every existing caller), the fallback below
+-- is the exact original isCartier(i*K,IsGraded=>true) call, so behaviour is
+-- unchanged wherever the new cheap certificates below do not apply.  When
+-- supplied, the fallback uses isCartierSaturatedInternal(i*K,B) instead of
+-- the generic isCartier, which also fixes a separate, independently
+-- documented correctness gap (WeilDivisors' own getIrrelevantIdeal(R) can be
+-- wrong on mixed-sign multigraded rings; same report) for any caller that
+-- does supply a known-correct B.
 canonicalIndexData = method(Options => {
     CanonicalIndexSearchLimit => null, IrrelevantIdeal => null})
 canonicalIndexData Ring := o -> R -> (
@@ -2153,7 +2154,7 @@ threefoldMMPData (Ring,ZZ,List) := o -> (initialRing,initialIndex,initialSteps) 
         }
     )
 
--- Iterated multigrading, Phase 1 (docs/ITERATED-MULTIGRADING-MMP-PLAN.md):
+-- Iterated multigrading, Phase 1 (research-log/docs/ITERATED-MULTIGRADING-MMP-PLAN.md):
 -- the top-level multigraded entry point.  The caller supplies the ample
 -- Cartier class H and irrelevant ideal B for the *current* multigraded
 -- presentation, so this first iteration's nefness test and contraction reuse
@@ -2445,6 +2446,9 @@ Node
       contraction and relative-model results expose their public graphs in
       this representation, while retaining raw computation tables separately
       as certificates.
+  SeeAlso
+    canonicalContractionData
+    relativeCanonicalModelData
 
 Node
   Key
@@ -2475,6 +2479,9 @@ Node
       monograded (a current limitation of @TO relativeCanonicalModelData@,
       not of this entry point), so later iterations fall back to the
       @TO List@ form automatically.
+    Example
+      R = QQ[x0,x1,x2,x3];
+      threefoldMMPData(R,1)
 
 Node
   Key
@@ -2484,6 +2491,20 @@ Node
     find the Cartier index of the canonical divisor
   Usage
     result = canonicalIndexData R
+  Inputs
+    R:Ring
+      the homogeneous coordinate ring of a normal projective variety
+  Outputs
+    :HashTable
+      the least positive integer index for which index*K_X is Cartier
+  Description
+    Text
+      Search increasing multiples of $K_X$ for the first one that is
+      Cartier, using cheap sufficient certificates before falling back to
+      the general test.  A smooth variety always has index 1.
+    Example
+      R = QQ[x0,x1,x2,x3];
+      canonicalIndexData R
 
 Node
   Key
@@ -2501,7 +2522,20 @@ Node
       coordinates for $W \dashrightarrow Z$, verifies the model and graph
       equations, and certifies that their base locus is the Rees centre after
       saturation.  Skew weighted fibre coordinates use the positive diagonal
-      selected by @TO b2mDiagonalData@.
+      selected internally by {tt b2mDiagonalData}.
+    Example
+      needsPackage "Polyhedra";
+      rayList = {{1,0,0}, {0,1,0}, {0,0,1}, {1,1,-2}};
+      HB = apply(hilbertBasis dualCone coneFromVData transpose matrix rayList,
+          v -> flatten entries v);
+      L = QQ[t1,t2,t3];
+      S0 = QQ[y_1 .. y_(#HB)];
+      I0 = ker map(L,S0,apply(HB,h -> t1^(h#0)*t2^(h#1)*t3^(h#2)));
+      S = QQ[y_1 .. y_(#HB),w];
+      W = S/sub(I0,S);
+      flipModel = relativeCanonicalModelFromBaseData(W,RelativeCanonicalMultipliers=>{1});
+      inverseModel = relativeModelInverseRationalMapData flipModel;
+      inverseModel#"modelRelationsVanish"
   SeeAlso
     relativeCanonicalModelData
     mmpStepRecordData
@@ -2551,6 +2585,17 @@ Node
       relative model is recorded as flipping or mixed when the smallness of the
       original contraction is supplied, and otherwise as flipping-or-mixed.
       Both the contraction graph and relative-model graph remain in the record.
+    Example
+      P3 = QQ[p0,p1,p2,p3];
+      identityHyperplane = (weightedAmpleDivisorData P3)#"divisor";
+      contraction = new HashTable from {
+          "conclusive" => true,
+          "isBirational" => true,
+          "contractionGraph" => (completeLinearSystemGraphData identityHyperplane)#"graph",
+          "steinAlgebraData" => new HashTable from {"ring" => P3}
+          };
+      model = relativeCanonicalModelFromBaseData P3;
+      mmpStepRecordData(contraction,model)
 
 Node
   Key
@@ -2565,6 +2610,10 @@ Node
       The relative model is an isomorphism precisely when its canonical
       blow-up ideal is locally free of rank one.  The model computation tests
       this using the first Fitting ideal and saturation by the irrelevant ideal.
+    Example
+      P3 = QQ[p0,p1,p2,p3];
+      model = relativeCanonicalModelFromBaseData P3;
+      relativeCanonicalModelIsomorphismData model
 
 Node
   Key
@@ -2588,6 +2637,21 @@ Node
     compute the next model from a birational contraction result
   Usage
     result = relativeCanonicalModelData contraction
+  Description
+    Text
+      Extract the contraction target from @TT "contraction"@ and delegate to
+      @TO relativeCanonicalModelFromBaseData@.  This is the form used by
+      @TO threefoldMMPData@ between successive birational steps.
+    Example
+      P3 = QQ[p0,p1,p2,p3];
+      identityHyperplane = (weightedAmpleDivisorData P3)#"divisor";
+      contraction = new HashTable from {
+          "conclusive" => true,
+          "isBirational" => true,
+          "contractionGraph" => (completeLinearSystemGraphData identityHyperplane)#"graph",
+          "steinAlgebraData" => new HashTable from {"ring" => P3}
+          };
+      relativeCanonicalModelData contraction
   SeeAlso
     relativeCanonicalModelFromBaseData
     canonicalContractionData
@@ -2605,6 +2669,9 @@ Node
       Return birational when the two dimensions agree and fibration when the
       target has smaller dimension.  Contraction results include the same
       classification fields automatically.
+    Example
+      contractionTypeData(3,3)
+      contractionTypeData(3,1)
 
 Node
   Key
@@ -2614,6 +2681,71 @@ Node
     construct the graph of a complete base-point-free linear system
   Usage
     graphData = completeLinearSystemGraphData D
+
+Node
+  Key
+    diagonalSubalgebraData
+  Headline
+    flatten a multigraded ring to the diagonal subalgebra of an ample class
+  Usage
+    data = diagonalSubalgebraData(R,w)
+  Inputs
+    R:Ring
+      a multigraded ring
+    w:BasicDivisor
+      a very ample divisor class on R
+  Outputs
+    :HashTable
+      the singly graded diagonal subalgebra of R and its section map from R
+  Description
+    Text
+      Build the subring generated by the degree-@TT "w"@ strand of $R$, i.e.
+      the image of the rational map given by a spanning set of sections of
+      @TT "w"@.  When @TT "w"@ is very ample this is an isomorphic singly
+      graded presentation of the same variety; used internally to bridge
+      multigraded presentations into {tt SteinFactorization}'s
+      block-diagonal bigraded requirement.
+    Example
+      needsPackage "WeilDivisors";
+      S = QQ[s,t,u,v,w1, Degrees => {{1,0},{1,0},{0,1},{0,1},{0,1}}];
+      H = divisor(s) + divisor(u);
+      flattening = diagonalSubalgebraData(S,H);
+      degreeLength flattening#"flatRing"
+  SeeAlso
+    completeLinearSystemGraphDataMultigraded
+
+Node
+  Key
+    completeLinearSystemGraphDataMultigraded
+    (completeLinearSystemGraphDataMultigraded,BasicDivisor,BasicDivisor)
+  Headline
+    construct the graph of a base-point-free system on a multigraded ring
+  Usage
+    graphData = completeLinearSystemGraphDataMultigraded(D,w)
+  Inputs
+    D:BasicDivisor
+      a base-point-free divisor on a multigraded ring R
+    w:BasicDivisor
+      a very ample divisor class on R, used to flatten the source
+  Outputs
+    :HashTable
+      the graph data of D's complete linear system
+  Description
+    Text
+      The multigraded companion of @TO completeLinearSystemGraphData@: the
+      source side of the graph is built from @TO diagonalSubalgebraData@'s
+      flattened ring, since {tt SteinFactorization} requires a block-diagonal
+      bigraded presentation, while D's own sections still come from R
+      directly.
+    Example
+      needsPackage "WeilDivisors";
+      S = QQ[s,t,u,v,w1, Degrees => {{1,0},{1,0},{0,1},{0,1},{0,1}}];
+      D = divisor u;
+      H = divisor(s) + divisor(u);
+      g = completeLinearSystemGraphDataMultigraded(D,H);
+      g#"sectionImages"
+  SeeAlso
+    diagonalSubalgebraData
 
 Node
   Key
@@ -2639,6 +2771,16 @@ Node
     compute the canonical nef threshold and its extremal-face contraction
   Usage
     result = canonicalContractionData(R,a)
+  Description
+    Text
+      Compute the canonical nef threshold with @TO canonicalNefThresholdData@,
+      then construct the contraction at that threshold.  Assumes $K_X$ is not
+      already nef.
+    Example
+      S = QQ[z00,z01,z02,z10,z11,z12];
+      X = S/minors(2,matrix{{z00,z01,z02},{z10,z11,z12}});
+      contraction = canonicalContractionData(X,1);
+      contraction#"contractionType"
   SeeAlso
     canonicalNefThresholdData
     canonicalContractionAtThresholdData
@@ -2658,6 +2800,9 @@ Node
       dyadic searches bracket the threshold and the rationality theorem gives
       a finite candidate list.  The ample Cartier divisor $H$ is the one
       returned by {tt weightedAmpleDivisorData}.
+    Example
+      R = QQ[x0,x1,x2,x3];
+      canonicalNefThresholdData(R,1)
   SeeAlso
     canonicalNefThreshold
     canonicalScaledNefData
@@ -2670,6 +2815,10 @@ Node
     return the canonical nef threshold
   Usage
     lambda = canonicalNefThreshold(R,a)
+  Description
+    Example
+      R = QQ[x0,x1,x2,x3];
+      canonicalNefThreshold(R,1)
   SeeAlso
     canonicalNefThresholdData
 
@@ -2712,6 +2861,10 @@ Node
     return the Boolean canonical-nefness answer
   Usage
     answer = isCanonicalNef(R,a)
+  Description
+    Example
+      Q = QQ[y0,y1,y2,y3,y4]/ideal(y0^5+y1^5+y2^5+y3^5+y4^5);
+      isCanonicalNef(Q,1)
   SeeAlso
     canonicalNefData
 
@@ -2736,12 +2889,57 @@ Node
 
 Node
   Key
+    negativeCurveWitnessData
+    (negativeCurveWitnessData,BasicDivisor,Ideal,Ideal,List)
+  Headline
+    find a curve witnessing that a multigraded divisor is not nef
+  Usage
+    witness = negativeCurveWitnessData(D,candidateBaseLocus,B,h)
+  Inputs
+    D:BasicDivisor
+      a divisor on a multigraded ring R
+    candidateBaseLocus:Ideal
+      an ideal of R containing D's base locus (before saturation)
+    B:Ideal
+      the irrelevant ideal of R
+    h:List
+      the multidegree of an ample class, one entry per grading component
+  Outputs
+    :HashTable
+      a curve and its negative intersection number with D, or @TO null@ if
+      no witness was found
+  Description
+    Text
+      The multigraded generalization of the package's single-graded
+      negative-curve shortcut: cut components of the saturated base locus
+      down to a curve, then read off $D \cdot C$ from the eventual (constant)
+      difference of @TO hilbertFunction@ values at multiples of $h$.  Returns
+      @TO null@, never a wrong answer, when no witness stabilizes within
+      @TT "NegativeCurveSearchLimit"@ attempts.
+
+      This is a candidate cheaper alternative to
+      @TO isBasePointFreeDivisor@'s own non-nefness test and is not yet used
+      by any other function in this package; @TT "candidateBaseLocus"@ must
+      be supplied by the caller (for instance from bookkeeping already done
+      while searching for @TT "D"@), since WeilDivisors' own
+      @TT "baseLocus"@ is not reliable for every divisor.
+
+Node
+  Key
     weightedAmpleDivisorData
     (weightedAmpleDivisorData,Ring)
   Headline
     construct the ample Cartier divisor from the coordinate weights
   Usage
     data = weightedAmpleDivisorData R
+  Description
+    Text
+      Read the generator weights of $R$'s single grading and return the
+      corresponding weighted-homogeneous ample divisor together with its
+      Cartier degree.
+    Example
+      R = QQ[x0,x1,x2,x3];
+      weightedAmpleDivisorData R
 
 Node
   Key
@@ -2751,6 +2949,13 @@ Node
     compute the effective base-point-free multiplier
   Usage
     m = effectiveNefMultiplier(d,N)
+  Description
+    Text
+      The effective multiplier of Proposition 3.1 for a $d$-dimensional
+      variety and denominator $N$ of the tested rational multiple.
+    Example
+      effectiveNefMultiplier(3,1)
+      effectiveNefMultiplier(3,2)
 
 Node
   Key
@@ -2760,6 +2965,11 @@ Node
     test whether a complete divisor linear system is base-point-free
   Usage
     answer = isBasePointFreeDivisor D
+  Description
+    Example
+      R = QQ[x0,x1,x2,x3];
+      ample = weightedAmpleDivisorData R;
+      isBasePointFreeDivisor ample#"divisor"
 
 Node
   Key
@@ -2817,13 +3027,34 @@ Node
 
 Node
   Key
+    DivisorClassDegrees
+  Headline
+    caller-supplied {degree(K),degree(H)}, bypassing recomputation
+  Description
+    Text
+      Pass @TT "{degree(K),degree(H)}"@ to @TO canonicalScaledNefData@ (and
+      its multigraded overload) when the caller already holds the canonical
+      and ample divisor classes' degrees, to skip re-deriving them.  Default
+      null preserves the previous behaviour exactly.
+
+Node
+  Key
+    NegativeCurveSearchLimit
+  Headline
+    optional iteration bound for the multigraded negative-curve search
+  Description
+    Text
+      Bounds the number of dimension-reducing cuts @TO negativeCurveWitnessData@
+      tries before giving up and returning @TO null@.
+
+Node
+  Key
     IrrelevantIdeal
   Headline
     caller-supplied irrelevant ideal, bypassing multigradedBlockData
   Description
     Text
-      Stage 2 (T1) of docs/STAGE2-SINGULAR-MEASUREMENT-PLAN.md: on a
-      multigraded ring with a "skew" fibre grading (as produced by
+      On a multigraded ring with a "skew" fibre grading (as produced by
       FlipComputation's bigradedReesProjection whenever the ideal being
       blown up is not equigenerated), multigradedBlockData can silently
       return an irrelevant ideal with the wrong radical, and the Cartier

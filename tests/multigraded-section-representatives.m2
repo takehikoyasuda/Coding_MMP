@@ -1,7 +1,7 @@
 needsPackage("MMPComputation",FileName=>"MMPComputation.m2");
 needsPackage("WeilDivisors");
 
--- docs/TORIC-HYPERSURFACE-FLIP-MMP-DESIGN.md section 6.3: WeilDivisors'
+-- research-log/docs/TORIC-HYPERSURFACE-FLIP-MMP-DESIGN.md section 6.3: WeilDivisors'
 -- mapToProjectiveSpace defends against the D = 0 case by checking only the
 -- first component of the embedding degree shift d1 returned by embedAsIdeal
 -- ("if d1#0 == 0 then ..."). On a multigraded ring this misfires whenever

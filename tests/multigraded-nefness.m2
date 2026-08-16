@@ -1,7 +1,7 @@
 needsPackage("MMPComputation",FileName=>"MMPComputation.m2");
 needsPackage("WeilDivisors");
 
--- Stage 1 measurement plan (docs/STAGE1-MEASUREMENT-PLAN.md), T1-T5 and T4.
+-- Stage 1 measurement plan (research-log/docs/STAGE1-MEASUREMENT-PLAN.md), T1-T5 and T4.
 -- Exercises the public multigraded entry points only, on the two rank-2
 -- inputs from plan section 5.1: Bl_p(P3) and Segre P1xP2.
 

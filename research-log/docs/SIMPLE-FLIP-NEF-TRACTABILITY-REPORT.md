@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-`docs/STAGE2-MEASUREMENT-RESULTS.md` found that `canonicalNefData` on a singular,
+`STAGE2-MEASUREMENT-RESULTS.md` found that `canonicalNefData` on a singular,
 rank-2 multigraded, canonical-index-2 toric flip target did **not** complete
 after 20+ minutes, with individual base-point-free tests already costing
 multiple seconds at low degree. That example was a genuine but not
@@ -66,7 +66,7 @@ never genuine flips. A *genuine* flip therefore requires a non-Gorenstein
 example, **Francia's flip**, realizes the minimal case: index-2
 (`1/2(1,1,1)`-type) quotient singularities. This project already measured
 this exact singularity type once before, in a different context
-([[section-oracle-design-refuted]] / `docs/CYCLIC-QUOTIENT-CHARACTER-EXPERIMENT-REPORT.md`):
+([[section-oracle-design-refuted]] / `CYCLIC-QUOTIENT-CHARACTER-EXPERIMENT-REPORT.md`):
 the relevant reflexive-hull correction term grows only *cubically* in the
 tested multiple there, far milder than whatever drove Stage 2's example to
 never terminate -- motivating the hope that a flip built from only this

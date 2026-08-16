@@ -7,7 +7,7 @@ needsPackage("MMPComputation",FileName=>"MMPComputation.m2");
 needsPackage("WeilDivisors");
 
 -- Same rank-2 toric hypersurface as tests/canonical-seed-bpf-fastpath.m2 and
--- docs/TORIC-HYPERSURFACE-FLIP-MMP-DESIGN.md; K_X=(-1,0) is already Cartier
+-- research-log/docs/TORIC-HYPERSURFACE-FLIP-MMP-DESIGN.md; K_X=(-1,0) is already Cartier
 -- there (index 1).
 A = QQ[u0,u1,x,y0,y1,y2, Degrees=>{{1,0},{1,0},{0,1},{-1,1},{-1,1},{-1,1}}];
 Fquad = 3*y0^2-y1^2+2*y0*y1-y2^2+y1*y2;

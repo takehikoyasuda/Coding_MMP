@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-`docs/STAGE1-MEASUREMENT-RESULTS.md` measured `Bl_p(P3)` and Segre `P1 x P2` as
+`STAGE1-MEASUREMENT-RESULTS.md` measured `Bl_p(P3)` and Segre `P1 x P2` as
 cheap (under 5 seconds each, full nef-through-contraction chain), multigraded
 throughout. Both measurements used a polarization `w` that made the threshold
 divisor either exactly zero (`Bl_p(P3)`, `w=O(1,1)=-K/2`, contracting straight
@@ -38,8 +38,8 @@ degree 4 -- far short of the 28 actually needed.
 
 **This is a third, independent bottleneck**, distinct from both:
 - the singular-target base-point-free/reflexive-hull bottleneck
-  (`docs/STAGE2-MEASUREMENT-RESULTS.md`, [[bpf-construction-dominates-assessment]]);
-- the monograded-flattening bottleneck (`docs/BOTTLENECKS-AND-MULTIGRADING.md`).
+  (`STAGE2-MEASUREMENT-RESULTS.md`, [[bpf-construction-dominates-assessment]]);
+- the monograded-flattening bottleneck (`BOTTLENECKS-AND-MULTIGRADING.md`).
 
 It hits precisely the case most wanted for a nontrivial multi-step smooth MMP
 demonstration: a divisorial contraction whose target has more than a couple
@@ -61,7 +61,7 @@ computation, on this input.
 
 ## Setup
 
-Exactly `docs/STAGE1-MEASUREMENT-RESULTS.md` section 1's `Bl_p(P3)` ring:
+Exactly `STAGE1-MEASUREMENT-RESULTS.md` section 1's `Bl_p(P3)` ring:
 
 ```m2
 S = QQ[x0,x1,x2,x3,u0,u1,u2,
@@ -611,7 +611,7 @@ independently-checkable computation on this input.
 
 - A third, independent bottleneck site, distinct from the singular-target
   reflexive-hull cost ([[bpf-construction-dominates-assessment]]) and from
-  monograded flattening (`docs/BOTTLENECKS-AND-MULTIGRADING.md`): the
+  monograded flattening (`BOTTLENECKS-AND-MULTIGRADING.md`): the
   bigraded global Hom construction (`steinHomData`) itself, on a smooth,
   Cartier-index-1 input, once the contraction's target has enough embedding
   coordinates (here 10 sections, 29-variable product ring, 265-generator
@@ -732,7 +732,7 @@ order of 13-14 minutes -- slow for an interactive session, but a
 categorically different outcome from "does not complete."
 
 **Significance**: this closes the loop on the original goal that opened
-this whole line of investigation (see `docs/BOTTLENECKS-AND-MULTIGRADING.md`'s
+this whole line of investigation (see `BOTTLENECKS-AND-MULTIGRADING.md`'s
 "Examples that expose the next bottleneck", which listed `Bl_p(P3)` among
 inputs that "did not complete from the raw top-level input within short
 interactive runs"). With the guessed-bound-plus-proof workaround, it now

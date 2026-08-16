@@ -9,7 +9,7 @@
 
 ## 背景・目的
 
-`docs/INVERTIBLE-IDEAL-CACHING-EXPERIMENT-REPORT.md` は、n=4 (4K) の一点に限り、既存の
+`INVERTIBLE-IDEAL-CACHING-EXPERIMENT-REPORT.md` は、n=4 (4K) の一点に限り、既存の
 `isBasePointFreeDivisorInternal`（`MMPComputation.m2:228-233`）の内訳が
 
 - `weilDivisorToModule D` の構成（reflexive hull構成）: 0.79–0.81秒（90–97%）
@@ -19,7 +19,7 @@
 （構成側が圧倒的多数）が保たれるのか、それとも査定側の割合も増えていくのかは未確認だった。
 
 本実験はこの内訳を n=1..14（可能な限り高いところまで）で再計測し、比率の推移を明らかにする
-ことを目的とする。`docs/algorithmic_mmp_bpf_fastpath_notes.md` §17（「4本のsectionだけを
+ことを目的とする。`algorithmic_mmp_bpf_fastpath_notes.md` §17（「4本のsectionだけを
 ann/saturateに使えばよい」というLas Vegas的判定）の効果の上限を見積もる直接の材料でもある。
 
 ---
@@ -27,7 +27,7 @@ ann/saturateに使えばよい」というLas Vegas的判定）の効果の上�
 ## 環境・対象
 
 - Macaulay2 1.26.06 (`/opt/homebrew/bin/M2`)
-- `docs/STAGE2-MEASUREMENT-RESULTS.md` / `tests/multigraded-skew-cartier.m2` と全く同じ singular
+- `STAGE2-MEASUREMENT-RESULTS.md` / `tests/multigraded-skew-cartier.m2` と全く同じ singular
   な多重次数環 `Z`（`computeFlip` による toric flip の結果、canonical index 2、`Btrue` は
   `P#irrelevantIdeal` 由来の真の irrelevant ideal）を毎回新しいM2プロセスで再構築。
 - 計測対象: `D = n*K`（`K = canonicalDivisor(Z, IsGraded=>true)`）に対する
@@ -82,7 +82,7 @@ n=10〜14ではおよそ1〜2%で下げ止まっている。構成側の割合�
 約24倍）ものの、構成側の増加（n=4で0.773s→n=14で165.15s、約214倍）の方がはるかに速く、
 相対的な重みは一貫して構成側に吸収されていく。
 
-### `docs/algorithmic_mmp_bpf_fastpath_notes.md` §17への含意
+### `algorithmic_mmp_bpf_fastpath_notes.md` §17への含意
 
 「全H^0生成元の代わりに genuine section 4本だけを `ann`/`saturate` に使う」という改善案
 （Las Vegas的判定）の効果の理論的上限は、この査定側の割合そのものである。n=4時点での
@@ -141,6 +141,6 @@ n=14（合計166.96秒）が、完全な内訳が得られた最後の点であ�
   `log_n1.txt` 〜 `log_n14.txt`（各段階の`cpuTime`を含む完全な結果）、
   `log_n15.txt`（stallの経緯を記録、タイミングデータなし）
 - 関連する既存文書:
-  - `docs/STAGE2-MEASUREMENT-RESULTS.md`
-  - `docs/INVERTIBLE-IDEAL-CACHING-EXPERIMENT-REPORT.md`
-  - `docs/algorithmic_mmp_bpf_fastpath_notes.md`
+  - `STAGE2-MEASUREMENT-RESULTS.md`
+  - `INVERTIBLE-IDEAL-CACHING-EXPERIMENT-REPORT.md`
+  - `algorithmic_mmp_bpf_fastpath_notes.md`

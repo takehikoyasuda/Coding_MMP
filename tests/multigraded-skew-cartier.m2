@@ -126,7 +126,7 @@ print "OK Stage 2 T1: multigradedBlockData Z gives a wrong (different-radical) B
 -- false positive, and confirms the fix.
 --
 -- H below is the ample-candidate class from the Stage 2 measurement's Part 1
--- (docs/STAGE2-MEASUREMENT-RESULTS.md section on H): bidegree (1,1),
+-- (research-log/docs/STAGE2-MEASUREMENT-RESULTS.md section on H): bidegree (1,1),
 -- Cartier under Btrue, base-point-free at multiplicity 1, and strictly
 -- positive on the flip's unique exceptional curve.  It is used here purely
 -- as a divisor of the right shape to construct a concrete counterexample,

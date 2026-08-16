@@ -1,7 +1,7 @@
 needsPackage("MMPComputation",FileName=>"MMPComputation.m2");
 needsPackage("WeilDivisors");
 
--- Iterated multigrading, Phase 1 (docs/ITERATED-MULTIGRADING-MMP-PLAN.md):
+-- Iterated multigrading, Phase 1 (research-log/docs/ITERATED-MULTIGRADING-MMP-PLAN.md):
 -- exercises the new threefoldMMPData(R,a,H) and threefoldMMPData(R,a,H,
 -- IrrelevantIdeal=>B) top-level multigraded entry points.  These reuse
 -- canonicalNefData/canonicalContractionData's existing multigraded overloads

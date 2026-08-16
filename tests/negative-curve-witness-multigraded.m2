@@ -1,7 +1,7 @@
 needsPackage("MMPComputation",FileName=>"MMPComputation.m2");
 needsPackage("WeilDivisors");
 
--- Iterated multigrading, Phase 4 idea (docs/ITERATED-MULTIGRADING-MMP-PLAN.md):
+-- Iterated multigrading, Phase 4 idea (research-log/docs/ITERATED-MULTIGRADING-MMP-PLAN.md):
 -- negativeCurveWitnessData generalizes the package's unexported
 -- negativeBaseLocusCurveData (monograded-only: it requires degreeLength
 -- ambient R == 1) to genuinely multigraded presentations, using

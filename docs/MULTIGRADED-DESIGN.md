@@ -86,7 +86,7 @@ Bigraded presentation `Q[s,t,u,v,w]` with degrees `(1,0),(1,0),(0,1),(0,1),(0,1)
 - a full sweep of all 45 candidates in the bracket `(2,4]` with numerators up
   to 24, each running multipliers `1..6`: **0.146 s**, returning the correct
   threshold `lambda = 3`, which agrees with `K+3H = O(1,0)` as recorded in
-  [BOTTLENECKS-AND-MULTIGRADING.md](BOTTLENECKS-AND-MULTIGRADING.md).
+  [BOTTLENECKS-AND-MULTIGRADING.md](../research-log/docs/BOTTLENECKS-AND-MULTIGRADING.md).
 
 This confirms the diagnosis in that note: the obstruction is the cost of
 recovering degree information through Weil-divisor module computations after
@@ -172,7 +172,7 @@ varieties are not needed.
 ## Staged plan
 
 All five stages below were implemented and measured; see
-[STAGE1-MEASUREMENT-RESULTS.md](STAGE1-MEASUREMENT-RESULTS.md) for the full
+[STAGE1-MEASUREMENT-RESULTS.md](../research-log/docs/STAGE1-MEASUREMENT-RESULTS.md) for the full
 stage-by-stage tables.  What follows replaces this section's earlier
 (unmeasured) description with what was actually built and the numbers from
 running it on `Bl_p(P3)` and Segre `P1 x P2`, both rank `r = 2`.
@@ -221,7 +221,7 @@ running it on `Bl_p(P3)` and Segre `P1 x P2`, both rank `r = 2`.
    `blockDegreeData` requires exactly two blocks, block *diagonal* (every
    variable `(positive,0)` or `(0,positive)`), and generalizing it is
    explicitly out of scope.  What was built instead, matching the later,
-   more specific instruction in `STAGE1-MEASUREMENT-PLAN.md` section 4.5:
+   more specific instruction in `research-log/docs/STAGE1-MEASUREMENT-PLAN.md` section 4.5:
    flatten the *source* ring to the diagonal subalgebra of the caller-
    supplied ample class `w` (`diagonalSubalgebraData`, built by reusing
    `WeilDivisors`' `mapToProjectiveSpace(w)` rather than re-deriving it), and
@@ -269,7 +269,7 @@ description is settled.
 ## Remaining bottlenecks
 
 Preserving multigrading does not address the items already listed in
-[BOTTLENECKS-AND-MULTIGRADING.md](BOTTLENECKS-AND-MULTIGRADING.md): relative
+[BOTTLENECKS-AND-MULTIGRADING.md](../research-log/docs/BOTTLENECKS-AND-MULTIGRADING.md): relative
 canonical models via Rees algebras, ring growth after flips and relative Proj
 constructions, the `t=0` pluricanonical search, canonical Cartier index
 searches for singular targets, and support-empty tests for general multigraded
@@ -290,4 +290,4 @@ independently known target geometry rather than the internal certificate
 (a pattern already precedented in
 `third_party/SteinFactorizationM2/tests/blowup-twisted-cubic.m2`), turned a
 30+ minute unresolved stall into a 1.45-second computation. See
-[STEIN-FACTORIZATION-COST-EXPERIMENT-REPORT.md](STEIN-FACTORIZATION-COST-EXPERIMENT-REPORT.md).
+[STEIN-FACTORIZATION-COST-EXPERIMENT-REPORT.md](../research-log/docs/STEIN-FACTORIZATION-COST-EXPERIMENT-REPORT.md).
