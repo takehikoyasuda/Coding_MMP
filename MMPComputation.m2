@@ -1827,14 +1827,23 @@ relativeCanonicalModelFromBaseData Ring := o -> W -> (
             "targetDimension" => dim W-1
             };
     -- computeRelativeCanonicalModel raises an error when no multiplier it
-    -- tried produced a small projection with an S_2 source: Lemma 6.6's test is sufficient, not
-    -- necessary, so exhausting the schedule means "not settled here", not "no
-    -- relative canonical model exists".  That is a bounded search coming up
-    -- empty, exactly like the threshold and canonical-index searches above, so
-    -- report it the same structured way instead of letting a raw error escape
-    -- through threefoldMMPData.  A genuinely divisorial relative canonical
-    -- model -- neither the identity nor small -- also lands here, since
-    -- computeRelativeCanonicalModel only ever accepts a small one.
+    -- tried produced a small projection with an S_2 source.  Exhausting the
+    -- schedule means "not settled at these multipliers", not "no relative
+    -- canonical model exists", so report it the structured way the threshold
+    -- and canonical-index searches above use instead of letting a raw error
+    -- escape through threefoldMMPData.
+    --
+    -- Accepting only the identity or a small projection is not a restriction
+    -- to work around: it is what the paper proves.  Proposition 6.8's
+    -- termination argument shows that for a sufficiently divisible m the
+    -- candidate IS Proj of the relative canonical algebra, so "such an m
+    -- passes both tests", and Corollary 6.10's proof then uses "the morphism
+    -- g is small" as an established fact, not a hypothesis to be checked.
+    -- The identity is the Q-Gorenstein case, where the target is its own
+    -- relative canonical model.  There is no third, divisorial case to
+    -- implement -- the paper has no such notion.  Hitting this branch
+    -- therefore means the bound was too low for the m that works, and raising
+    -- RelativeCanonicalMaxMultiplier is the right response.
     modelProjection := try computeRelativeCanonicalModel(W,
         Multipliers=>o.RelativeCanonicalMultipliers,
         MaxMultiplier=>o.RelativeCanonicalMaxMultiplier,
@@ -1850,10 +1859,11 @@ relativeCanonicalModelFromBaseData Ring := o -> W -> (
             "multipliersTried" => if o.RelativeCanonicalMultipliers =!= null
                 then o.RelativeCanonicalMultipliers
                 else toList(1..o.RelativeCanonicalMaxMultiplier),
-            "warning" => "no multiplier tried gave a small projection with an "
-                | "S_2 source; raise RelativeCanonicalMaxMultiplier, or the "
-                | "relative canonical model may not be small (FlipComputation "
-                | "only accepts a small one)"
+            "warning" => "no multiplier tried gave a small projection with "
+                | "an S_2 source; raise RelativeCanonicalMaxMultiplier.  "
+                | "Proposition 6.8 of the paper proves that a sufficiently "
+                | "divisible multiplier passes both tests, so this is a bound "
+                | "being too low and not a model that cannot be reached"
             };
     baseCanonicalIdeal := restrictToBase(
         modelProjection,modelProjection#blownUpIdeal);

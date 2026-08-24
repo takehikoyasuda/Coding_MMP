@@ -118,18 +118,52 @@ Numbering, terminology and behaviour have been brought in line with v3.
 
 ## Outstanding
 
-### 1. Divisorial relative canonical models are not computed
+### 1. The mixed MMP step has no example and is untested
 
-Lemma 6.6's test asks the projection to be small, so
-`computeRelativeCanonicalModel` accepts only the identity or a small model. A
-relative canonical model that is genuinely divisorial is refused at every
-multiplier, and raising `MaxMultiplier` cannot help. Since `50c032f` this is
-reported as an inconclusive result rather than an error, and the manual says
-so, but the case is not implemented and there is no example of one.
+`mmpStepRecordData` labels a birational step from two independent facts: whether
+the relative canonical model `g` is the identity, and whether the *contraction*
+`f` is small.
 
-`mmpStepRecordData`'s `"mixed"` classification anticipates it; the existing
-test constructs that label by passing `ContractionIsSmall => false` to a model
-that is in fact small, so the genuinely divisorial path is untested.
+| `stepType` | `g` | `f` |
+| --- | --- | --- |
+| `divisorial` | identity | -- |
+| `flipping` | nontrivial | small |
+| `mixed` | nontrivial | not small |
+
+`mixed` is the case Lemma 6.9 (`lem:mixed-step`) is stated for: `f` contracts a
+divisor while `g` is still a nontrivial small model, which can happen when the
+source is not Q-factorial. It has no worked example. `tests/relative-model.m2`
+produces the label by passing `ContractionIsSmall => false` to a model whose
+contraction is in fact small, so the real path -- a genuinely non-small `f`
+reaching a nontrivial `g` -- has never run.
+
+What is needed is an example, not an implementation: the classification code
+already handles the case, and `contractionSmallnessData` already decides `f`'s
+smallness. Finding a threefold whose extremal contraction is non-small while
+its relative canonical model is nontrivial is the work.
+
+**This replaces an item that claimed divisorial relative canonical models were
+unimplemented.** That was a misreading. `g` is always small or the identity,
+and the paper proves it rather than assuming it:
+
+- Proposition 6.8's termination argument shows that for a sufficiently
+  divisible `m` the candidate is `Proj` of the relative canonical algebra
+  itself, so "such an `m` passes both tests".
+- Corollary 6.10's proof then uses "the morphism `g` is small" as an
+  established consequence of Proposition 6.8.
+- Smallness is part of the definition of an MMP step in both frameworks the
+  paper cites (Kollár's Definition 1, Hashizume's Definition 3.5).
+- The identity is the Q-Gorenstein case: "If the target is Q-Gorenstein, its
+  relative canonical model is the target itself."
+
+The word "divisorial" appears once in `AlgoMMP.tex`, in "reflexive divisorial
+sheaf"; there is no notion of a divisorial relative canonical model to
+implement. Two consequences of the correction: accepting only the identity or a
+small projection is the theorem rather than a limitation, and the old claim
+that raising `MaxMultiplier` "cannot help" was wrong -- it is exactly what
+helps, since the search enumerates `m = 1, 2, 3, ...` and will reach a
+sufficiently divisible one. `relativeCanonicalModelFromBaseData`'s comment and
+its user-visible `warning` string carried the same misreading and now say this.
 
 ### 2. Repository visibility
 
