@@ -60,6 +60,38 @@ assert(inverseModel#"baseLocusCertified");
 assert(saturate(radical inverseModel#"baseIdeal",ideal vars W)
     == saturate(radical ideal(W_4,W_3),ideal vars W));
 
+-- Running out of multipliers is a bounded search coming up empty, not a
+-- mathematical verdict: Lemma 6.6's test is sufficient, not necessary, so it is
+-- reported the structured way the threshold and canonical-index searches are,
+-- rather than as the raw FlipComputation error it used to let through.  An
+-- empty multiplier list is the cheap way to reach that path; the expensive way
+-- is a relative canonical model that is genuinely not small, which
+-- FlipComputation cannot accept at any multiplier.  W is used because its
+-- canonical ideal is not the unit ideal, so the identity shortcut above does
+-- not fire first.
+assert(canonicalIdeal W != ideal 1_W);
+exhausted = relativeCanonicalModelFromBaseData(W,RelativeCanonicalMultipliers=>{});
+assert(not exhausted#"conclusive");
+assert(exhausted#"phase" == "relative canonical model");
+assert(exhausted#"baseRing" === W);
+assert(exhausted#"multipliersTried" == {});
+assert(exhausted#?"warning");
+-- and the same through the contraction-level entry point
+exhaustedContraction = new HashTable from {
+    "conclusive" => true,
+    "isBirational" => true,
+    "contractionGraph" => identityContractionGraph,
+    "steinAlgebraData" => new HashTable from {"ring" => W}
+    };
+exhaustedModel = relativeCanonicalModelData(
+    exhaustedContraction,RelativeCanonicalMultipliers=>{});
+assert(not exhaustedModel#"conclusive");
+assert(exhaustedModel#"phase" == "relative canonical model");
+-- mmpStepRecordData must refuse it rather than record a step from it; the two
+-- threefoldMMPData entry points return the inconclusive result instead of
+-- reaching this error.
+assert(try (mmpStepRecordData(exhaustedContraction,exhaustedModel); false) else true);
+
 -- The same toric target with grading l=(3,2,1) has canonical ideal generators
 -- of degrees 2 and 3.  Its Rees fibre block is skew, so the generalized
 -- diagonal construction (slope two) is required for both graph and inverse.

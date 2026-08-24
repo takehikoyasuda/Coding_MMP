@@ -1775,12 +1775,35 @@ relativeCanonicalModelFromBaseData Ring := o -> W -> (
             "sourceDimension" => dim W-1,
             "targetDimension" => dim W-1
             };
-    modelProjection := computeFlip(W,
+    -- computeFlip raises an error when no multiplier it tried produced a small
+    -- projection with an S_2 source: Lemma 6.6's test is sufficient, not
+    -- necessary, so exhausting the schedule means "not settled here", not "no
+    -- relative canonical model exists".  That is a bounded search coming up
+    -- empty, exactly like the threshold and canonical-index searches above, so
+    -- report it the same structured way instead of letting a raw error escape
+    -- through threefoldMMPData.  A genuinely divisorial relative canonical
+    -- model -- neither the identity nor small -- also lands here, since
+    -- computeFlip only ever accepts a small one.
+    modelProjection := try computeFlip(W,
         Multipliers=>o.RelativeCanonicalMultipliers,
         MaxMultiplier=>o.RelativeCanonicalMaxMultiplier,
         ReturnGraph=>false,
         BaseIsProjective=>true,
-        Verbose=>o.RelativeCanonicalVerbose);
+        Verbose=>o.RelativeCanonicalVerbose)
+        else null;
+    if modelProjection === null then
+        return new HashTable from {
+            "conclusive" => false,
+            "phase" => "relative canonical model",
+            "baseRing" => W,
+            "multipliersTried" => if o.RelativeCanonicalMultipliers =!= null
+                then o.RelativeCanonicalMultipliers
+                else toList(1..o.RelativeCanonicalMaxMultiplier),
+            "warning" => "no multiplier tried gave a small projection with an "
+                | "S_2 source; raise RelativeCanonicalMaxMultiplier, or the "
+                | "relative canonical model may not be small (FlipComputation "
+                | "only accepts a small one)"
+            };
     baseCanonicalIdeal := restrictToBase(
         modelProjection,modelProjection#blownUpIdeal);
     nonFreeLocus := fittingIdeal(1,module baseCanonicalIdeal);
@@ -2201,6 +2224,17 @@ threefoldMMPData (Ring,ZZ,List) := o -> (initialRing,initialIndex,initialSteps) 
             RelativeCanonicalMultipliers=>o.RelativeCanonicalMultipliers,
             RelativeCanonicalMaxMultiplier=>o.RelativeCanonicalMaxMultiplier,
             RelativeCanonicalVerbose=>o.RelativeCanonicalVerbose);
+        if not model#"conclusive" then
+            return new HashTable from {
+                "conclusive" => false,
+                "phase" => "relative canonical model",
+                "currentRing" => currentRing,
+                "currentIndex" => currentIndex,
+                "steps" => records,
+                "finalContraction" => contraction,
+                "relativeModelData" => model,
+                "warning" => model#"warning"
+                };
         record = mmpStepRecordData(contraction,model);
         records = append(records,record);
         currentRing = record#"nextRing";
@@ -2305,6 +2339,17 @@ threefoldMMPData (Ring,ZZ,BasicDivisor) := o -> (initialRing,initialIndex,H) -> 
         RelativeCanonicalMultipliers=>o.RelativeCanonicalMultipliers,
         RelativeCanonicalMaxMultiplier=>o.RelativeCanonicalMaxMultiplier,
         RelativeCanonicalVerbose=>o.RelativeCanonicalVerbose);
+    if not model#"conclusive" then
+        return new HashTable from {
+            "conclusive" => false,
+            "phase" => "relative canonical model",
+            "currentRing" => initialRing,
+            "currentIndex" => initialIndex,
+            "steps" => {},
+            "finalContraction" => contraction,
+            "relativeModelData" => model,
+            "warning" => model#"warning"
+            };
     record = mmpStepRecordData(contraction,model);
     nextRing := record#"nextRing";
     indexData := canonicalIndexData(
