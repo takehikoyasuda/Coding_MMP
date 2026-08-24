@@ -36,6 +36,7 @@ The current development environment uses Macaulay2 1.26.06.
 | `tests/` | integration-layer regression tests |
 | `docs/IMPLEMENTATION-STATUS.md` | trusted scope, known failures, and paper-to-code map |
 | `docs/ROADMAP.md` | implementation order for the full MMP |
+| `docs/PAPER-SYNC.md` | what the paper's revision changed, what has been followed, and what is outstanding |
 | `scripts/test-upstreams.sh` | reproducible baseline test runner |
 | [`research-log/`](research-log/README.md) | archived cost measurements, root-cause investigations, and negative results from performance work; not required reading to use the package |
 
