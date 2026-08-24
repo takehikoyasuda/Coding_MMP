@@ -2960,7 +2960,7 @@ Node
   Description
     Text
       For a nonidentity relative canonical model $Z \longrightarrow W$
-      constructed as a relative $\operatorname{Proj}$ of a Rees algebra,
+      constructed as a relative $\mathcal{P}roj$ of a Rees algebra,
       substitute the Rees-ideal generators for the
       fibre variables in the Segre coordinates.  The result records homogeneous
       coordinates for $W \dashrightarrow Z$, verifies the model and graph
@@ -3674,7 +3674,7 @@ Node
       matter.
     Text
       This is the datum a multigraded presentation carries in the paper:
-      Definition 2.5 writes the ambient ring as $k[\mathbf{y},\mathbf{x}]$, so
+      Definition 2.5 writes the ambient ring as $k[\boldsymbol{y},\boldsymbol{x}]$, so
       which variables are $y$'s and which are $x$'s is part of the
       presentation, and the irrelevant ideal
       $S_\dagger=\langle y_jx_i\rangle S$ follows from it.  An irrelevant
