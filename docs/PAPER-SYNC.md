@@ -3,9 +3,14 @@
 Status of this repository and its two submodules against the revised paper
 (v3), and what is still outstanding. Written 2026-08-24.
 
-The revision is on the paper repository's `revise/prop-hom-display-formula`
-branch, not on its `main`; `main` is the pre-revision state. Anything checked
-against `main` will disagree with what was uploaded to arXiv.
+Check against the paper repository's `main`: the revision branch
+`revise/prop-hom-display-formula` has been merged into it, and `main` carries
+further copy-editing commits on top (drafting annotations and commented-out
+body text removed, citation labels standardized, bibliography trimmed). Its
+`Use of AI` section reads "the first two arXiv versions" and "third version",
+so `main` is the v3 state. Corrected 2026-08-24; this file originally said the
+revision was only on the branch and that `main` was pre-revision, which was
+already untrue when it was written.
 
 ## The three changes that prompted this
 
