@@ -71,6 +71,21 @@ jobs:
           retry sudo apt-get install -y --no-install-recommends macaulay2
           M2 --version
 
+      # installPackage writes a .installed marker under Macaulay2's own prefix
+      # (pkg#"package prefix" plus the packagelib layout), not under the
+      # InstallPrefix it is given.  A Homebrew prefix is user-owned so this goes
+      # unnoticed locally; the Debian package's is /usr, which the runner user
+      # cannot write, and the dependency installs stopped there with
+      # "can't make directory ...: Permission denied".
+      - name: Let Macaulay2 write its package-lib directory
+        run: |
+          set -eu
+          LIBDIR=$(M2 --no-readline -q -e \
+            'print(prefixDirectory | replace("PKG/", "", currentLayout#"packagelib")); exit 0' \
+            < /dev/null | tail -1)
+          echo "package lib directory: $LIBDIR"
+          sudo install -d -m 0775 -o "$(id -un)" -g "$(id -gn)" "$LIBDIR"
+
       - name: Build the manual
         run: make docs
 
