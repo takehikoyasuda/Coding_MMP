@@ -1775,16 +1775,16 @@ relativeCanonicalModelFromBaseData Ring := o -> W -> (
             "sourceDimension" => dim W-1,
             "targetDimension" => dim W-1
             };
-    -- computeFlip raises an error when no multiplier it tried produced a small
-    -- projection with an S_2 source: Lemma 6.6's test is sufficient, not
+    -- computeRelativeCanonicalModel raises an error when no multiplier it
+    -- tried produced a small projection with an S_2 source: Lemma 6.6's test is sufficient, not
     -- necessary, so exhausting the schedule means "not settled here", not "no
     -- relative canonical model exists".  That is a bounded search coming up
     -- empty, exactly like the threshold and canonical-index searches above, so
     -- report it the same structured way instead of letting a raw error escape
     -- through threefoldMMPData.  A genuinely divisorial relative canonical
     -- model -- neither the identity nor small -- also lands here, since
-    -- computeFlip only ever accepts a small one.
-    modelProjection := try computeFlip(W,
+    -- computeRelativeCanonicalModel only ever accepts a small one.
+    modelProjection := try computeRelativeCanonicalModel(W,
         Multipliers=>o.RelativeCanonicalMultipliers,
         MaxMultiplier=>o.RelativeCanonicalMaxMultiplier,
         ReturnGraph=>false,

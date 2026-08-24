@@ -36,10 +36,11 @@ Xproj = S/sub(I0,S);
 assert(dim Xproj == 4);
 assert(isNormal Xproj);
 
--- computeFlip is the existing, unmodified FlipComputation entry point; m=1
--- is rejected (exceptional locus contains a divisor) and m=2 succeeds,
+-- computeRelativeCanonicalModel is the existing FlipComputation entry point,
+-- unmodified apart from its name; m=1 is rejected (exceptional locus contains a divisor) and m=2 succeeds,
 -- exactly reproducing the source example's own comment.
-P = computeFlip(Xproj, BaseIsProjective=>true, Multipliers=>{1,2});
+P = computeRelativeCanonicalModel(
+    Xproj, BaseIsProjective=>true, Multipliers=>{1,2});
 Z = P#totalRing;
 assert(degreeLength Z == 2);
 assert(dim Z == 5);

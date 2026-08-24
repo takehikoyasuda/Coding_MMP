@@ -31,6 +31,10 @@ Completed:
 4. Reconciled `computeFlip` with the pinned paper's three-step
    relative-canonical-model algorithm. Its multiplier schedule contains the
    factorial sequence required in the paper while trying smaller divisors first.
+   (Both have since changed: the entry point is `computeRelativeCanonicalModel`,
+   and the schedule is the paper's own consecutive `m = 1, 2, 3, ...`, the
+   revision having dropped the divisibility condition that the factorial
+   sequence existed to satisfy.)
 5. Preserved the genuine toric, projective, and index-two regressions; all 13
    package tests and four worked examples pass on M2 1.26.06.
 

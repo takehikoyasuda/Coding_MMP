@@ -27,7 +27,7 @@ The source repositories had the following local state at import time:
 | Bigraded global Hom | `bigradedGlobalHomData` | prototype; standard tests pass |
 | Stein coordinate algebra | `steinHomData`, `steinCoordinateAlgebra` | prototype; standard tests pass |
 | Graph of the connected-fibre map | `directSteinGraph` | corrected kernel construction; standard tests pass |
-| Relative canonical model / flip | `computeFlip` | prototype; all 13 tests and four examples pass |
+| Relative canonical model / flip | `computeRelativeCanonicalModel` | prototype; all 13 tests and four examples pass |
 | Nefness of the canonical divisor | `canonicalNefData`, `isCanonicalNef` | initial implementation; P3 and quintic regressions pass |
 | Nef threshold | `canonicalNefThresholdData`, `canonicalNefThreshold` | small-multiple BPF and negative-curve fast paths plus effective fallback; P3 regression passes |
 | Extremal contraction | `canonicalContractionAtThresholdData`, `canonicalContractionData` | initial implementation; P3 point and Segre P1xP2 fibre contractions pass |
