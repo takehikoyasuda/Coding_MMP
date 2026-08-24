@@ -115,6 +115,37 @@ Numbering, terminology and behaviour have been brought in line with v3.
   Also fixed in passing: six typewriter-text markups in the manual were
   broken -- five `{tt ...}` missing the backslash, and one carrying a literal
   tab where `\t` belonged -- so those words rendered as `tt ...` instead.
+- The variable blocks of a multigraded presentation can now be named directly,
+  with `VariableBlocks => {{...},{...}}`, instead of the irrelevant ideal they
+  determine. This is the datum the paper's presentation carries -- Definition
+  2.5 writes the ambient as `k[y,x]` and puts `S_dagger = <y_j x_i> S` -- and
+  the one the code had been throwing away and guessing back: `multigradedBlockData`
+  took a ring alone and classified each variable by the last nonzero entry of
+  its degree vector.
+
+  Change 1 above is what makes that guess unsound rather than merely
+  redundant. Section 2.2 sets `deg(y_j) = (d_j,0)` but `deg(x_i) = (a_i,c_i)`
+  with `a` a further datum, so a second-block variable may be nonzero in the
+  first component and is then indistinguishable from a first-block one by that
+  rule. `tests/multigraded-skew-cartier.m2`'s `u_2`, of degree `(1,1)`, is
+  exactly that, and it is the entire discrepancy between the guessed and the
+  true irrelevant ideal on that ring.
+
+  `multigradedBlockData(R,blocks)` takes the partition, requires it to be
+  exact (one nonempty block per degree component, every variable once, all of
+  them variables of `R`) and rejects it otherwise; ordering is not used, since
+  the ideal is the symmetric product of the block ideals. All eight entry
+  points with `IrrelevantIdeal` take `VariableBlocks` too, resolved in one
+  shared `irrelevantIdealDataInternal` which also decides the geometric
+  dimension -- replacing the same ten lines repeated in three of them.
+  Precedence is blocks, then an ideal, then the gated heuristic; supplying
+  blocks and an ideal together is refused rather than silently ranked.
+
+  `IrrelevantIdeal` keeps working and is now the secondary entrance: an ideal
+  cannot leave the ring it lives in, whereas blocks are a property of the
+  variables. Verified on that ring: the named blocks give exactly the
+  provenance ideal, and an entry point reaches the same verdict as when handed
+  the ideal by hand.
 
 ## Outstanding
 

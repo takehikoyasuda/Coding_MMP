@@ -263,3 +263,38 @@ verifiedFn = value(MMPComputation#"private dictionary"#"verifiedIrrelevantIdeal"
 assert(verifiedFn(Rmono,null) == ideal vars Rmono);
 
 print "OK monograded rings need no provenance B: one block, so verifiedBlockDiagonal holds and the irrelevant ideal is the ideal of all variables.";
+
+-- Naming the blocks, rather than the ideal they determine.  This is the datum
+-- the paper's presentation carries -- Definition 2.5 writes the ambient as
+-- k[y,x] and puts S_dagger = <y_j x_i> S -- and which the revised Section 2.2
+-- made unrecoverable from the degrees, since deg(x_i) = (a_i,c_i) may be
+-- nonzero in the first component.  u_2 below, of degree (1,1), is that case.
+blocks = {apply(P#fiberVariables, u -> sub(u,Z)),
+          apply(P#baseVariables,  x -> sub(x,Z))};
+blockGiven = multigradedBlockDataFn(Z, blocks);
+assert(blockGiven#"irrelevantIdeal" == Btrue);
+assert(blockGiven#"geometricDimension" == 3);
+assert(blockGiven#"blocksSupplied");
+assert(not blockData#"blocksSupplied");
+
+-- Malformed input is rejected rather than silently producing some ideal.
+assert(try (multigradedBlockDataFn(Z,{blocks#0}); false) else true);
+assert(try (multigradedBlockDataFn(Z,{blocks#0,blocks#0}); false) else true);
+assert(try (multigradedBlockDataFn(Z,{blocks#0,drop(blocks#1,1)}); false) else true);
+assert(try (multigradedBlockDataFn(Z,{{t1},blocks#1}); false) else true);
+
+-- Through an entry point: on this skew ring, naming the blocks reaches the
+-- same verdict as handing over Btrue by hand.  a=1 is rejected at the Cartier
+-- gate either way (K is not Cartier under the true irrelevant ideal).
+assert(
+    try (canonicalScaledNefData(Z,1,6,H,VariableBlocks=>blocks); false)
+    else true
+    );
+-- The blocks determine the ideal, so supplying both is a caller error.
+assert(
+    try (canonicalScaledNefData(Z,1,6,H,VariableBlocks=>blocks,
+        IrrelevantIdeal=>Btrue); false)
+    else true
+    );
+
+print "OK VariableBlocks: naming the variable blocks gives exactly the provenance irrelevant ideal on this skew ring, malformed partitions are rejected, and blocks plus an ideal together are refused.";

@@ -67,6 +67,7 @@ export {
     "CanonicalIndexSearchLimit",
     "MMPMaxSteps",
     "IrrelevantIdeal",
+    "VariableBlocks",
     "DivisorClassDegrees",
     "negativeCurveWitnessData",
     "NegativeCurveSearchLimit"
@@ -242,7 +243,66 @@ multigradedBlockData Ring := R -> (
         "blockIdeals" => blockIdeals,
         "irrelevantIdeal" => B,
         "geometricDimension" => dim R - r,
-        "verifiedBlockDiagonal" => verifiedBlockDiagonal
+        "verifiedBlockDiagonal" => verifiedBlockDiagonal,
+        "blocksSupplied" => false
+        }
+    )
+
+-- The variable blocks given, instead of guessed.  This is the datum the paper
+-- carries and the code above throws away: Definition 2.5 writes the ambient as
+-- k[y,x], so which variables are y's and which are x's is part of the
+-- presentation, and S_dagger = <y_j x_i> S follows from it.  The revision made
+-- recovering it from the degrees impossible in general -- Section 2.2 now sets
+-- deg(y_j) = (d_j,0) but deg(x_i) = (a_i,c_i) with a "a further datum", so a
+-- second-block variable may be nonzero in the first component and the
+-- last-nonzero-entry heuristic above cannot tell it from a first-block one.
+-- tests/multigraded-skew-cartier.m2's u_2, of degree (1,1), is exactly that.
+--
+-- Blocks are lists of variables (of R or of its ambient) and must partition
+-- the variables exactly, one block per degree component.  Their order is not
+-- used: the irrelevant ideal is the product of the block ideals, which is
+-- symmetric, and the geometric dimension depends only on how many there are.
+multigradedBlockData (Ring,List) := (R,blocks) -> (
+    r := degreeLength R;
+    if r <= 0 then
+        error "multigradedBlockData: expected a graded ring";
+    if not instance(blocks,List) or any(blocks,blk -> not instance(blk,List)) then
+        error "multigradedBlockData: the blocks must be a list of lists of variables";
+    if #blocks != r then
+        error("multigradedBlockData: expected " | toString r
+            | " blocks, one per degree component, but received "
+            | toString(#blocks));
+    if any(blocks,blk -> #blk == 0) then
+        error "multigradedBlockData: every block must be nonempty";
+    Rvars := flatten entries vars R;
+    names := new HashTable from apply(Rvars, v -> toString v => v);
+    inR := blk -> apply(blk, v -> (
+        nm := toString v;
+        if not names#?nm then
+            error("multigradedBlockData: " | nm | " is not a variable of R");
+        names#nm));
+    blockVariables := apply(blocks,inR);
+    flattened := flatten blockVariables;
+    if #flattened != #Rvars then
+        error("multigradedBlockData: the blocks name " | toString(#flattened)
+            | " variables but R has " | toString(#Rvars)
+            | "; they must partition the variables exactly");
+    if #(set apply(flattened,toString)) != #Rvars then
+        error "multigradedBlockData: the blocks overlap, or repeat a variable";
+    blockIdeals := apply(blockVariables, vs -> ideal vs);
+    new HashTable from {
+        "ring" => R,
+        "rank" => r,
+        "permutation" => null,
+        "blockAssignment" => null,
+        "blockVariableIndices" => apply(blockVariables, vs ->
+            apply(vs, v -> position(Rvars, w -> w == v))),
+        "blockVariables" => blockVariables,
+        "blockIdeals" => blockIdeals,
+        "irrelevantIdeal" => product blockIdeals,
+        "geometricDimension" => dim R - r,
+        "verifiedBlockDiagonal" => null,
+        "blocksSupplied" => true
         }
     )
 
@@ -321,6 +381,66 @@ normalizeIrrelevantIdealOption = (methodName,R,supplied) -> (
     else error(methodName | ": IrrelevantIdeal must be an Ideal, or a "
         | "B2MProjection or GraphMorphism carrying the ring's own irrelevant "
         | "ideal")
+    )
+
+-- One place where the irrelevant ideal and the geometric dimension are
+-- decided.  Precedence: VariableBlocks, the datum the paper's presentation
+-- carries, beats an ideal supplied directly, which beats the degree
+-- heuristic; the heuristic is trusted only when it is verifiably block
+-- diagonal, the one case in which no variable's degree can be misread.
+-- Supplying both blocks and an ideal is a caller error rather than a silent
+-- precedence rule.
+irrelevantIdealDataInternal = (methodName,R,suppliedBlocks,suppliedIdeal) -> (
+    if suppliedBlocks =!= null and suppliedIdeal =!= null then
+        error(methodName | ": supply VariableBlocks or IrrelevantIdeal, not "
+            | "both -- the blocks already determine the ideal");
+    if suppliedBlocks =!= null then (
+        bd := multigradedBlockData(R,suppliedBlocks);
+        new HashTable from {
+            "irrelevantIdeal" => bd#"irrelevantIdeal",
+            "geometricDimension" => bd#"geometricDimension",
+            "source" => "variable blocks",
+            "blockData" => bd}
+        )
+    else (
+        B := normalizeIrrelevantIdealOption(methodName,R,suppliedIdeal);
+        if B =!= null then new HashTable from {
+            "irrelevantIdeal" => B,
+            "geometricDimension" => dim R - degreeLength R,
+            "source" => "caller-supplied",
+            "blockData" => null}
+        else (
+            guessed := multigradedBlockData R;
+            if not guessed#"verifiedBlockDiagonal" then error(
+                methodName | ": this ring has a skew (mixed-degree) "
+                | "multigraded variable, so the block-classification "
+                | "heuristic cannot reliably determine the irrelevant ideal "
+                | "(see tests/multigraded-skew-cartier.m2).  Name the "
+                | "variable blocks with VariableBlocks=>{{...},{...}}, or "
+                | "supply the ideal itself with IrrelevantIdeal=>B.");
+            new HashTable from {
+                "irrelevantIdeal" => guessed#"irrelevantIdeal",
+                "geometricDimension" => guessed#"geometricDimension",
+                "source" => "derived",
+                "blockData" => guessed}
+            )
+        )
+    )
+
+-- The result keys each multigraded entry point adds about its irrelevant
+-- ideal.  The two pre-existing shapes are kept exactly: a derived ideal
+-- reports only "blockData", a caller-supplied one only the ideal and its
+-- source.  Named variable blocks report both, since both are available.
+irrelevantIdealResultKeysInternal = idealData -> (
+    src := idealData#"source";
+    if src == "derived" then {"blockData" => idealData#"blockData"}
+    else if src == "variable blocks" then {
+        "irrelevantIdeal" => idealData#"irrelevantIdeal",
+        "irrelevantIdealSource" => src,
+        "blockData" => idealData#"blockData"}
+    else {
+        "irrelevantIdeal" => idealData#"irrelevantIdeal",
+        "irrelevantIdealSource" => src}
     )
 
 -- Lemma 3.6 of the paper: if X is presented in a weighted projective space
@@ -1052,7 +1172,8 @@ normalizeDivisorClassDegrees = (R,data,label) -> (
     )
 
 canonicalScaledNefData = method(Options => {
-    IrrelevantIdeal => null, DivisorClassDegrees => null})
+    IrrelevantIdeal => null, VariableBlocks => null,
+    DivisorClassDegrees => null})
 canonicalScaledNefData (Ring,ZZ,QQ) := o -> (R,a,t) -> (
     if a <= 0 then
         error "canonicalScaledNefData: the index multiple must be positive";
@@ -1067,6 +1188,7 @@ canonicalScaledNefData (Ring,ZZ,QQ) := o -> (R,a,t) -> (
 canonicalScaledNefData (Ring,ZZ,ZZ) := o -> (R,a,t) ->
     canonicalScaledNefData(R,a,t/1,
         IrrelevantIdeal=>o.IrrelevantIdeal,
+        VariableBlocks=>o.VariableBlocks,
         DivisorClassDegrees=>o.DivisorClassDegrees)
 
 -- Stage 1 (T3): multigraded entry points.  The caller supplies the ample
@@ -1096,10 +1218,8 @@ canonicalScaledNefData (Ring,ZZ,QQ,BasicDivisor) := o -> (R,a,t,H) -> (
     if ring H =!= R then
         error "canonicalScaledNefData: H must be a divisor on R";
     K := canonicalDivisor(R,IsGraded=>true);
-    suppliedB := normalizeIrrelevantIdealOption(
-        "canonicalScaledNefData",R,o.IrrelevantIdeal);
-    B := if suppliedB =!= null then suppliedB
-        else verifiedIrrelevantIdeal(R,null);
+    B := (irrelevantIdealDataInternal(
+        "canonicalScaledNefData",R,o.VariableBlocks,o.IrrelevantIdeal))#"irrelevantIdeal";
     if not isCartierSaturatedInternal(a*K,B) then
         error "canonicalScaledNefData: a*K_X is not Cartier";
     classDegrees := normalizeDivisorClassDegrees(
@@ -1109,6 +1229,7 @@ canonicalScaledNefData (Ring,ZZ,QQ,BasicDivisor) := o -> (R,a,t,H) -> (
 canonicalScaledNefData (Ring,ZZ,ZZ,BasicDivisor) := o -> (R,a,t,H) ->
     canonicalScaledNefData(R,a,t/1,H,
         IrrelevantIdeal=>o.IrrelevantIdeal,
+        VariableBlocks=>o.VariableBlocks,
         DivisorClassDegrees=>o.DivisorClassDegrees)
 
 -- Algorithm 1 of the paper.  First bracket the positive threshold by dyadic
@@ -1318,7 +1439,8 @@ canonicalNefThresholdDataCore = (R,a,K,H,d,limit,B) -> (
     )
 
 canonicalNefThresholdData = method(Options => {
-    ThresholdSearchLimit => null, IrrelevantIdeal => null})
+    ThresholdSearchLimit => null, IrrelevantIdeal => null,
+    VariableBlocks => null})
 canonicalNefThresholdData (Ring,ZZ) := o -> (R,a) -> (
     if a <= 0 then
         error "canonicalNefThresholdData: the index multiple must be positive";
@@ -1367,24 +1489,14 @@ canonicalNefThresholdData (Ring,ZZ,BasicDivisor) := o -> (R,a,H) -> (
     if limit =!= null and (not instance(limit,ZZ) or limit <= 0) then
         error "canonicalNefThresholdData: ThresholdSearchLimit must be null or positive";
     K := canonicalDivisor(R,IsGraded=>true);
-    suppliedB := normalizeIrrelevantIdealOption(
-        "canonicalNefThresholdData",R,o.IrrelevantIdeal);
-    blockData := if suppliedB === null then multigradedBlockData R else null;
-    if blockData =!= null and not blockData#"verifiedBlockDiagonal" then error(
-        "this ring has a skew (mixed-degree) multigraded variable, so "
-        | "multigradedBlockData's block-classification heuristic cannot "
-        | "reliably determine the irrelevant ideal (see "
-        | "tests/multigraded-skew-cartier.m2).  Supply the ring's true "
-        | "irrelevant ideal explicitly via IrrelevantIdeal=>B.");
-    B := if suppliedB =!= null then suppliedB else blockData#"irrelevantIdeal";
-    d := if suppliedB =!= null then dim R - degreeLength R
-        else blockData#"geometricDimension";
+    idealData := irrelevantIdealDataInternal(
+        "canonicalNefThresholdData",R,o.VariableBlocks,o.IrrelevantIdeal);
+    B := idealData#"irrelevantIdeal";
+    d := idealData#"geometricDimension";
     if not isCartierSaturatedInternal(a*K,B) then
         error "canonicalNefThresholdData: a*K_X is not Cartier";
     result := canonicalNefThresholdDataCore(R,a,K,H,d,limit,B);
-    extraKeys := if suppliedB =!= null then {
-        "irrelevantIdeal" => B, "irrelevantIdealSource" => "caller-supplied"}
-        else {"blockData" => blockData};
+    extraKeys := irrelevantIdealResultKeysInternal idealData;
     new HashTable from join(pairs result,join({
         "ampleData" => new HashTable from {"ring" => R,"divisor" => H}},
         extraKeys))
@@ -1513,11 +1625,18 @@ diagonalSubalgebraData = (R,w) -> (
 -- already correctly verified was).  The IrrelevantIdeal option added here
 -- lets that B be passed through instead of re-derived; default null
 -- reproduces the previous behaviour exactly.
-completeLinearSystemGraphDataMultigraded = method(Options => {IrrelevantIdeal => null})
+completeLinearSystemGraphDataMultigraded = method(Options => {
+    IrrelevantIdeal => null, VariableBlocks => null})
 completeLinearSystemGraphDataMultigraded (BasicDivisor,BasicDivisor) := o -> (D,w) -> (
     R := ring D;
-    suppliedB := normalizeIrrelevantIdealOption(
-        "completeLinearSystemGraphDataMultigraded",R,o.IrrelevantIdeal);
+    suppliedB := if o.VariableBlocks =!= null then (
+        if o.IrrelevantIdeal =!= null then
+            error("completeLinearSystemGraphDataMultigraded: supply "
+                | "VariableBlocks or IrrelevantIdeal, not both -- the blocks "
+                | "already determine the ideal");
+        (multigradedBlockData(R,o.VariableBlocks))#"irrelevantIdeal"
+        ) else normalizeIrrelevantIdealOption(
+            "completeLinearSystemGraphDataMultigraded",R,o.IrrelevantIdeal);
     bpf := if suppliedB =!= null then isBasePointFreeDivisor(D,suppliedB)
         else isBasePointFreeDivisor D;
     if not bpf then
@@ -1673,7 +1792,8 @@ canonicalContractionAtThresholdDataCore = (R,a,lambda,K,H,d,limit,buildLinearSys
     )
 
 canonicalContractionAtThresholdData = method(
-    Options => {ContractionMultipleLimit => null, IrrelevantIdeal => null})
+    Options => {ContractionMultipleLimit => null, IrrelevantIdeal => null,
+        VariableBlocks => null})
 canonicalContractionAtThresholdData (Ring,ZZ,QQ) := o -> (R,a,lambda) -> (
     if a <= 0 then
         error "canonicalContractionAtThresholdData: the index multiple must be positive";
@@ -1726,26 +1846,17 @@ canonicalContractionAtThresholdData (Ring,ZZ,QQ,BasicDivisor) := o -> (R,a,lambd
     if limit =!= null and (not instance(limit,ZZ) or limit <= 0) then
         error "canonicalContractionAtThresholdData: ContractionMultipleLimit must be null or positive";
     K := canonicalDivisor(R,IsGraded=>true);
-    suppliedB := normalizeIrrelevantIdealOption(
-        "canonicalContractionAtThresholdData",R,o.IrrelevantIdeal);
-    blockData := if suppliedB === null then multigradedBlockData R else null;
-    if blockData =!= null and not blockData#"verifiedBlockDiagonal" then error(
-        "this ring has a skew (mixed-degree) multigraded variable, so "
-        | "multigradedBlockData's block-classification heuristic cannot "
-        | "reliably determine the irrelevant ideal (see "
-        | "tests/multigraded-skew-cartier.m2).  Supply the ring's true "
-        | "irrelevant ideal explicitly via IrrelevantIdeal=>B.");
-    B := if suppliedB =!= null then suppliedB else blockData#"irrelevantIdeal";
-    d := if suppliedB =!= null then dim R - degreeLength R
-        else blockData#"geometricDimension";
+    idealData := irrelevantIdealDataInternal(
+        "canonicalContractionAtThresholdData",R,o.VariableBlocks,
+        o.IrrelevantIdeal);
+    B := idealData#"irrelevantIdeal";
+    d := idealData#"geometricDimension";
     if not isCartierSaturatedInternal(a*K,B) then
         error "canonicalContractionAtThresholdData: a*K_X is not Cartier";
     result := canonicalContractionAtThresholdDataCore(R,a,lambda,K,H,d,limit,
         morphismDivisor -> completeLinearSystemGraphDataMultigraded(
             morphismDivisor,H,IrrelevantIdeal=>B),B);
-    extraKeys := if suppliedB =!= null then {
-        "irrelevantIdeal" => B, "irrelevantIdealSource" => "caller-supplied"}
-        else {"blockData" => blockData};
+    extraKeys := irrelevantIdealResultKeysInternal idealData;
     new HashTable from join(pairs result,join({
         "ampleData" => new HashTable from {"ring" => R,"divisor" => H}},
         extraKeys))
@@ -1753,12 +1864,14 @@ canonicalContractionAtThresholdData (Ring,ZZ,QQ,BasicDivisor) := o -> (R,a,lambd
 canonicalContractionAtThresholdData (Ring,ZZ,ZZ,BasicDivisor) := o -> (R,a,lambda,H) ->
     canonicalContractionAtThresholdData(R,a,lambda/1,H,
         ContractionMultipleLimit=>o.ContractionMultipleLimit,
-        IrrelevantIdeal=>o.IrrelevantIdeal)
+        IrrelevantIdeal=>o.IrrelevantIdeal,
+        VariableBlocks=>o.VariableBlocks)
 
 canonicalContractionData = method(Options => {
     ThresholdSearchLimit => null,
     ContractionMultipleLimit => null,
-    IrrelevantIdeal => null})
+    IrrelevantIdeal => null,
+    VariableBlocks => null})
 canonicalContractionData (Ring,ZZ) := o -> (R,a) -> (
     thresholdData := canonicalNefThresholdData(
         R,a,ThresholdSearchLimit=>o.ThresholdSearchLimit);
@@ -1784,8 +1897,12 @@ canonicalContractionData (Ring,ZZ,BasicDivisor) := o -> (R,a,H) -> (
     -- Normalized once here rather than left to the two calls below, so that a
     -- B2MProjection or GraphMorphism passed as IrrelevantIdeal is resolved to
     -- an ideal of R a single time instead of once per callee.
-    B := normalizeIrrelevantIdealOption(
-        "canonicalContractionData",R,o.IrrelevantIdeal);
+    -- Resolved once here rather than left to the two calls below, so that
+    -- VariableBlocks or a provenance object is turned into an ideal of R a
+    -- single time instead of once per callee.
+    B := (irrelevantIdealDataInternal(
+        "canonicalContractionData",R,o.VariableBlocks,
+        o.IrrelevantIdeal))#"irrelevantIdeal";
     thresholdData := canonicalNefThresholdData(
         R,a,H,ThresholdSearchLimit=>o.ThresholdSearchLimit,
         IrrelevantIdeal=>B);
@@ -2149,12 +2266,20 @@ mmpStepRecordData (HashTable,HashTable) := o -> (contraction,model) -> (
 -- wrong on mixed-sign multigraded rings; same report) for any caller that
 -- does supply a known-correct B.
 canonicalIndexData = method(Options => {
-    CanonicalIndexSearchLimit => null, IrrelevantIdeal => null})
+    CanonicalIndexSearchLimit => null, IrrelevantIdeal => null,
+    VariableBlocks => null})
 canonicalIndexData Ring := o -> R -> (
     limit := o.CanonicalIndexSearchLimit;
     if limit =!= null and (not instance(limit,ZZ) or limit <= 0) then
         error "canonicalIndexData: CanonicalIndexSearchLimit must be null or positive";
-    B := normalizeIrrelevantIdealOption("canonicalIndexData",R,o.IrrelevantIdeal);
+    B := if o.VariableBlocks =!= null then (
+        if o.IrrelevantIdeal =!= null then
+            error("canonicalIndexData: supply VariableBlocks or "
+                | "IrrelevantIdeal, not both -- the blocks already determine "
+                | "the ideal");
+        (multigradedBlockData(R,o.VariableBlocks))#"irrelevantIdeal"
+        ) else normalizeIrrelevantIdealOption(
+            "canonicalIndexData",R,o.IrrelevantIdeal);
     K := canonicalDivisor(R,IsGraded=>true);
     -- Try the two cheap, certificate-producing sufficient conditions for
     -- Cartier-ness first (no Hom/Ext call); only fall back to the original,
@@ -2199,7 +2324,8 @@ threefoldMMPData = method(Options => {
     RelativeCanonicalMultipliers => null,
     RelativeCanonicalMaxMultiplier => 24,
     RelativeCanonicalVerbose => false,
-    IrrelevantIdeal => null})
+    IrrelevantIdeal => null,
+    VariableBlocks => null})
 threefoldMMPData (Ring,ZZ) := o -> (initialRing,initialIndex) ->
     threefoldMMPData(initialRing,initialIndex,{},
         MMPMaxSteps=>o.MMPMaxSteps,
@@ -2343,8 +2469,9 @@ threefoldMMPData (Ring,ZZ,BasicDivisor) := o -> (initialRing,initialIndex,H) -> 
     maxSteps := o.MMPMaxSteps;
     if maxSteps =!= null and (not instance(maxSteps,ZZ) or maxSteps <= 0) then
         error "threefoldMMPData: MMPMaxSteps must be null or positive";
-    B := normalizeIrrelevantIdealOption(
-        "threefoldMMPData",initialRing,o.IrrelevantIdeal);
+    B := (irrelevantIdealDataInternal(
+        "threefoldMMPData",initialRing,o.VariableBlocks,
+        o.IrrelevantIdeal))#"irrelevantIdeal";
     nefData := canonicalNefData(initialRing,initialIndex,H,
         NefSearchLimit=>o.NefSearchLimit,IrrelevantIdeal=>B);
     if not nefData#"conclusive" then
@@ -2516,6 +2643,7 @@ canonicalNefDataCore = (R,a,K,H,limit,B,classDegrees) -> (
 canonicalNefData = method(Options => {
     NefSearchLimit => null,
     IrrelevantIdeal => null,
+    VariableBlocks => null,
     DivisorClassDegrees => null})
 canonicalNefData (Ring,ZZ) := o -> (R,a) -> (
     if dim R - 1 != 3 then
@@ -2560,29 +2688,19 @@ canonicalNefData (Ring,ZZ,BasicDivisor) := o -> (R,a,H) -> (
     limit := o.NefSearchLimit;
     if limit =!= null and (not instance(limit,ZZ) or limit <= 0) then
         error "canonicalNefData: NefSearchLimit must be null or positive";
-    suppliedB := normalizeIrrelevantIdealOption(
-        "canonicalNefData",R,o.IrrelevantIdeal);
-    blockData := if suppliedB === null then multigradedBlockData R else null;
-    if blockData =!= null and not blockData#"verifiedBlockDiagonal" then error(
-        "this ring has a skew (mixed-degree) multigraded variable, so "
-        | "multigradedBlockData's block-classification heuristic cannot "
-        | "reliably determine the irrelevant ideal (see "
-        | "tests/multigraded-skew-cartier.m2).  Supply the ring's true "
-        | "irrelevant ideal explicitly via IrrelevantIdeal=>B.");
-    geometricDimension := if suppliedB =!= null then dim R - degreeLength R
-        else blockData#"geometricDimension";
+    idealData := irrelevantIdealDataInternal(
+        "canonicalNefData",R,o.VariableBlocks,o.IrrelevantIdeal);
+    geometricDimension := idealData#"geometricDimension";
     if geometricDimension != 3 then
         error "canonicalNefData: expected a projective threefold";
     K := canonicalDivisor(R,IsGraded=>true);
-    B := if suppliedB =!= null then suppliedB else blockData#"irrelevantIdeal";
+    B := idealData#"irrelevantIdeal";
     if not isCartierSaturatedInternal(a*K,B) then
         error "canonicalNefData: a*K_X is not Cartier";
     classDegrees := normalizeDivisorClassDegrees(
         R,o.DivisorClassDegrees,"canonicalNefData");
     result := canonicalNefDataCore(R,a,K,H,limit,B,classDegrees);
-    extraKeys := if suppliedB =!= null then {
-        "irrelevantIdeal" => B, "irrelevantIdealSource" => "caller-supplied"}
-        else {"blockData" => blockData};
+    extraKeys := irrelevantIdealResultKeysInternal idealData;
     new HashTable from join(pairs result,join({
         "ampleData" => new HashTable from {"ring" => R,"divisor" => H}},
         extraKeys))
@@ -3510,6 +3628,40 @@ Node
 
 Node
   Key
+    VariableBlocks
+  Headline
+    name the variable blocks of a multigraded presentation
+  Description
+    Text
+      A list of lists of variables, one block per degree component, together
+      partitioning the variables of the ring exactly.  Their order does not
+      matter.
+    Text
+      This is the datum a multigraded presentation carries in the paper:
+      Definition 2.5 writes the ambient ring as $k[\mathbf{y},\mathbf{x}]$, so
+      which variables are $y$'s and which are $x$'s is part of the
+      presentation, and the irrelevant ideal
+      $S_\dagger=\langle y_jx_i\rangle S$ follows from it.  An irrelevant
+      ideal is the product of the ideals of the blocks and nothing else, so
+      naming the blocks decides it.
+    Text
+      Naming them is necessary because the degrees no longer determine them.
+      Section 2.2 sets $\deg(y_j)=(d_j,0)$ but $\deg(x_i)=(a_i,c_i)$, with
+      $\mathbf{a}$ a further datum, so a second-block variable may be nonzero
+      in the first component and the internal classification of
+      a variable by the last nonzero entry of its degree cannot tell it from a
+      first-block one.  On such a ring that heuristic can return an ideal with
+      the wrong radical, and every entry point refuses to use it -- see
+      tests/multigraded-skew-cartier.m2, where one variable of degree $(1,1)$
+      is the whole discrepancy.
+    Text
+      Prefer this to @TO IrrelevantIdeal@.  Blocks are a property of the
+      variables and so carry from one presentation to another, whereas an
+      ideal belongs to the single ring it lives in.  Supplying both is an
+      error, since the blocks already determine the ideal.
+
+Node
+  Key
     IrrelevantIdeal
   Headline
     caller-supplied irrelevant ideal, bypassing multigradedBlockData
@@ -4002,6 +4154,132 @@ Node
     Text
       Make at most n coordinate cuts while reducing a base-locus component to a
       curve, then give up and return @TO null@.  The default is 8.
+
+Node
+  Key
+    [canonicalScaledNefData, VariableBlocks]
+  Headline
+    name the variable blocks instead of the irrelevant ideal
+  Usage
+    canonicalScaledNefData(R,a,t,H,VariableBlocks=>blks)
+  Description
+    Text
+      See @TO VariableBlocks@.  The blocks determine the irrelevant ideal, so
+      passing @TO IrrelevantIdeal@ as well is an error.
+
+Node
+  Key
+    [canonicalNefThresholdData, VariableBlocks]
+  Headline
+    name the variable blocks instead of the irrelevant ideal
+  Usage
+    canonicalNefThresholdData(R,a,H,VariableBlocks=>blks)
+  Description
+    Text
+      See @TO VariableBlocks@.  The blocks determine the irrelevant ideal, so
+      passing @TO IrrelevantIdeal@ as well is an error.
+
+Node
+  Key
+    [canonicalNefData, VariableBlocks]
+  Headline
+    name the variable blocks instead of the irrelevant ideal
+  Usage
+    canonicalNefData(R,a,H,VariableBlocks=>blks)
+  Description
+    Text
+      See @TO VariableBlocks@.  The blocks determine the irrelevant ideal, so
+      passing @TO IrrelevantIdeal@ as well is an error.
+
+Node
+  Key
+    [canonicalContractionAtThresholdData, VariableBlocks]
+  Headline
+    name the variable blocks instead of the irrelevant ideal
+  Usage
+    canonicalContractionAtThresholdData(R,a,lambda,H,VariableBlocks=>blks)
+  Description
+    Text
+      See @TO VariableBlocks@.  The blocks determine the irrelevant ideal, so
+      passing @TO IrrelevantIdeal@ as well is an error.
+
+Node
+  Key
+    [canonicalContractionData, VariableBlocks]
+  Headline
+    name the variable blocks instead of the irrelevant ideal
+  Usage
+    canonicalContractionData(R,a,H,VariableBlocks=>blks)
+  Description
+    Text
+      See @TO VariableBlocks@.  The blocks determine the irrelevant ideal, so
+      passing @TO IrrelevantIdeal@ as well is an error.
+
+Node
+  Key
+    [threefoldMMPData, VariableBlocks]
+  Headline
+    name the variable blocks instead of the irrelevant ideal
+  Usage
+    threefoldMMPData(R,a,H,VariableBlocks=>blks)
+  Description
+    Text
+      See @TO VariableBlocks@.  The blocks determine the irrelevant ideal, so
+      passing @TO IrrelevantIdeal@ as well is an error.
+
+Node
+  Key
+    [canonicalIndexData, VariableBlocks]
+  Headline
+    name the variable blocks instead of the irrelevant ideal
+  Usage
+    canonicalIndexData(R,VariableBlocks=>blks)
+  Description
+    Text
+      See @TO VariableBlocks@.  The blocks determine the irrelevant ideal, so
+      passing @TO IrrelevantIdeal@ as well is an error.
+
+Node
+  Key
+    [completeLinearSystemGraphDataMultigraded, VariableBlocks]
+  Headline
+    name the variable blocks instead of the irrelevant ideal
+  Usage
+    completeLinearSystemGraphDataMultigraded(D,w,VariableBlocks=>blks)
+  Description
+    Text
+      See @TO VariableBlocks@.  The blocks determine the irrelevant ideal, so
+      passing @TO IrrelevantIdeal@ as well is an error.
+
+Node
+  Key
+    [isCanonicalNef, VariableBlocks]
+  Headline
+    accepted but unused
+  Usage
+    isCanonicalNef(R,a,VariableBlocks=>blks)
+  Description
+    Text
+      Accepted for signature compatibility with @TO canonicalNefData@ and
+      currently unused, for the same reason as
+      @TO [isCanonicalNef, IrrelevantIdeal]@: this method has no overload
+      taking an ample class $H$, and its singly graded form has one block, so
+      there is nothing to name.  Use @TO canonicalNefData@ itself on a
+      multigraded ring.
+
+Node
+  Key
+    [canonicalNefThreshold, VariableBlocks]
+  Headline
+    accepted but unused
+  Usage
+    canonicalNefThreshold(R,a,VariableBlocks=>blks)
+  Description
+    Text
+      Accepted for signature compatibility with
+      @TO canonicalNefThresholdData@ and currently unused, for the same reason
+      as @TO [canonicalNefThreshold, IrrelevantIdeal]@.  Use
+      @TO canonicalNefThresholdData@ itself on a multigraded ring.
 
 ///
 
