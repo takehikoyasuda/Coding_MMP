@@ -171,6 +171,17 @@ Regression tests in `tests/` are run with `make test-core`; a separate slow
 capstone test (a two-step MMP computed end to end, `~15` minutes of cpu time)
 is run on demand with `make test-slow`.
 
+## Use of AI
+
+The integration-layer code, tests, and documentation in this repository were
+written essentially by an AI system (Claude), with edits by the author.
+ChatGPT was also used during development, mainly for design and algorithm
+discussion.  The author has read the AI-written material and believes it to be
+correct, but has not checked every detail.  The underlying algorithms are the ones in the paper
+above, and each one added here is checked against the regression suite in
+`tests/`, so large errors are unlikely, but this is a research prototype, not
+verified software.
+
 ## License
 
 This repository's integration-layer code (`MMPComputation.m2`, `tests/`,
