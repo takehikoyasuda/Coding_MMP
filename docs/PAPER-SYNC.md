@@ -56,37 +56,22 @@ Numbering, terminology and behaviour have been brought in line with v3.
   is on arXiv.
 - Skew (mixed-degree) multigraded rings no longer get a guessed irrelevant
   ideal (`1e87a0d`); see the next section for what that leaves open.
+- `SteinFactorizationM2`'s documentation now names the quotient stacks the
+  algorithm is stated over, and says why the grading on `C` is the one it is
+  (`d3a2bfd`). The top node had called the input "a bigraded projective
+  scheme"; `steinHomData` had stated the polarization without a reason for it.
+  Remark 5.2's caveat is kept: the stacks retain every graded piece `C_v`
+  because `O_X(v)` is a line bundle on the stack for every `v`, whereas the
+  coarse space restricts to multiples of the weight lcm `l` -- the Veronese
+  subrings `A^(l)`, `C^(l)`, giving the same `Z -> X` at higher degrees -- so
+  they are a computational convenience, not intrinsic to Stein factorization.
+  Documentation only; `make docs` builds clean and `run-tests.sh` passes.
+  `flip-computation`'s "bigraded variety" wording follows Definition 2.5,
+  which is scheme-theoretic, and was left alone.
 
 ## Outstanding
 
-### 1. Say what the stack computation computes (change 2 above)
-
-The computation itself does not change -- the code evaluates Corollary 4.3's
-right-hand side, `Hom_R(M_{>=r},N)_{>=0}`, which is a statement about graded
-modules either way. What changes is what the answer *means*, and two places in
-`SteinFactorizationM2` describe it in pre-revision terms:
-
-- [`SteinFactorization.m2:573`](../third_party/SteinFactorizationM2/SteinFactorization.m2#L573)
-  calls the input "a bigraded projective scheme". The paper hedged that word
-  in scare quotes before the revision and now has an actual stack to name.
-- [`SteinFactorization.m2:650`](../third_party/SteinFactorizationM2/SteinFactorization.m2#L650)
-  says `C` "is the section ring of `Z` for the polarization pulled back from
-  `X`". True, but Remark 5.2 can now say why the grading is the one it is.
-
-Remark 5.2 is the material to draw on: the quotient stacks are used to retain
-all grading indices, because `O_X(v)` is a line bundle on the stack for every
-`v`, so every graded piece `C_v` can be kept. On the coarse space one is
-restricted to multiples of `l = lcm` of the weights, which raises the degrees
-the computation runs at. The remark also notes the stacks are not intrinsic to
-Stein factorization -- the same `Z -> X` comes out either way.
-
-`flip-computation` says "bigraded variety" in a few places
-(`FlipComputation/basics.m2`, `FlipComputation/doc.m2`); those follow Section
-2's Definition 2.5, which is scheme-theoretic, so they are already correct.
-
-Cheap, self-contained, no correctness risk.
-
-### 2. Document the multigraded entry points
+### 1. Document the multigraded entry points
 
 `make install` emits 33 `missing node` warnings. The substantive ones are the
 multigraded overloads, which are exported but have no documentation node:
@@ -102,10 +87,10 @@ tells the caller to supply `IrrelevantIdeal`. That instruction is currently
 only in `IrrelevantIdeal`'s own node, and the entry points where a caller
 meets it are undocumented.
 
-Sequencing: item 3 below changes what this documentation should say, so do
-item 3 first, or write item 2 knowing it will need revisiting.
+Sequencing: item 2 below changes what this documentation should say, so do
+item 2 first, or write this one knowing it will need revisiting.
 
-### 3. Thread the provenance irrelevant ideal through the pipeline
+### 2. Thread the provenance irrelevant ideal through the pipeline
 
 `multigradedBlockData`'s block-classification heuristic is still uncorrected.
 `1e87a0d` made every caller refuse to trust it unless the degree matrix is
@@ -123,7 +108,7 @@ removed the correctness problem. `tests/multigraded-skew-cartier.m2` pins the
 current behaviour and `research-log/docs/STAGE2-SINGULAR-MEASUREMENT-PLAN.md`
 has the analysis.
 
-### 4. Divisorial relative canonical models are not computed
+### 3. Divisorial relative canonical models are not computed
 
 Lemma 6.6's test asks the projection to be small, so
 `computeRelativeCanonicalModel` accepts only the identity or a small model. A
@@ -136,7 +121,7 @@ so, but the case is not implemented and there is no example of one.
 test constructs that label by passing `ContractionIsSmall => false` to a model
 that is in fact small, so the genuinely divisorial path is untested.
 
-### 5. Repository visibility
+### 4. Repository visibility
 
 `SteinFactorizationM2` is public. `Coding_MMP` and `flip-computation` are
 still private and are to be made public when the revision appears on arXiv.
