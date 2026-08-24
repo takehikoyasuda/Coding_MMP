@@ -91,31 +91,34 @@ Numbering, terminology and behaviour have been brought in line with v3.
   nothing to classify (asserted for `P^3`), and `threefoldMMPData`'s own
   `nextRing` is monograded, so the `(Ring,ZZ,List)` loop needs no provenance
   ideal and accepting one there would only add a way to be wrong.
+- The multigraded entry points are documented, and `make install`'s 33
+  `missing node` warnings are gone (0 warnings, 0 errors). All 33 were option
+  nodes -- `[method, Option]` -- not missing method nodes, so every `@TO`
+  link from `IrrelevantIdeal`, `DivisorClassDegrees` and the search-limit
+  symbols into the methods that accept them was dead. The overloads taking an
+  ample class `H` were added as keys to their existing method nodes
+  (`canonicalNefData`, `canonicalNefThresholdData`, `canonicalScaledNefData`,
+  `canonicalContractionAtThresholdData`, `canonicalContractionData`), each with
+  a paragraph saying that `H` must be supplied because
+  `weightedAmpleDivisorData` reads a single set of weights, and that
+  `IrrelevantIdeal` takes an ideal or the provenance object.
+
+  Two corrections to what this file previously said. `threefoldMMPData(R,a,H)`
+  was already documented, contrary to the list here. And two of the options are
+  accepted but unusable: `isCanonicalNef` and `canonicalNefThreshold` declare
+  `IrrelevantIdeal` through `options canonicalNefData` /
+  `options canonicalNefThresholdData`, yet have no overload taking `H` and drop
+  the option when forwarding, so it can never take effect. Their nodes say so
+  rather than implying otherwise; whether to reject it there instead is a
+  behaviour question, left alone.
+
+  Also fixed in passing: six typewriter-text markups in the manual were
+  broken -- five `{tt ...}` missing the backslash, and one carrying a literal
+  tab where `\t` belonged -- so those words rendered as `tt ...` instead.
 
 ## Outstanding
 
-### 1. Document the multigraded entry points
-
-`make install` emits 33 `missing node` warnings. The substantive ones are the
-multigraded overloads, which are exported but have no documentation node:
-`canonicalNefData(R,a,H)`, `canonicalScaledNefData(R,a,t,H)`,
-`canonicalContractionAtThresholdData(R,a,lambda,H)`,
-`canonicalContractionData(R,a,H)`, `threefoldMMPData(R,a,H)`, and the option
-nodes they cite (`IrrelevantIdeal`, `DivisorClassDegrees`, and the various
-search limits).
-
-This matters more since `1e87a0d`: on a skew multigraded ring these entry
-points now *stop* rather than guessing an irrelevant ideal, and the message
-tells the caller to supply `IrrelevantIdeal`. That instruction is currently
-only in `IrrelevantIdeal`'s own node, and the entry points where a caller
-meets it are undocumented.
-
-Sequencing: the provenance-threading item this depended on is done (see the
-previous section), so what the documentation has to say is now settled -- an
-entry point takes `IrrelevantIdeal` as an ideal or as the `B2MProjection` or
-`GraphMorphism` that built the ring.
-
-### 2. Divisorial relative canonical models are not computed
+### 1. Divisorial relative canonical models are not computed
 
 Lemma 6.6's test asks the projection to be small, so
 `computeRelativeCanonicalModel` accepts only the identity or a small model. A
@@ -128,7 +131,7 @@ so, but the case is not implemented and there is no example of one.
 test constructs that label by passing `ContractionIsSmall => false` to a model
 that is in fact small, so the genuinely divisorial path is untested.
 
-### 3. Repository visibility
+### 2. Repository visibility
 
 `SteinFactorizationM2` is public. `Coding_MMP` and `flip-computation` are
 still private and are to be made public when the revision appears on arXiv.

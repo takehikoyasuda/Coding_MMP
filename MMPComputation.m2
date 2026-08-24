@@ -2802,7 +2802,7 @@ Node
       coordinates for $W \dashrightarrow Z$, verifies the model and graph
       equations, and certifies that their base locus is the Rees centre after
       saturation.  Skew weighted fibre coordinates use the positive diagonal
-      selected internally by {tt b2mDiagonalData}.
+      selected internally by {\tt b2mDiagonalData}.
     Example
       needsPackage "Polyhedra";
       rayList = {{1,0,0}, {0,1,0}, {0,0,1}, {1,1,-2}};
@@ -3028,7 +3028,7 @@ Node
       the image of the rational map given by a spanning set of sections of
       @TT "w"@.  When @TT "w"@ is very ample this is an isomorphic singly
       graded presentation of the same variety; used internally to bridge
-      multigraded presentations into {tt SteinFactorization}'s
+      multigraded presentations into {\tt SteinFactorization}'s
       block-diagonal bigraded requirement.
     Example
       needsPackage "WeilDivisors";
@@ -3059,7 +3059,7 @@ Node
     Text
       The multigraded companion of @TO completeLinearSystemGraphData@: the
       source side of the graph is built from @TO diagonalSubalgebraData@'s
-      flattened ring, since {tt SteinFactorization} requires a block-diagonal
+      flattened ring, since {\tt SteinFactorization} requires a block-diagonal
       bigraded presentation, while D's own sections still come from R
       directly.
     Example
@@ -3077,16 +3077,28 @@ Node
     canonicalContractionAtThresholdData
     (canonicalContractionAtThresholdData,Ring,ZZ,QQ)
     (canonicalContractionAtThresholdData,Ring,ZZ,ZZ)
+    (canonicalContractionAtThresholdData,Ring,ZZ,QQ,BasicDivisor)
+    (canonicalContractionAtThresholdData,Ring,ZZ,ZZ,BasicDivisor)
   Headline
     construct the contraction at a known canonical nef threshold
   Usage
     result = canonicalContractionAtThresholdData(R,a,lambda)
+    result = canonicalContractionAtThresholdData(R,a,lambda,H)
   Description
     Text
       Find a base-point-free multiple of $K_X+\lambda H$, construct its
       complete-linear-system graph, and compute its Stein factorization.  The
       function tests small multiples first and is guaranteed to stop at the
       effective multiplier from the scaled nefness theorem.
+
+      A multigraded ring is handled by the overload that takes the ample
+      Cartier class $H$ as an argument: deriving $H$ automatically is not
+      attempted there, since @TO weightedAmpleDivisorData@ reads a single set
+      of weights.  On such a ring supply the irrelevant ideal as well, with
+      @TO IrrelevantIdeal@ -- either as an ideal of $R$ or as the
+      {\tt B2MProjection} or {\tt GraphMorphism} that built $R$, which carries
+      it.  Without it the call stops rather than guess, whenever the degree
+      matrix is not verifiably block diagonal.
     Example
       S = QQ[z00,z01,z02,z10,z11,z12];
       X = S/minors(2,matrix{{z00,z01,z02},{z10,z11,z12}});
@@ -3097,15 +3109,19 @@ Node
   Key
     canonicalContractionData
     (canonicalContractionData,Ring,ZZ)
+    (canonicalContractionData,Ring,ZZ,BasicDivisor)
   Headline
     compute the canonical nef threshold and its extremal-face contraction
   Usage
     result = canonicalContractionData(R,a)
+    result = canonicalContractionData(R,a,H)
   Inputs
     R:Ring
       the homogeneous coordinate ring of a normal log terminal threefold
     a:ZZ
       a positive integer such that $aK_X$ is Cartier
+    H:BasicDivisor
+      an ample Cartier divisor, required only in the multigraded form
   Outputs
     :HashTable
       the threshold, contraction graph, dimensions, and contraction type
@@ -3119,6 +3135,15 @@ Node
       the Segre threefold $\mathbb{P}^1\times\mathbb{P}^2$: the computed
       threshold is 3 and $K_X+3H=\mathcal{O}_X(1,0)$ contracts it to
       $\mathbb{P}^1$.
+
+      A multigraded ring is handled by the overload that takes the ample
+      Cartier class $H$ as an argument: deriving $H$ automatically is not
+      attempted there, since @TO weightedAmpleDivisorData@ reads a single set
+      of weights.  On such a ring supply the irrelevant ideal as well, with
+      @TO IrrelevantIdeal@ -- either as an ideal of $R$ or as the
+      {\tt B2MProjection} or {\tt GraphMorphism} that built $R$, which carries
+      it.  Without it the call stops rather than guess, whenever the degree
+      matrix is not verifiably block diagonal.
     Example
       S = QQ[z00,z01,z02,z10,z11,z12];
       X = S/minors(2,matrix{{z00,z01,z02},{z10,z11,z12}});
@@ -3133,15 +3158,19 @@ Node
   Key
     canonicalNefThresholdData
     (canonicalNefThresholdData,Ring,ZZ)
+    (canonicalNefThresholdData,Ring,ZZ,BasicDivisor)
   Headline
     compute the canonical nef threshold and its search data
   Usage
     result = canonicalNefThresholdData(R,a)
+    result = canonicalNefThresholdData(R,a,H)
   Inputs
     R:Ring
       the homogeneous coordinate ring of a normal log terminal threefold
     a:ZZ
       a positive integer such that $aK_X$ is Cartier
+    H:BasicDivisor
+      an ample Cartier divisor, required only in the multigraded form
   Outputs
     :HashTable
       the rational threshold in @TT "threshold"@ and its search certificates
@@ -3151,10 +3180,19 @@ Node
       $t$ for which $K_X+tH$ is nef.  The function implements Algorithm 1:
       dyadic searches bracket the threshold and the rationality theorem gives
       a finite candidate list.  The ample Cartier divisor $H$ is the one
-      returned by {tt weightedAmpleDivisorData}.  Call this only after
+      returned by {\tt weightedAmpleDivisorData}.  Call this only after
       @TO canonicalNefData@ has shown that $K_X$ is not nef.  If a search
       bound is reached, @TT "threshold"@ is null and @TT "phase"@
       identifies the unfinished part of the search.
+
+      A multigraded ring is handled by the overload that takes the ample
+      Cartier class $H$ as an argument: deriving $H$ automatically is not
+      attempted there, since @TO weightedAmpleDivisorData@ reads a single set
+      of weights.  On such a ring supply the irrelevant ideal as well, with
+      @TO IrrelevantIdeal@ -- either as an ideal of $R$ or as the
+      {\tt B2MProjection} or {\tt GraphMorphism} that built $R$, which carries
+      it.  Without it the call stops rather than guess, whenever the degree
+      matrix is not verifiably block diagonal.
     Example
       S = QQ[z00,z01,z02,z10,z11,z12];
       X = S/minors(2,matrix{{z00,z01,z02},{z10,z11,z12}});
@@ -3188,15 +3226,19 @@ Node
   Key
     canonicalNefData
     (canonicalNefData,Ring,ZZ)
+    (canonicalNefData,Ring,ZZ,BasicDivisor)
   Headline
     decide whether the canonical divisor of a threefold is nef
   Usage
     result = canonicalNefData(R,a)
+    result = canonicalNefData(R,a,H)
   Inputs
     R:Ring
       the homogeneous coordinate ring of a normal log terminal threefold
     a:ZZ
       a positive integer such that $aK_X$ is Cartier
+    H:BasicDivisor
+      an ample Cartier divisor, required only in the multigraded form
   Outputs
     :HashTable
       @TT "nef"@, @TT "conclusive"@, and the base-point-free or non-nef
@@ -3211,6 +3253,15 @@ Node
       When @TT "conclusive"@ is true, @TT "nef"@ is the Boolean answer and
       @TT "witnessType"@ explains its certificate.  A null @TT "nef"@
       means only that the optional search limit was reached.
+
+      A multigraded ring is handled by the overload that takes the ample
+      Cartier class $H$ as an argument: deriving $H$ automatically is not
+      attempted there, since @TO weightedAmpleDivisorData@ reads a single set
+      of weights.  On such a ring supply the irrelevant ideal as well, with
+      @TO IrrelevantIdeal@ -- either as an ideal of $R$ or as the
+      {\tt B2MProjection} or {\tt GraphMorphism} that built $R$, which carries
+      it.  Without it the call stops rather than guess, whenever the degree
+      matrix is not verifiably block diagonal.
     Example
       S = QQ[z00,z01,z02,z10,z11,z12];
       X = S/minors(2,matrix{{z00,z01,z02},{z10,z11,z12}});
@@ -3218,7 +3269,7 @@ Node
       {nefData#"nef",nefData#"witnessType"}
   Caveat
     With no search limit the algorithm terminates under the stated threefold
-    hypotheses by abundance.  Passing {	t NefSearchLimit} makes the computation
+    hypotheses by abundance.  Passing {\tt NefSearchLimit} makes the computation
     practically bounded but may return an inconclusive table.
 
 Node
@@ -3246,16 +3297,28 @@ Node
     canonicalScaledNefData
     (canonicalScaledNefData,Ring,ZZ,QQ)
     (canonicalScaledNefData,Ring,ZZ,ZZ)
+    (canonicalScaledNefData,Ring,ZZ,QQ,BasicDivisor)
+    (canonicalScaledNefData,Ring,ZZ,ZZ,BasicDivisor)
   Headline
     decide whether K_X+tH is nef for positive rational t
   Usage
     result = canonicalScaledNefData(R,a,t)
+    result = canonicalScaledNefData(R,a,t,H)
   Description
     Text
       Test small positive multiples first.  A base-point-free multiple proves
       nefness; a negative intersection with a curve obtained from its base
       locus proves non-nefness.  If neither short certificate is found, use the
       effective base-point-free multiplier from Proposition 3.1.
+
+      A multigraded ring is handled by the overload that takes the ample
+      Cartier class $H$ as an argument: deriving $H$ automatically is not
+      attempted there, since @TO weightedAmpleDivisorData@ reads a single set
+      of weights.  On such a ring supply the irrelevant ideal as well, with
+      @TO IrrelevantIdeal@ -- either as an ideal of $R$ or as the
+      {\tt B2MProjection} or {\tt GraphMorphism} that built $R$, which carries
+      it.  Without it the call stops rather than guess, whenever the degree
+      matrix is not verifiably block diagonal.
     Example
       S = QQ[z00,z01,z02,z10,z11,z12];
       X = S/minors(2,matrix{{z00,z01,z02},{z10,z11,z12}});
@@ -3451,7 +3514,7 @@ Node
       see multigradedBlockData) and errors instead of silently reporting a
       false Cartier or base-point-free positive built on it -- see
       tests/multigraded-skew-cartier.m2.  Passing
-      {tt IrrelevantIdeal=>B} to canonicalScaledNefData,
+      {\tt IrrelevantIdeal=>B} to canonicalScaledNefData,
       canonicalNefThresholdData, canonicalNefData,
       canonicalContractionAtThresholdData, or canonicalContractionData uses
       B verbatim for that entry point's own Cartier gate instead of
@@ -3510,6 +3573,426 @@ Node
     Text
       Stop after at most n alternations.  An error is raised if the bounded
       search is inconclusive.
+Node
+  Key
+    [canonicalScaledNefData, IrrelevantIdeal]
+  Headline
+    supply the irrelevant ideal to the scaled-nefness test
+  Usage
+    canonicalScaledNefData(R,a,t,H,IrrelevantIdeal=>B)
+  Description
+    Text
+      On a multigraded ring whose degree matrix is not verifiably block
+      diagonal this is required: without it the call stops rather than guess
+      an irrelevant ideal.  The value is an ideal of the ring, or the
+      {\tt B2MProjection} or {\tt GraphMorphism} that built it, which carries
+      the variable-block partition the ideal is the product of.
+
+Node
+  Key
+    [canonicalNefThresholdData, IrrelevantIdeal]
+  Headline
+    supply the irrelevant ideal to the threshold search
+  Usage
+    canonicalNefThresholdData(R,a,H,IrrelevantIdeal=>B)
+  Description
+    Text
+      On a multigraded ring whose degree matrix is not verifiably block
+      diagonal this is required: without it the call stops rather than guess
+      an irrelevant ideal.  The value is an ideal of the ring, or the
+      {\tt B2MProjection} or {\tt GraphMorphism} that built it, which carries
+      the variable-block partition the ideal is the product of.
+
+Node
+  Key
+    [canonicalNefData, IrrelevantIdeal]
+  Headline
+    supply the irrelevant ideal to the nefness test
+  Usage
+    canonicalNefData(R,a,H,IrrelevantIdeal=>B)
+  Description
+    Text
+      On a multigraded ring whose degree matrix is not verifiably block
+      diagonal this is required: without it the call stops rather than guess
+      an irrelevant ideal.  The value is an ideal of the ring, or the
+      {\tt B2MProjection} or {\tt GraphMorphism} that built it, which carries
+      the variable-block partition the ideal is the product of.
+
+Node
+  Key
+    [canonicalContractionAtThresholdData, IrrelevantIdeal]
+  Headline
+    supply the irrelevant ideal to the contraction at a threshold
+  Usage
+    canonicalContractionAtThresholdData(R,a,lambda,H,IrrelevantIdeal=>B)
+  Description
+    Text
+      On a multigraded ring whose degree matrix is not verifiably block
+      diagonal this is required: without it the call stops rather than guess
+      an irrelevant ideal.  The value is an ideal of the ring, or the
+      {\tt B2MProjection} or {\tt GraphMorphism} that built it, which carries
+      the variable-block partition the ideal is the product of.
+
+Node
+  Key
+    [canonicalContractionData, IrrelevantIdeal]
+  Headline
+    supply the irrelevant ideal to the threshold and contraction
+  Usage
+    canonicalContractionData(R,a,H,IrrelevantIdeal=>B)
+  Description
+    Text
+      On a multigraded ring whose degree matrix is not verifiably block
+      diagonal this is required: without it the call stops rather than guess
+      an irrelevant ideal.  The value is an ideal of the ring, or the
+      {\tt B2MProjection} or {\tt GraphMorphism} that built it, which carries
+      the variable-block partition the ideal is the product of.
+
+Node
+  Key
+    [threefoldMMPData, IrrelevantIdeal]
+  Headline
+    supply the irrelevant ideal to the MMP driver's first step
+  Usage
+    threefoldMMPData(R,a,H,IrrelevantIdeal=>B)
+  Description
+    Text
+      On a multigraded ring whose degree matrix is not verifiably block
+      diagonal this is required: without it the call stops rather than guess
+      an irrelevant ideal.  The value is an ideal of the ring, or the
+      {\tt B2MProjection} or {\tt GraphMorphism} that built it, which carries
+      the variable-block partition the ideal is the product of.
+    Text
+      It applies to the multigraded first step only.  Once a birational step is
+      recorded the driver's own next ring is singly graded, so the remaining
+      iterations need no irrelevant ideal of their own.
+
+Node
+  Key
+    [canonicalIndexData, IrrelevantIdeal]
+  Headline
+    supply the irrelevant ideal to the canonical-index search
+  Usage
+    canonicalIndexData(R,IrrelevantIdeal=>B)
+  Description
+    Text
+      On a multigraded ring whose degree matrix is not verifiably block
+      diagonal this is required: without it the call stops rather than guess
+      an irrelevant ideal.  The value is an ideal of the ring, or the
+      {\tt B2MProjection} or {\tt GraphMorphism} that built it, which carries
+      the variable-block partition the ideal is the product of.
+    Text
+      When supplied, the fallback test uses the saturated Cartier predicate
+      instead of the generic {\tt isCartier}, which also avoids
+      {\tt WeilDivisors}' own irrelevant ideal being wrong on a mixed-sign
+      multigraded ring.
+
+Node
+  Key
+    [completeLinearSystemGraphDataMultigraded, IrrelevantIdeal]
+  Headline
+    supply the irrelevant ideal to the multigraded linear-system graph
+  Usage
+    completeLinearSystemGraphDataMultigraded(D,w,IrrelevantIdeal=>B)
+  Description
+    Text
+      On a multigraded ring whose degree matrix is not verifiably block
+      diagonal this is required: without it the call stops rather than guess
+      an irrelevant ideal.  The value is an ideal of the ring, or the
+      {\tt B2MProjection} or {\tt GraphMorphism} that built it, which carries
+      the variable-block partition the ideal is the product of.
+
+Node
+  Key
+    [isCanonicalNef, IrrelevantIdeal]
+  Headline
+    accepted but unused
+  Usage
+    isCanonicalNef(R,a,IrrelevantIdeal=>B)
+  Description
+    Text
+      Accepted for signature compatibility with @TO canonicalNefData@ and
+      currently unused: this method has no overload taking an ample class $H$,
+      and its singly graded form neither needs nor forwards an irrelevant
+      ideal (one block, so the ideal of all the variables is the only
+      candidate).  Use @TO canonicalNefData@ itself on a multigraded ring.
+
+Node
+  Key
+    [canonicalNefThreshold, IrrelevantIdeal]
+  Headline
+    accepted but unused
+  Usage
+    canonicalNefThreshold(R,a,IrrelevantIdeal=>B)
+  Description
+    Text
+      Accepted for signature compatibility with @TO canonicalNefThresholdData@ and
+      currently unused: this method has no overload taking an ample class $H$,
+      and its singly graded form neither needs nor forwards an irrelevant
+      ideal (one block, so the ideal of all the variables is the only
+      candidate).  Use @TO canonicalNefThresholdData@ itself on a multigraded ring.
+
+Node
+  Key
+    [canonicalNefData, DivisorClassDegrees]
+  Headline
+    supply the canonical and ample class degrees
+  Usage
+    canonicalNefData(R,a,H,DivisorClassDegrees=>{dK,dH})
+  Description
+    Text
+      Pass @TT "{degree(K),degree(H)}"@ when they are already known, to skip
+      re-deriving them; the value is forwarded to the nested
+      @TO canonicalScaledNefData@ tests.
+
+Node
+  Key
+    [canonicalScaledNefData, DivisorClassDegrees]
+  Headline
+    supply the canonical and ample class degrees
+  Usage
+    canonicalScaledNefData(R,a,t,H,DivisorClassDegrees=>{dK,dH})
+  Description
+    Text
+      Pass @TT "{degree(K),degree(H)}"@ when they are already known, to skip
+      re-deriving them.  Default null recomputes both.
+
+Node
+  Key
+    [isCanonicalNef, DivisorClassDegrees]
+  Headline
+    supply the canonical and ample class degrees
+  Usage
+    isCanonicalNef(R,a,DivisorClassDegrees=>{dK,dH})
+  Description
+    Text
+      Forwarded verbatim to @TO canonicalNefData@.
+
+Node
+  Key
+    [canonicalContractionData, ThresholdSearchLimit]
+  Headline
+    bound the threshold search inside the contraction
+  Usage
+    canonicalContractionData(R,a,ThresholdSearchLimit=>n)
+  Description
+    Text
+      Forwarded to @TO canonicalNefThresholdData@.  If the bound is reached the
+      result is inconclusive with @TT "phase"@ set to the threshold search.
+
+Node
+  Key
+    [threefoldMMPData, ThresholdSearchLimit]
+  Headline
+    bound each step's threshold search
+  Usage
+    threefoldMMPData(R,a,ThresholdSearchLimit=>n)
+  Description
+    Text
+      Forwarded to every step's @TO canonicalContractionData@ call.
+
+Node
+  Key
+    [canonicalContractionAtThresholdData, ContractionMultipleLimit]
+  Headline
+    bound the multiples tested at the threshold
+  Usage
+    canonicalContractionAtThresholdData(R,a,lambda,ContractionMultipleLimit=>n)
+  Description
+    Text
+      Test at most n multiples of $K_X+\lambda H$ before giving up.  The number
+      actually tested is reported in @TT "multipliersTested"@.
+
+Node
+  Key
+    [canonicalContractionData, ContractionMultipleLimit]
+  Headline
+    bound the multiples tested when contracting
+  Usage
+    canonicalContractionData(R,a,ContractionMultipleLimit=>n)
+  Description
+    Text
+      Forwarded to @TO canonicalContractionAtThresholdData@.
+
+Node
+  Key
+    [threefoldMMPData, ContractionMultipleLimit]
+  Headline
+    bound each step's contraction multiples
+  Usage
+    threefoldMMPData(R,a,ContractionMultipleLimit=>n)
+  Description
+    Text
+      Forwarded to every step's @TO canonicalContractionData@ call.
+
+Node
+  Key
+    [threefoldMMPData, NefSearchLimit]
+  Headline
+    bound each step's nefness search
+  Usage
+    threefoldMMPData(R,a,NefSearchLimit=>n)
+  Description
+    Text
+      Forwarded to every step's @TO canonicalNefData@ call.  Reaching it stops
+      the driver with @TT "phase"@ set to nefness.
+
+Node
+  Key
+    [canonicalIndexData, CanonicalIndexSearchLimit]
+  Headline
+    bound the canonical-index search
+  Usage
+    canonicalIndexData(R,CanonicalIndexSearchLimit=>n)
+  Description
+    Text
+      Try the multiples $i = 1,\dots,n$ and report an inconclusive result if
+      none of them makes $iK_X$ Cartier.  Default null searches unbounded.
+
+Node
+  Key
+    [threefoldMMPData, CanonicalIndexSearchLimit]
+  Headline
+    bound each step's canonical-index search
+  Usage
+    threefoldMMPData(R,a,CanonicalIndexSearchLimit=>n)
+  Description
+    Text
+      Forwarded to the @TO canonicalIndexData@ call that computes the index of
+      each new ring the driver reaches.
+
+Node
+  Key
+    [threefoldMMPData, MMPMaxSteps]
+  Headline
+    bound the number of MMP steps
+  Usage
+    threefoldMMPData(R,a,MMPMaxSteps=>n)
+  Description
+    Text
+      Stop after n birational steps and report @TT "phase"@ as the step limit.
+      Default null iterates until a minimal model or a K-negative fibration is
+      reached.
+
+Node
+  Key
+    [relativeCanonicalModelFromBaseData, RelativeCanonicalMultipliers]
+  Headline
+    give the multiplier list explicitly
+  Usage
+    relativeCanonicalModelFromBaseData(W,RelativeCanonicalMultipliers=>L)
+  Description
+    Text
+      Try exactly the multipliers in L, in order, instead of the consecutive
+      search $m = 1, 2, 3, \dots$ of Algorithm 4.
+
+Node
+  Key
+    [relativeCanonicalModelFromBaseData, RelativeCanonicalMaxMultiplier]
+  Headline
+    cap the multiplier search
+  Usage
+    relativeCanonicalModelFromBaseData(W,RelativeCanonicalMaxMultiplier=>m)
+  Description
+    Text
+      Stop after multiplier m.  Exhausting the search is reported as an
+      inconclusive result, not raised as an error.
+
+Node
+  Key
+    [relativeCanonicalModelFromBaseData, RelativeCanonicalVerbose]
+  Headline
+    show the model computation's progress
+  Usage
+    relativeCanonicalModelFromBaseData(W,RelativeCanonicalVerbose=>true)
+
+Node
+  Key
+    [relativeCanonicalModelData, RelativeCanonicalMultipliers]
+  Headline
+    give the multiplier list explicitly
+  Usage
+    relativeCanonicalModelData(contraction,RelativeCanonicalMultipliers=>L)
+  Description
+    Text
+      Forwarded to @TO relativeCanonicalModelFromBaseData@.
+
+Node
+  Key
+    [relativeCanonicalModelData, RelativeCanonicalMaxMultiplier]
+  Headline
+    cap the multiplier search
+  Usage
+    relativeCanonicalModelData(contraction,RelativeCanonicalMaxMultiplier=>m)
+  Description
+    Text
+      Forwarded to @TO relativeCanonicalModelFromBaseData@.
+
+Node
+  Key
+    [relativeCanonicalModelData, RelativeCanonicalVerbose]
+  Headline
+    show the model computation's progress
+  Usage
+    relativeCanonicalModelData(contraction,RelativeCanonicalVerbose=>true)
+
+Node
+  Key
+    [threefoldMMPData, RelativeCanonicalMultipliers]
+  Headline
+    give each step's multiplier list explicitly
+  Usage
+    threefoldMMPData(R,a,RelativeCanonicalMultipliers=>L)
+  Description
+    Text
+      Forwarded to every step's @TO relativeCanonicalModelData@ call.
+
+Node
+  Key
+    [threefoldMMPData, RelativeCanonicalMaxMultiplier]
+  Headline
+    cap each step's multiplier search
+  Usage
+    threefoldMMPData(R,a,RelativeCanonicalMaxMultiplier=>m)
+  Description
+    Text
+      Forwarded to every step's @TO relativeCanonicalModelData@ call.  A step
+      that exhausts it stops the driver with @TT "phase"@ set to the relative
+      canonical model.
+
+Node
+  Key
+    [threefoldMMPData, RelativeCanonicalVerbose]
+  Headline
+    show each step's model computation
+  Usage
+    threefoldMMPData(R,a,RelativeCanonicalVerbose=>true)
+
+Node
+  Key
+    [mmpStepRecordData, ContractionIsSmall]
+  Headline
+    assert the contraction's smallness instead of computing it
+  Usage
+    mmpStepRecordData(contraction,model,ContractionIsSmall=>true)
+  Description
+    Text
+      Skip @TO contractionSmallnessData@ and take the given Boolean as the
+      answer, which is what distinguishes a flipping step from a mixed one.
+      The certificate is the caller's responsibility; default null computes it.
+
+Node
+  Key
+    [negativeCurveWitnessData, NegativeCurveSearchLimit]
+  Headline
+    bound the dimension-reducing cuts
+  Usage
+    negativeCurveWitnessData(D,candidateBaseLocus,B,h,NegativeCurveSearchLimit=>n)
+  Description
+    Text
+      Make at most n coordinate cuts while reducing a base-locus component to a
+      curve, then give up and return @TO null@.  The default is 8.
+
 ///
 
 endPackage "MMPComputation"
