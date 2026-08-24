@@ -298,3 +298,28 @@ assert(
     );
 
 print "OK VariableBlocks: naming the variable blocks gives exactly the provenance irrelevant ideal on this skew ring, malformed partitions are rejected, and blocks plus an ideal together are refused.";
+
+-- Where the multigraded extension stops.  isCanonicalNef and
+-- canonicalNefThreshold are the paper's algorithm as stated, for a monograded
+-- variety (Section 3's opening sentence), and the multigraded entry points are
+-- this package's extension of it, living on the data-returning methods.  Both
+-- wrappers inherit the two options through "options canonicalNefData" /
+-- "options canonicalNefThresholdData" and used to drop them in silence, which
+-- sent a multigraded ring into the monograded dimension test dim R - 1 and
+-- reported "expected a projective threefold" about Z, whose geometric
+-- dimension is 3.  They are refused now.
+assert(try (isCanonicalNef(Z,2,IrrelevantIdeal=>Btrue); false) else true);
+assert(try (isCanonicalNef(Z,2,VariableBlocks=>blocks); false) else true);
+assert(try (canonicalNefThreshold(Z,2,IrrelevantIdeal=>Btrue); false) else true);
+assert(try (canonicalNefThreshold(Z,2,VariableBlocks=>blocks); false) else true);
+
+-- The refusal is about the options, not about the ring: on a monograded ring
+-- neither wrapper is disturbed by this change, and the options still default
+-- to null there.
+Pthree = QQ[q_0..q_3];
+assert(isCanonicalNef(Pthree,1) == false);
+assert(canonicalNefThreshold(Pthree,1) == 4);
+assert(try (isCanonicalNef(Pthree,1,IrrelevantIdeal=>ideal vars Pthree); false)
+    else true);
+
+print "OK the monograded wrappers refuse IrrelevantIdeal and VariableBlocks instead of dropping them, and are otherwise unchanged on a monograded ring.";

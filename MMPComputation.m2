@@ -1504,6 +1504,24 @@ canonicalNefThresholdData (Ring,ZZ,BasicDivisor) := o -> (R,a,H) -> (
 
 canonicalNefThreshold = method(Options => options canonicalNefThresholdData)
 canonicalNefThreshold (Ring,ZZ) := o -> (R,a) -> (
+    -- These two wrappers cover the paper's algorithm as stated, which is for a
+    -- monograded variety: Section 3 opens with "Let X = Proj R be a normal
+    -- monograded variety", and a bigraded input reaches it through Section
+    -- 2.3's w-diagonal, a monograded ring.  The multigraded entry points in
+    -- this package are an extension of that, added because the w-diagonal
+    -- blows the presentation up in practice, and they live on the data-
+    -- returning methods only.  So the two options belong to those and not
+    -- here.  They arrive declared regardless, since the option list is
+    -- inherited with "options canonicalNefThresholdData", and were previously
+    -- dropped in silence -- which sent a multigraded ring into the monograded
+    -- dimension test and produced "expected a projective threefold" about a
+    -- ring that is a threefold.  Refuse them instead and name where to go.
+    if o.IrrelevantIdeal =!= null or o.VariableBlocks =!= null then
+        error("canonicalNefThreshold: IrrelevantIdeal and VariableBlocks do not "
+            | "apply here.  This wrapper is the paper's monograded algorithm, "
+            | "where one variable block leaves the irrelevant ideal with no "
+            | "choice to make.  For a multigraded presentation use "
+            | "canonicalNefThresholdData(R,a,H), which takes both.");
     result := canonicalNefThresholdData(
         R,a,ThresholdSearchLimit=>o.ThresholdSearchLimit);
     if not result#"conclusive" then
@@ -2708,6 +2726,24 @@ canonicalNefData (Ring,ZZ,BasicDivisor) := o -> (R,a,H) -> (
 
 isCanonicalNef = method(Options => options canonicalNefData)
 isCanonicalNef (Ring,ZZ) := o -> (R,a) -> (
+    -- These two wrappers cover the paper's algorithm as stated, which is for a
+    -- monograded variety: Section 3 opens with "Let X = Proj R be a normal
+    -- monograded variety", and a bigraded input reaches it through Section
+    -- 2.3's w-diagonal, a monograded ring.  The multigraded entry points in
+    -- this package are an extension of that, added because the w-diagonal
+    -- blows the presentation up in practice, and they live on the data-
+    -- returning methods only.  So the two options belong to those and not
+    -- here.  They arrive declared regardless, since the option list is
+    -- inherited with "options canonicalNefData", and were previously
+    -- dropped in silence -- which sent a multigraded ring into the monograded
+    -- dimension test and produced "expected a projective threefold" about a
+    -- ring that is a threefold.  Refuse them instead and name where to go.
+    if o.IrrelevantIdeal =!= null or o.VariableBlocks =!= null then
+        error("isCanonicalNef: IrrelevantIdeal and VariableBlocks do not "
+            | "apply here.  This wrapper is the paper's monograded algorithm, "
+            | "where one variable block leaves the irrelevant ideal with no "
+            | "choice to make.  For a multigraded presentation use "
+            | "canonicalNefData(R,a,H), which takes both.");
     result := canonicalNefData(R,a,
         NefSearchLimit=>o.NefSearchLimit,
         DivisorClassDegrees=>o.DivisorClassDegrees);
@@ -3868,31 +3904,47 @@ Node
   Key
     [isCanonicalNef, IrrelevantIdeal]
   Headline
-    accepted but unused
+    not applicable; use canonicalNefData
   Usage
     isCanonicalNef(R,a,IrrelevantIdeal=>B)
   Description
     Text
-      Accepted for signature compatibility with @TO canonicalNefData@ and
-      currently unused: this method has no overload taking an ample class $H$,
-      and its singly graded form neither needs nor forwards an irrelevant
-      ideal (one block, so the ideal of all the variables is the only
-      candidate).  Use @TO canonicalNefData@ itself on a multigraded ring.
+      Refused.  This method is the paper's algorithm as stated, for a
+      monograded variety -- Section 3 opens with "Let $X=\operatorname{Proj}R$
+      be a normal monograded variety", and a bigraded input reaches it through
+      Section 2.3's $\mathbf{w}$-diagonal, which is again monograded.  With one
+      variable block the irrelevant ideal is the ideal of all the variables and
+      there is nothing to supply.
+    Text
+      The multigraded entry points are this package's extension of the paper,
+      added because the $\mathbf{w}$-diagonal blows the presentation up in
+      practice, and they are the data-returning methods.  Use
+      @TO canonicalNefData@ on a multigraded presentation.  The option is
+      declared here only because the option list is inherited with
+      {\tt options canonicalNefData}.
 
 Node
   Key
     [canonicalNefThreshold, IrrelevantIdeal]
   Headline
-    accepted but unused
+    not applicable; use canonicalNefThresholdData
   Usage
     canonicalNefThreshold(R,a,IrrelevantIdeal=>B)
   Description
     Text
-      Accepted for signature compatibility with @TO canonicalNefThresholdData@ and
-      currently unused: this method has no overload taking an ample class $H$,
-      and its singly graded form neither needs nor forwards an irrelevant
-      ideal (one block, so the ideal of all the variables is the only
-      candidate).  Use @TO canonicalNefThresholdData@ itself on a multigraded ring.
+      Refused.  This method is the paper's algorithm as stated, for a
+      monograded variety -- Section 3 opens with "Let $X=\operatorname{Proj}R$
+      be a normal monograded variety", and a bigraded input reaches it through
+      Section 2.3's $\mathbf{w}$-diagonal, which is again monograded.  With one
+      variable block the irrelevant ideal is the ideal of all the variables and
+      there is nothing to supply.
+    Text
+      The multigraded entry points are this package's extension of the paper,
+      added because the $\mathbf{w}$-diagonal blows the presentation up in
+      practice, and they are the data-returning methods.  Use
+      @TO canonicalNefThresholdData@ on a multigraded presentation.  The option is
+      declared here only because the option list is inherited with
+      {\tt options canonicalNefThresholdData}.
 
 Node
   Key
@@ -4255,31 +4307,47 @@ Node
   Key
     [isCanonicalNef, VariableBlocks]
   Headline
-    accepted but unused
+    not applicable; use canonicalNefData
   Usage
     isCanonicalNef(R,a,VariableBlocks=>blks)
   Description
     Text
-      Accepted for signature compatibility with @TO canonicalNefData@ and
-      currently unused, for the same reason as
-      @TO [isCanonicalNef, IrrelevantIdeal]@: this method has no overload
-      taking an ample class $H$, and its singly graded form has one block, so
-      there is nothing to name.  Use @TO canonicalNefData@ itself on a
-      multigraded ring.
+      Refused.  This method is the paper's algorithm as stated, for a
+      monograded variety -- Section 3 opens with "Let $X=\operatorname{Proj}R$
+      be a normal monograded variety", and a bigraded input reaches it through
+      Section 2.3's $\mathbf{w}$-diagonal, which is again monograded.  With one
+      variable block the irrelevant ideal is the ideal of all the variables and
+      there is nothing to supply.
+    Text
+      The multigraded entry points are this package's extension of the paper,
+      added because the $\mathbf{w}$-diagonal blows the presentation up in
+      practice, and they are the data-returning methods.  Use
+      @TO canonicalNefData@ on a multigraded presentation.  The option is
+      declared here only because the option list is inherited with
+      {\tt options canonicalNefData}.
 
 Node
   Key
     [canonicalNefThreshold, VariableBlocks]
   Headline
-    accepted but unused
+    not applicable; use canonicalNefThresholdData
   Usage
     canonicalNefThreshold(R,a,VariableBlocks=>blks)
   Description
     Text
-      Accepted for signature compatibility with
-      @TO canonicalNefThresholdData@ and currently unused, for the same reason
-      as @TO [canonicalNefThreshold, IrrelevantIdeal]@.  Use
-      @TO canonicalNefThresholdData@ itself on a multigraded ring.
+      Refused.  This method is the paper's algorithm as stated, for a
+      monograded variety -- Section 3 opens with "Let $X=\operatorname{Proj}R$
+      be a normal monograded variety", and a bigraded input reaches it through
+      Section 2.3's $\mathbf{w}$-diagonal, which is again monograded.  With one
+      variable block the irrelevant ideal is the ideal of all the variables and
+      there is nothing to supply.
+    Text
+      The multigraded entry points are this package's extension of the paper,
+      added because the $\mathbf{w}$-diagonal blows the presentation up in
+      practice, and they are the data-returning methods.  Use
+      @TO canonicalNefThresholdData@ on a multigraded presentation.  The option is
+      declared here only because the option list is inherited with
+      {\tt options canonicalNefThresholdData}.
 
 ///
 

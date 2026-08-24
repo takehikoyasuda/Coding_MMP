@@ -146,6 +146,24 @@ Numbering, terminology and behaviour have been brought in line with v3.
   variables. Verified on that ring: the named blocks give exactly the
   provenance ideal, and an entry point reaches the same verdict as when handed
   the ideal by hand.
+- The line between the paper and this package's extension of it is drawn where
+  the two run out. Section 3 opens "Let `X = Proj R` be a normal monograded
+  variety", and a bigraded input reaches it through Section 2.3's
+  `w`-diagonal, which is monograded again; the multigraded entry points here
+  are an extension, added because that diagonal blows the presentation up in
+  practice, and they are the data-returning methods only.
+
+  `isCanonicalNef` and `canonicalNefThreshold` are the paper's algorithms as
+  stated, and they inherit `IrrelevantIdeal` and `VariableBlocks` through
+  `options canonicalNefData` / `options canonicalNefThresholdData` without
+  being able to use either: neither has an overload taking `H`, and both drop
+  the options when forwarding. They used to drop them in silence, which sent a
+  multigraded ring into the monograded dimension test `dim R - 1` and reported
+  "expected a projective threefold" about a ring whose geometric dimension is
+  3. They now refuse the options and name the data-returning method to use
+  instead. The alternative -- giving the wrappers multigraded overloads too --
+  was weighed and declined: keeping the extension on the data methods is the
+  clearer line.
 
 ## Outstanding
 
