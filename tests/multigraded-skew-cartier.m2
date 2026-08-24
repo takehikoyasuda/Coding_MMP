@@ -69,6 +69,7 @@ Bmine = blockData#"irrelevantIdeal";
 -- heuristic, not a regression, and this test should be revisited then, not
 -- treated as broken.
 assert(radical Btrue != radical Bmine);
+assert(not blockData#"verifiedBlockDiagonal");
 
 -- The geometric-dimension claim used by every new IrrelevantIdeal-aware
 -- entry point in MMPComputation.m2 to bypass multigradedBlockData entirely:
@@ -84,11 +85,16 @@ K = canonicalDivisor(Z,IsGraded=>true);
 -- isCartierMultigraded is unexported; same private-dictionary technique.
 isCartierMultigradedFn = value(MMPComputation#"private dictionary"#"isCartierMultigraded");
 
--- Documents that the underlying general-purpose predicate is still exposed
--- to the same silent false positive when no override is supplied -- this is
--- the defect this task is routing around, not fixing at the heuristic
--- level; see the comment above.
-assert(isCartierMultigradedFn K);
+-- Now that no caller of multigradedBlockData's guess trusts it unless
+-- "verifiedBlockDiagonal" is true (this ring's fibre grading is skew, so it
+-- is not; see the assertion above and verifiedIrrelevantIdeal in
+-- MMPComputation.m2), the underlying general-purpose predicate refuses to
+-- guess and errors here instead of returning the silent false positive it
+-- used to return.  This documents the current, fixed behaviour: the
+-- heuristic inside multigradedBlockData itself is still not corrected --
+-- routing around it, not fixing it at that level, is still what this task
+-- does -- but nothing downstream trusts its output unverified anymore.
+assert(try (isCartierMultigradedFn K; false) else true);
 
 -- THE ACTUAL FIX (T1): given the TRUE irrelevant ideal, the Cartier test
 -- must correctly find K non-Cartier and 2K Cartier, matching the
@@ -141,13 +147,13 @@ H = divisor(Z_0) + divisor(Z_8);
 Lbig = 2*K + 12*H;
 
 -- THE COUNTEREXAMPLE: verified by direct computation (not assumed), Lbig is
--- correctly NOT base-point-free under the true irrelevant ideal, but the
--- bare (auto-deriving, i.e. multigradedBlockData-backed) predicate reports a
--- FALSE POSITIVE, exactly mirroring the Cartier false positive above but for
--- base-point-freeness specifically -- the property the nef/threshold/
--- contraction search loops actually test on every trial multiple.
+-- correctly NOT base-point-free under the true irrelevant ideal.  The bare
+-- (auto-deriving, i.e. multigradedBlockData-backed) predicate used to report
+-- a FALSE POSITIVE here, exactly mirroring the Cartier false positive above
+-- but for base-point-freeness specifically; now that it refuses to guess on
+-- a non-verifiedBlockDiagonal ring, it errors instead.
 assert(not isBasePointFreeDivisor(Lbig,Btrue));
-assert(isBasePointFreeDivisor Lbig);
+assert(try (isBasePointFreeDivisor Lbig; false) else true);
 
 -- THE ACTUAL FIX (Part 0), exercised through a genuine entry point's own
 -- search loop -- not just the bare predicate above, and not just the

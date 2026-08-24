@@ -210,6 +210,28 @@ multigradedBlockData Ring := R -> (
     blockVariables := apply(blockIndices, idxs -> apply(idxs, j -> Rvars#j));
     blockIdeals := apply(blockVariables, vs -> ideal vs);
     B := product blockIdeals;
+    -- The "last nonzero component, must be positive" test above only checks
+    -- that the winning permutation's assignment is block LOWER TRIANGULAR
+    -- (docs/MULTIGRADED-DESIGN.md's admissibility condition), which allows a
+    -- variable's degree to be nonzero in components strictly before its own
+    -- block.  That is by design -- a Rees algebra's own added block does
+    -- this -- but it also means two variables that are geometrically part of
+    -- the SAME block (e.g. the same fibre) can get shuffled into different
+    -- blocks here purely because one of them happens to have an extra
+    -- nonzero lower-order degree component (a "skew" degree) and the other
+    -- does not.  This is exactly the defect tests/multigraded-skew-cartier.m2
+    -- pins down: the permutation search above still succeeds and returns a
+    -- self-consistent-looking B, but B's radical need not match the ring's
+    -- true irrelevant ideal.  "verifiedBlockDiagonal" records whether every
+    -- variable's winning-permutation degree vector has exactly one nonzero
+    -- entry (true block DIAGONAL, not merely lower triangular); it is the
+    -- one case where no such shuffling is possible, since each variable's
+    -- degree pins down its block on its own with no other component to
+    -- disagree about.  Callers that cannot supply their own known-correct
+    -- irrelevant ideal should treat "irrelevantIdeal" as trustworthy only
+    -- when this flag is true; see verifiedIrrelevantIdeal below.
+    reorderedDegrees := apply(n, j -> apply(usedPermutation, i -> (degree avars#j)#i));
+    verifiedBlockDiagonal := all(reorderedDegrees, dg -> #select(dg, x -> x != 0) == 1);
     new HashTable from {
         "ring" => R,
         "rank" => r,
@@ -219,8 +241,36 @@ multigradedBlockData Ring := R -> (
         "blockVariables" => blockVariables,
         "blockIdeals" => blockIdeals,
         "irrelevantIdeal" => B,
-        "geometricDimension" => dim R - r
+        "geometricDimension" => dim R - r,
+        "verifiedBlockDiagonal" => verifiedBlockDiagonal
         }
+    )
+
+-- The irrelevant ideal to trust for R: a caller-supplied B (Ideal or null)
+-- always wins.  Failing that, multigradedBlockData's own guess is used only
+-- when it is "verifiedBlockDiagonal" -- i.e. no variable has a skew (mixed-
+-- component) degree that its block-classification heuristic could get wrong
+-- (see the comment on that field above, and tests/multigraded-skew-
+-- cartier.m2 for a concrete ring where the heuristic succeeds but returns an
+-- ideal with the wrong radical).  On a skew ring with no caller-supplied B,
+-- this refuses to guess and errors instead, matching SteinFactorization's
+-- own fail-fast behaviour on inputs its stricter block-diagonal convention
+-- cannot classify, rather than silently returning a possibly-wrong ideal.
+verifiedIrrelevantIdeal = (R,suppliedB) -> (
+    if suppliedB =!= null then suppliedB
+    else (
+        bd := multigradedBlockData R;
+        if not bd#"verifiedBlockDiagonal" then error(
+            "verifiedIrrelevantIdeal: this ring has a skew (mixed-degree) "
+            | "multigraded variable, so multigradedBlockData's block-"
+            | "classification heuristic cannot reliably determine the "
+            | "irrelevant ideal (it can return one with the wrong radical; "
+            | "see tests/multigraded-skew-cartier.m2).  Supply the ring's "
+            | "true irrelevant ideal explicitly, e.g. via IrrelevantIdeal=>B "
+            | "or the (BasicDivisor,B2MProjection)/(BasicDivisor,GraphMorphism) "
+            | "overloads.");
+        bd#"irrelevantIdeal"
+        )
     )
 
 -- Lemma 3.5 of the paper: if X is presented in a weighted projective space
@@ -522,7 +572,7 @@ isBasePointFreeDivisorInternal = (D,B) -> (
 
 isBasePointFreeDivisor = method()
 isBasePointFreeDivisor BasicDivisor := D ->
-    isBasePointFreeDivisorInternal(D,(multigradedBlockData ring D)#"irrelevantIdeal")
+    isBasePointFreeDivisorInternal(D,verifiedIrrelevantIdeal(ring D,null))
 
 -- Stage 2 (T1) of docs/STAGE2-SINGULAR-MEASUREMENT-PLAN.md section 5: give a
 -- caller holding a known-correct irrelevant ideal a way to bypass
@@ -565,7 +615,7 @@ isCartierSaturatedInternal = (D,B) -> (
 -- research-log/docs/STAGE1-MEASUREMENT-RESULTS.md's prose.
 isCartierMultigraded = method()
 isCartierMultigraded BasicDivisor := D ->
-    isCartierSaturatedInternal(D,(multigradedBlockData ring D)#"irrelevantIdeal")
+    isCartierSaturatedInternal(D,verifiedIrrelevantIdeal(ring D,null))
 isCartierMultigraded (BasicDivisor,Ideal) := (D,B) ->
     isCartierSaturatedInternal(D,B)
 isCartierMultigraded (BasicDivisor,B2MProjection) := (D,P) ->
@@ -875,7 +925,7 @@ canonicalScaledNefDataInternal = (R,K,H,a,t,B,classDegrees) -> (
             candidateBPF = if B =!= null
                 then basePointFreeModuleInternal(candidateModule,B)
                 else basePointFreeModuleInternal(candidateModule,
-                    (multigradedBlockData R)#"irrelevantIdeal")
+                    verifiedIrrelevantIdeal(R,null))
         else (
             -- When no class-degree certificate was supplied, use the
             -- canonical-ideal seed if H is visibly principal.  This tests
@@ -886,7 +936,7 @@ canonicalScaledNefDataInternal = (R,K,H,a,t,B,classDegrees) -> (
             seedBPF := canonicalIdealSeedBPFInternal(
                 R,K,m*q*a,a*p,H,
                 if B =!= null then B
-                else (multigradedBlockData R)#"irrelevantIdeal");
+                else verifiedIrrelevantIdeal(R,null));
             candidateBPF = if seedBPF === null then (
                 if B =!= null
                     then isBasePointFreeDivisor(candidateDivisor,B)
@@ -1000,7 +1050,7 @@ canonicalScaledNefData (Ring,ZZ,QQ,BasicDivisor) := o -> (R,a,t,H) -> (
         if ring o.IrrelevantIdeal =!= R then
             error "canonicalScaledNefData: IrrelevantIdeal must be an ideal of R";
         o.IrrelevantIdeal
-        ) else (multigradedBlockData R)#"irrelevantIdeal";
+        ) else verifiedIrrelevantIdeal(R,null);
     if not isCartierSaturatedInternal(a*K,B) then
         error "canonicalScaledNefData: a*K_X is not Cartier";
     classDegrees := normalizeDivisorClassDegrees(
@@ -1272,6 +1322,12 @@ canonicalNefThresholdData (Ring,ZZ,BasicDivisor) := o -> (R,a,H) -> (
     if suppliedB =!= null and ring suppliedB =!= R then
         error "canonicalNefThresholdData: IrrelevantIdeal must be an ideal of R";
     blockData := if suppliedB === null then multigradedBlockData R else null;
+    if blockData =!= null and not blockData#"verifiedBlockDiagonal" then error(
+        "this ring has a skew (mixed-degree) multigraded variable, so "
+        | "multigradedBlockData's block-classification heuristic cannot "
+        | "reliably determine the irrelevant ideal (see "
+        | "tests/multigraded-skew-cartier.m2).  Supply the ring's true "
+        | "irrelevant ideal explicitly via IrrelevantIdeal=>B.");
     B := if suppliedB =!= null then suppliedB else blockData#"irrelevantIdeal";
     d := if suppliedB =!= null then dim R - degreeLength R
         else blockData#"geometricDimension";
@@ -1627,6 +1683,12 @@ canonicalContractionAtThresholdData (Ring,ZZ,QQ,BasicDivisor) := o -> (R,a,lambd
     if suppliedB =!= null and ring suppliedB =!= R then
         error "canonicalContractionAtThresholdData: IrrelevantIdeal must be an ideal of R";
     blockData := if suppliedB === null then multigradedBlockData R else null;
+    if blockData =!= null and not blockData#"verifiedBlockDiagonal" then error(
+        "this ring has a skew (mixed-degree) multigraded variable, so "
+        | "multigradedBlockData's block-classification heuristic cannot "
+        | "reliably determine the irrelevant ideal (see "
+        | "tests/multigraded-skew-cartier.m2).  Supply the ring's true "
+        | "irrelevant ideal explicitly via IrrelevantIdeal=>B.");
     B := if suppliedB =!= null then suppliedB else blockData#"irrelevantIdeal";
     d := if suppliedB =!= null then dim R - degreeLength R
         else blockData#"geometricDimension";
@@ -2304,12 +2366,12 @@ canonicalNefDataCore = (R,a,K,H,limit,B,classDegrees) -> (
         pluricanonicalBPF := if pluricanonicalModule =!= null
             then basePointFreeModuleInternal(pluricanonicalModule,
                 if B =!= null then B
-                else (multigradedBlockData R)#"irrelevantIdeal")
+                else verifiedIrrelevantIdeal(R,null))
         else (
             seedBPF := canonicalIdealSeedBPFInternal(
                 R,K,i*a,0,H,
                 if B =!= null then B
-                else (multigradedBlockData R)#"irrelevantIdeal");
+                else verifiedIrrelevantIdeal(R,null));
             if seedBPF === null then (
                 if B =!= null
                     then isBasePointFreeDivisor(pluricanonical,B)
@@ -2399,6 +2461,12 @@ canonicalNefData (Ring,ZZ,BasicDivisor) := o -> (R,a,H) -> (
     if suppliedB =!= null and ring suppliedB =!= R then
         error "canonicalNefData: IrrelevantIdeal must be an ideal of R";
     blockData := if suppliedB === null then multigradedBlockData R else null;
+    if blockData =!= null and not blockData#"verifiedBlockDiagonal" then error(
+        "this ring has a skew (mixed-degree) multigraded variable, so "
+        | "multigradedBlockData's block-classification heuristic cannot "
+        | "reliably determine the irrelevant ideal (see "
+        | "tests/multigraded-skew-cartier.m2).  Supply the ring's true "
+        | "irrelevant ideal explicitly via IrrelevantIdeal=>B.");
     geometricDimension := if suppliedB =!= null then dim R - degreeLength R
         else blockData#"geometricDimension";
     if geometricDimension != 3 then
@@ -3279,9 +3347,13 @@ Node
     Text
       On a multigraded ring with a "skew" fibre grading (as produced by
       FlipComputation's bigradedReesProjection whenever the ideal being
-      blown up is not equigenerated), multigradedBlockData can silently
-      return an irrelevant ideal with the wrong radical, and the Cartier
-      test built on it then reports a false positive.  Passing
+      blown up is not equigenerated), multigradedBlockData's own
+      block-classification heuristic can return an irrelevant ideal with the
+      wrong radical.  Every entry point below refuses to trust that guess by
+      default in exactly this situation (it is not "verifiedBlockDiagonal";
+      see multigradedBlockData) and errors instead of silently reporting a
+      false Cartier or base-point-free positive built on it -- see
+      tests/multigraded-skew-cartier.m2.  Passing
       {tt IrrelevantIdeal=>B} to canonicalScaledNefData,
       canonicalNefThresholdData, canonicalNefData,
       canonicalContractionAtThresholdData, or canonicalContractionData uses
