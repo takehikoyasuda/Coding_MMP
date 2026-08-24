@@ -2083,7 +2083,8 @@ relativeModelInverseRationalMapData HashTable := model -> (
     P := model#"relativeModelProjection";
     G := model#"relativeModelGraph";
     if not instance(P,B2MProjection) or not instance(G,GraphMorphism) then
-        error "relativeModelInverseRationalMapData: expected B2M and graph data";
+        error("relativeModelInverseRationalMapData: expected a bi-to-mono "
+            | "projection and graph data");
     baseRing := model#"baseRing";
     modelRing := model#"relativeModelRing";
     us := P#fiberVariables;
@@ -3749,7 +3750,7 @@ Node
       re-deriving one, when a caller already holds a known-correct ideal.
       Default null preserves the previous re-derivation exactly.
     Text
-      The value may also be the B2MProjection or GraphMorphism that built the
+      The value may also be the {\tt B2MProjection} or {\tt GraphMorphism} that built the
       ring, in place of an ideal: its own irrelevantIdeal field is read and
       moved into the ring for you, so a caller no longer writes
       $\mathtt{sub(P\#irrelevantIdeal,R)}$ by hand.  What makes that sound is
