@@ -173,14 +173,22 @@ The two dependencies carry their own manuals, built in place without installing
 by `make docs` in `third_party/SteinFactorizationM2` and
 `third_party/flip-computation`.
 
-None of the three manuals is published online, and the generated html is not
-something to upload.  Macaulay2 writes these pages for a local installation:
-the stylesheet, the KaTeX scripts that render the mathematics, and every link
-to a core Macaulay2 node are absolute paths into the M2 installation
-directory, so served from anywhere else they come out unstyled, with the
-mathematics as raw TeX and those links dead.  A package's documentation becomes
-browsable online by being accepted into the Macaulay2 distribution, a separate
-step none of these prototypes has taken.
+All three manuals are also published, rebuilt from source on every push:
+
+- [MMPComputation](https://takehikoyasuda.github.io/Coding_MMP/)
+- [SteinFactorization](https://takehikoyasuda.github.io/SteinFactorizationM2/)
+- [FlipComputation](https://takehikoyasuda.github.io/flip-computation/)
+
+The generated html cannot simply be uploaded: Macaulay2 writes these pages for
+a local installation, with the stylesheet, the KaTeX scripts that render the
+mathematics, and every link to a core Macaulay2 node given as absolute paths
+into the M2 installation directory, so served from anywhere else they come out
+unstyled with the mathematics as raw TeX and those links dead.  Each
+repository's `.github/make-site.sh` repairs that -- copying the style assets in
+beside the pages, repointing them, and sending the core-documentation links to
+macaulay2.com -- and adds a banner saying the package is not part of the
+Macaulay2 distribution, which is where a package's documentation would
+otherwise become browsable online.
 
 Regression tests in `tests/` are run with `make test-core`; a separate slow
 capstone test (a two-step MMP computed end to end, `~15` minutes of cpu time)
