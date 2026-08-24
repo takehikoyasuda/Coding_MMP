@@ -2860,6 +2860,16 @@ Node
       contraction and relative-model results expose their public graphs in
       this representation, while retaining raw computation tables separately
       as certificates.
+    Example
+      needsPackage("FlipComputation",
+          FileName => "third_party/flip-computation/FlipComputation.m2");
+      R = QQ[x0,x1,x2,x3,x4]/ideal(x0*x1-x2*x3);
+      G = b2mToGraphMorphism bigradedReesProjection ideal(x0,x2);
+      class G
+      mmpGraphMorphism G === G
+    Text
+      A @TO GraphMorphism@ is already in the common representation, so it comes
+      back as the same object; a legacy hash table is adapted into one.
   SeeAlso
     canonicalContractionData
     relativeCanonicalModelData
@@ -3528,6 +3538,26 @@ Node
       be supplied by the caller (for instance from bookkeeping already done
       while searching for @TT "D"@), since WeilDivisors' own
       @TT "baseLocus"@ is not reliable for every divisor.
+    Text
+      On the bigraded $\mathbb{P}^1\times\mathbb{P}^2$, where
+      $K=\mathcal{O}(-2,-3)$ and $H=\mathcal{O}(1,1)$, the divisor $K+2H$ is
+      $\mathcal{O}(0,-1)$: it has no sections at all, so its base locus is
+      everything and the zero ideal contains it.  The witness found is a
+      $\{\mathrm{pt}\}\times\{\mathrm{line}\}$ curve, on which
+      $\mathcal{O}(0,-1)$ restricts to $\mathcal{O}_{\mathbb{P}^1}(-1)$.
+    Example
+      needsPackage "WeilDivisors";
+      S = QQ[s,t,u,v,w, Degrees => {{1,0},{1,0},{0,1},{0,1},{0,1}}];
+      H = divisor(s) + divisor(u);
+      K = canonicalDivisor(S,IsGraded=>true);
+      B = ideal(s,t) * ideal(u,v,w);
+      witness = negativeCurveWitnessData(K + 2*H, ideal 0_S, B, {1,1});
+      witness#"intersection"
+    Text
+      A base-point-free divisor gives @TO null@ rather than a spurious
+      witness.
+    Example
+      negativeCurveWitnessData(H, ideal 0_S, B, {1,1})
 
 Node
   Key

@@ -10,6 +10,19 @@ the top-level MMP driver. The paper itself is available on arXiv
 repository. Numbered results are cited by their v3 numbering; earlier versions
 number some of them differently.
 
+### 📖 Read the manuals
+
+| package | what it does |
+| --- | --- |
+| **[MMPComputation](https://takehikoyasuda.github.io/Coding_MMP/)** | nefness of the canonical divisor, nef thresholds, contractions, and the top-level three-dimensional MMP driver |
+| **[SteinFactorization](https://takehikoyasuda.github.io/SteinFactorizationM2/)** | Stein factorization of a projective morphism given by its graph |
+| **[FlipComputation](https://takehikoyasuda.github.io/flip-computation/)** | relative canonical models, which are flips when the contraction is small |
+
+Every function is documented with a worked example, run by Macaulay2 with its
+real output shown, so what these packages compute can be read without
+installing anything.  The pages are rebuilt from source on every push, and a
+build fails if any example stops working.
+
 ## Checkout
 
 ```sh
