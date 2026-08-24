@@ -245,7 +245,7 @@ entirely, as anticipated.
 The current ample Cartier divisor comes from the presentation as a subvariety
 of a weighted projective space: take `l = lcm` of the weights, use that
 `O_X(l)` is invertible and ample, and take a monomial section
-(`weightedAmpleDivisorData`, Lemma 3.5 of the paper).  This argument depends
+(`weightedAmpleDivisorData`, Lemma 3.6 of the paper).  This argument depends
 entirely on being embedded in a *singly graded* weighted projective space.
 
 The multigraded replacement chooses a class `w` from the ample cone and needs

@@ -7,7 +7,8 @@ This repository is the integration layer. It pins the two existing prototype
 implementations as Git submodules, and contains the remaining algorithms and
 the top-level MMP driver. The paper itself is available on arXiv
 ([arXiv:2603.13703](https://arxiv.org/abs/2603.13703)) and is not part of this
-repository.
+repository. Numbered results are cited by their v3 numbering; earlier versions
+number some of them differently.
 
 ## Checkout
 

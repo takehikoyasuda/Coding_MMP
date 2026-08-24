@@ -61,7 +61,7 @@ export {
     "ThresholdSearchLimit",
     "ContractionMultipleLimit",
     "RelativeCanonicalMultipliers",
-    "RelativeCanonicalMaxSteps",
+    "RelativeCanonicalMaxMultiplier",
     "RelativeCanonicalVerbose",
     "ContractionIsSmall",
     "CanonicalIndexSearchLimit",
@@ -273,7 +273,7 @@ verifiedIrrelevantIdeal = (R,suppliedB) -> (
         )
     )
 
--- Lemma 3.5 of the paper: if X is presented in a weighted projective space
+-- Lemma 3.6 of the paper: if X is presented in a weighted projective space
 -- with coordinate weights c_i and l=lcm(c_i), then O_X(l) is ample and
 -- invertible.  A nonzero coordinate power of weighted degree l supplies an
 -- effective Cartier representative H.
@@ -1752,12 +1752,12 @@ canonicalContractionData (Ring,ZZ,BasicDivisor) := o -> (R,a,H) -> (
     new HashTable from join(pairs result,{"thresholdData" => thresholdData})
     )
 
--- Algorithm 3, applied to the base W of a birational contraction.  If the
+-- Algorithm 4, applied to the base W of a birational contraction.  If the
 -- canonical module already embeds as the unit ideal, its relative canonical
 -- Proj is W itself; otherwise FlipComputation constructs the model as a graph.
 relativeCanonicalModelFromBaseData = method(Options => {
     RelativeCanonicalMultipliers => null,
-    RelativeCanonicalMaxSteps => 4,
+    RelativeCanonicalMaxMultiplier => 24,
     RelativeCanonicalVerbose => false})
 relativeCanonicalModelFromBaseData Ring := o -> W -> (
     if dim W-1 != 3 then
@@ -1777,7 +1777,7 @@ relativeCanonicalModelFromBaseData Ring := o -> W -> (
             };
     modelProjection := computeFlip(W,
         Multipliers=>o.RelativeCanonicalMultipliers,
-        MaxSteps=>o.RelativeCanonicalMaxSteps,
+        MaxMultiplier=>o.RelativeCanonicalMaxMultiplier,
         ReturnGraph=>false,
         BaseIsProjective=>true,
         Verbose=>o.RelativeCanonicalVerbose);
@@ -1831,7 +1831,7 @@ relativeCanonicalModelData HashTable := o -> contraction -> (
     result := relativeCanonicalModelFromBaseData(
         contraction#"steinAlgebraData"#"ring",
         RelativeCanonicalMultipliers=>o.RelativeCanonicalMultipliers,
-        RelativeCanonicalMaxSteps=>o.RelativeCanonicalMaxSteps,
+        RelativeCanonicalMaxMultiplier=>o.RelativeCanonicalMaxMultiplier,
         RelativeCanonicalVerbose=>o.RelativeCanonicalVerbose);
     new HashTable from join(pairs result,{"contractionData" => contraction})
     )
@@ -2115,7 +2115,7 @@ threefoldMMPData = method(Options => {
     ThresholdSearchLimit => null,
     ContractionMultipleLimit => null,
     RelativeCanonicalMultipliers => null,
-    RelativeCanonicalMaxSteps => 4,
+    RelativeCanonicalMaxMultiplier => 24,
     RelativeCanonicalVerbose => false,
     IrrelevantIdeal => null})
 threefoldMMPData (Ring,ZZ) := o -> (initialRing,initialIndex) ->
@@ -2126,7 +2126,7 @@ threefoldMMPData (Ring,ZZ) := o -> (initialRing,initialIndex) ->
         ThresholdSearchLimit=>o.ThresholdSearchLimit,
         ContractionMultipleLimit=>o.ContractionMultipleLimit,
         RelativeCanonicalMultipliers=>o.RelativeCanonicalMultipliers,
-        RelativeCanonicalMaxSteps=>o.RelativeCanonicalMaxSteps,
+        RelativeCanonicalMaxMultiplier=>o.RelativeCanonicalMaxMultiplier,
         RelativeCanonicalVerbose=>o.RelativeCanonicalVerbose)
 threefoldMMPData (Ring,ZZ,List) := o -> (initialRing,initialIndex,initialSteps) -> (
     if initialIndex <= 0 then
@@ -2199,7 +2199,7 @@ threefoldMMPData (Ring,ZZ,List) := o -> (initialRing,initialIndex,initialSteps) 
         model := relativeCanonicalModelData(
             contraction,
             RelativeCanonicalMultipliers=>o.RelativeCanonicalMultipliers,
-            RelativeCanonicalMaxSteps=>o.RelativeCanonicalMaxSteps,
+            RelativeCanonicalMaxMultiplier=>o.RelativeCanonicalMaxMultiplier,
             RelativeCanonicalVerbose=>o.RelativeCanonicalVerbose);
         record = mmpStepRecordData(contraction,model);
         records = append(records,record);
@@ -2303,7 +2303,7 @@ threefoldMMPData (Ring,ZZ,BasicDivisor) := o -> (initialRing,initialIndex,H) -> 
     model := relativeCanonicalModelData(
         contraction,
         RelativeCanonicalMultipliers=>o.RelativeCanonicalMultipliers,
-        RelativeCanonicalMaxSteps=>o.RelativeCanonicalMaxSteps,
+        RelativeCanonicalMaxMultiplier=>o.RelativeCanonicalMaxMultiplier,
         RelativeCanonicalVerbose=>o.RelativeCanonicalVerbose);
     record = mmpStepRecordData(contraction,model);
     nextRing := record#"nextRing";
@@ -2335,7 +2335,7 @@ threefoldMMPData (Ring,ZZ,BasicDivisor) := o -> (initialRing,initialIndex,H) -> 
         ThresholdSearchLimit=>o.ThresholdSearchLimit,
         ContractionMultipleLimit=>o.ContractionMultipleLimit,
         RelativeCanonicalMultipliers=>o.RelativeCanonicalMultipliers,
-        RelativeCanonicalMaxSteps=>o.RelativeCanonicalMaxSteps,
+        RelativeCanonicalMaxMultiplier=>o.RelativeCanonicalMaxMultiplier,
         RelativeCanonicalVerbose=>o.RelativeCanonicalVerbose)
     )
 
@@ -3294,9 +3294,14 @@ Node
 
 Node
   Key
-    RelativeCanonicalMaxSteps
+    RelativeCanonicalMaxMultiplier
   Headline
-    maximum factorial schedule depth for relative canonical models
+    largest Rees multiplier tried for relative canonical models
+  Description
+    Text
+      Passed through to {\tt FlipComputation}'s {\tt MaxMultiplier}, which caps
+      the consecutive search $m = 1, 2, 3, \dots$ of the paper's Algorithm 4.
+      The default is 24.
 
 Node
   Key
