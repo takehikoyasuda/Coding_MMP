@@ -3,9 +3,11 @@
 Macaulay2 implementation project for the algorithms in Takehiko Yasuda,
 *An algorithm for the minimal model program in dimension three*.
 
-This repository is the integration layer. It pins the paper and the two
-existing prototype implementations as Git submodules, and will contain the
-remaining algorithms and the top-level MMP driver.
+This repository is the integration layer. It pins the two existing prototype
+implementations as Git submodules, and contains the remaining algorithms and
+the top-level MMP driver. The paper itself is available on arXiv
+([arXiv:2603.13703](https://arxiv.org/abs/2603.13703)) and is not part of this
+repository.
 
 ## Checkout
 
@@ -27,7 +29,6 @@ The current development environment uses Macaulay2 1.26.06.
 
 | Path | Role |
 | --- | --- |
-| `references/AlgoMMP` | pinned paper revision |
 | `third_party/SteinFactorizationM2` | bigraded Hom and Stein-factorization prototype |
 | `third_party/flip-computation` | relative canonical model / flip prototype |
 | `MMPComputation.m2` | integration package for nefness and contraction algorithms |
@@ -40,7 +41,7 @@ The current development environment uses Macaulay2 1.26.06.
 ## Stein graph status
 
 The Stein development branch now implements the graph construction in the
-pinned paper revision as the kernel of
+paper as the kernel of
 
 ```text
 B tensor C^[k]  -->  R_gamma.

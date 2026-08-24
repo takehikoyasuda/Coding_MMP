@@ -6,15 +6,16 @@ Baseline recorded on 2026-08-12 with Macaulay2 1.26.06.
 
 | Component | Commit | Upstream branch at import |
 | --- | --- | --- |
-| Paper (`AlgoMMP`) | `dda50e7` | `revise/bigraded-degrees` |
 | `SteinFactorizationM2` | `321135a` | `fix/paper-stein-graph` |
 | `flip-computation` | `ddfe5b9` | `fix/m2-1.26-weil-divisors` |
 
+The paper itself (Takehiko Yasuda, *An algorithm for the minimal model
+program in dimension three*, [arXiv:2603.13703](https://arxiv.org/abs/2603.13703))
+is developed in a separate, private repository and is not pinned here as a
+submodule.
+
 The source repositories had the following local state at import time:
 
-- the paper working tree contained additional uncommitted edits to
-  `AlgoMMP.tex`, `REVISION-PLAN.md`, and `tmp/`; the submodule deliberately
-  pins only commit `dda50e7`;
 - the imported Stein and flip source trees had no uncommitted files;
 - the original Stein source was on `codex/manual-revision-independent`; the
   corrected graph implementation now lives on `fix/paper-stein-graph`.

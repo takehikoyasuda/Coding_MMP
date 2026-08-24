@@ -10,7 +10,8 @@ decided on 2026-08-11, keeps the morphism data type as a graph morphism and
 keeps `monograded` in the output specification; the only change that entered
 the manuscript is that flattening is written as the diagonal subalgebra
 `(+)_s S_{sw}` for an ample class `w` rather than as a Segre product.  The
-supporting discussion is `references/AlgoMMP/multigrading-vs-flattening.md`.
+supporting discussion is recorded in the paper's internal development notes,
+which are not part of this repository.
 
 This note therefore describes an **implementation-only** change: the package
 may keep a multigraded presentation internally, while the paper continues to

@@ -53,6 +53,13 @@ scripts take many minutes to run.
   `docs/STAGE2-MEASUREMENT-RESULTS.md`**: the original staged benchmark plan
   for multigraded preservation (block structure, singular/skew-graded cases)
   and its results, precursor to the reports above.
+- **`docs/STAGE2-SINGULAR-MEASUREMENT-PLAN.md`**: investigates Stage 1's
+  multigraded machinery on a genuinely singular target where `K` is not
+  Cartier. Found that `multigradedBlockData`'s block classification silently
+  disagrees with the ring's true irrelevant ideal on a skew-graded ring,
+  which makes the Stage 1 saturated Cartier test wrongly report `K` Cartier;
+  proposes a task list and measurement protocol for the fix, not implemented
+  here.
 - **`docs/BOTTLENECKS-AND-MULTIGRADING.md`**: the original survey of
   monograded-flattening bottlenecks that motivated keeping presentations
   multigraded; superseded in detail by the reports above but kept as the
