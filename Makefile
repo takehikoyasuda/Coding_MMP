@@ -1,4 +1,31 @@
-.PHONY: install test test-core test-slow test-upstreams status
+.PHONY: install docs docs-clean test test-core test-slow test-upstreams status
+
+DOCDIR := doc-build
+DOCINDEX := $(DOCDIR)/share/doc/Macaulay2/MMPComputation/html/index.html
+
+# The manual, built in place instead of into the user's Macaulay2 directory the
+# way `make install` does, so that it can be read without installing anything
+# and published from CI.  The two dependencies still have to be installed
+# first: documentation examples run in fresh Macaulay2 processes whose working
+# directory is not this repository, so they cannot reach the pinned sources by
+# path.  They go in without their own documentation, which is built in their own
+# repositories.
+#
+# Each recipe passes one unbroken line to the shell on purpose.  A
+# backslash-newline inside a single-quoted M2 expression is not portable: GNU
+# make 3.81, as shipped on macOS, joins those lines before handing the recipe to
+# the shell, while make 4.x leaves the backslash in place, where single quotes
+# stop the shell from removing it and M2 stops with "syntax error at '\'".
+docs:
+	M2 --no-readline --stop -q -e 'installPackage("SteinFactorization",FileName=>"third_party/SteinFactorizationM2/SteinFactorization.m2",MakeDocumentation=>false,RunExamples=>false); exit 0'
+	M2 --no-readline --stop -q -e 'installPackage("FlipComputation",FileName=>"third_party/flip-computation/FlipComputation.m2",MakeDocumentation=>false,RunExamples=>false); exit 0'
+	rm -rf $(DOCDIR)
+	M2 --no-readline --stop -q -e 'installPackage("MMPComputation", FileName => "MMPComputation.m2", InstallPrefix => "$(CURDIR)/$(DOCDIR)/", RerunExamples => true, RemakeAllDocumentation => true, IgnoreExampleErrors => false, MakeInfo => false); exit 0'
+	@echo
+	@echo "file://$(CURDIR)/$(DOCINDEX)"
+
+docs-clean:
+	rm -rf $(DOCDIR)
 
 install:
 	M2 --no-readline --stop -q -e 'installPackage("SteinFactorization",FileName=>"third_party/SteinFactorizationM2/SteinFactorization.m2",MakeDocumentation=>false,RunExamples=>false); exit 0'
