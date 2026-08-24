@@ -273,6 +273,56 @@ verifiedIrrelevantIdeal = (R,suppliedB) -> (
         )
     )
 
+-- The irrelevant ideal of a multigraded presentation is the product of its
+-- variable blocks' ideals and nothing else: multigradedBlockData's own
+-- B := product blockIdeals above, and FlipComputation's
+-- bigradedIrrelevantIdeal(ys,xs) = ideal{y*x}, are the same formula.  The
+-- datum that determines B is therefore the *partition* of the variables into
+-- blocks, not an ideal in any one ring -- and misclassifying that partition
+-- is the whole of the skew-grading defect.  Measured on
+-- tests/multigraded-skew-cartier.m2's ring Z: the provenance and heuristic
+-- partitions there differ in the placement of exactly one variable (u_2, of
+-- skew degree {1,1}), each B is verifiably the product of its own
+-- partition's block ideals, and only the radicals then differ.
+--
+-- B2MProjection and GraphMorphism already carry that partition, in
+-- fiberVariables/baseVariables, and the B it determines in their
+-- irrelevantIdeal field.  Accepting one of them as the value of
+-- IrrelevantIdeal removes the step a caller previously had to perform by
+-- hand, sub(P#irrelevantIdeal,R).  The stored field is read rather than the
+-- two blocks re-multiplied, because a B2MProjection built with
+-- BaseIsProjective=>false has an affine base, whose irrelevant ideal is the
+-- fibre block alone (FlipComputation's affineIrrelevantIdeal) and not a
+-- product of two; the field already accounts for that and re-deriving from
+-- the partition would not.
+--
+-- The variable-name guard matters: substitute between two rings with the
+-- same number of generators maps by position, so without it an unrelated
+-- provenance object would silently produce a wrong ideal rather than fail.
+normalizeIrrelevantIdealOption = (methodName,R,supplied) -> (
+    if supplied === null then null
+    else if instance(supplied,Ideal) then (
+        if ring supplied =!= R then
+            error(methodName | ": IrrelevantIdeal must be an ideal of R");
+        supplied
+        )
+    else if instance(supplied,B2MProjection) or instance(supplied,GraphMorphism)
+        then (
+            suppliedAmbient := supplied#ambientRing;
+            if apply(flatten entries vars ambient R,toString)
+                != apply(flatten entries vars suppliedAmbient,toString) then
+                error(methodName | ": the B2MProjection or GraphMorphism "
+                    | "supplied as IrrelevantIdeal was not built for this "
+                    | "ring -- its ambient variables differ, so its "
+                    | "irrelevant ideal cannot be transferred.  Supply an "
+                    | "Ideal of R instead.");
+            sub(supplied#irrelevantIdeal,R)
+            )
+    else error(methodName | ": IrrelevantIdeal must be an Ideal, or a "
+        | "B2MProjection or GraphMorphism carrying the ring's own irrelevant "
+        | "ideal")
+    )
+
 -- Lemma 3.6 of the paper: if X is presented in a weighted projective space
 -- with coordinate weights c_i and l=lcm(c_i), then O_X(l) is ample and
 -- invertible.  A nonzero coordinate power of weighted degree l supplies an
@@ -1046,11 +1096,10 @@ canonicalScaledNefData (Ring,ZZ,QQ,BasicDivisor) := o -> (R,a,t,H) -> (
     if ring H =!= R then
         error "canonicalScaledNefData: H must be a divisor on R";
     K := canonicalDivisor(R,IsGraded=>true);
-    B := if o.IrrelevantIdeal =!= null then (
-        if ring o.IrrelevantIdeal =!= R then
-            error "canonicalScaledNefData: IrrelevantIdeal must be an ideal of R";
-        o.IrrelevantIdeal
-        ) else verifiedIrrelevantIdeal(R,null);
+    suppliedB := normalizeIrrelevantIdealOption(
+        "canonicalScaledNefData",R,o.IrrelevantIdeal);
+    B := if suppliedB =!= null then suppliedB
+        else verifiedIrrelevantIdeal(R,null);
     if not isCartierSaturatedInternal(a*K,B) then
         error "canonicalScaledNefData: a*K_X is not Cartier";
     classDegrees := normalizeDivisorClassDegrees(
@@ -1318,9 +1367,8 @@ canonicalNefThresholdData (Ring,ZZ,BasicDivisor) := o -> (R,a,H) -> (
     if limit =!= null and (not instance(limit,ZZ) or limit <= 0) then
         error "canonicalNefThresholdData: ThresholdSearchLimit must be null or positive";
     K := canonicalDivisor(R,IsGraded=>true);
-    suppliedB := o.IrrelevantIdeal;
-    if suppliedB =!= null and ring suppliedB =!= R then
-        error "canonicalNefThresholdData: IrrelevantIdeal must be an ideal of R";
+    suppliedB := normalizeIrrelevantIdealOption(
+        "canonicalNefThresholdData",R,o.IrrelevantIdeal);
     blockData := if suppliedB === null then multigradedBlockData R else null;
     if blockData =!= null and not blockData#"verifiedBlockDiagonal" then error(
         "this ring has a skew (mixed-degree) multigraded variable, so "
@@ -1468,9 +1516,8 @@ diagonalSubalgebraData = (R,w) -> (
 completeLinearSystemGraphDataMultigraded = method(Options => {IrrelevantIdeal => null})
 completeLinearSystemGraphDataMultigraded (BasicDivisor,BasicDivisor) := o -> (D,w) -> (
     R := ring D;
-    suppliedB := o.IrrelevantIdeal;
-    if suppliedB =!= null and ring suppliedB =!= R then
-        error "completeLinearSystemGraphDataMultigraded: IrrelevantIdeal must be an ideal of R";
+    suppliedB := normalizeIrrelevantIdealOption(
+        "completeLinearSystemGraphDataMultigraded",R,o.IrrelevantIdeal);
     bpf := if suppliedB =!= null then isBasePointFreeDivisor(D,suppliedB)
         else isBasePointFreeDivisor D;
     if not bpf then
@@ -1679,9 +1726,8 @@ canonicalContractionAtThresholdData (Ring,ZZ,QQ,BasicDivisor) := o -> (R,a,lambd
     if limit =!= null and (not instance(limit,ZZ) or limit <= 0) then
         error "canonicalContractionAtThresholdData: ContractionMultipleLimit must be null or positive";
     K := canonicalDivisor(R,IsGraded=>true);
-    suppliedB := o.IrrelevantIdeal;
-    if suppliedB =!= null and ring suppliedB =!= R then
-        error "canonicalContractionAtThresholdData: IrrelevantIdeal must be an ideal of R";
+    suppliedB := normalizeIrrelevantIdealOption(
+        "canonicalContractionAtThresholdData",R,o.IrrelevantIdeal);
     blockData := if suppliedB === null then multigradedBlockData R else null;
     if blockData =!= null and not blockData#"verifiedBlockDiagonal" then error(
         "this ring has a skew (mixed-degree) multigraded variable, so "
@@ -1735,9 +1781,14 @@ canonicalContractionData (Ring,ZZ) := o -> (R,a) -> (
 -- both canonicalNefThresholdData and canonicalContractionAtThresholdData;
 -- this function adds no Cartier or dimension logic of its own.
 canonicalContractionData (Ring,ZZ,BasicDivisor) := o -> (R,a,H) -> (
+    -- Normalized once here rather than left to the two calls below, so that a
+    -- B2MProjection or GraphMorphism passed as IrrelevantIdeal is resolved to
+    -- an ideal of R a single time instead of once per callee.
+    B := normalizeIrrelevantIdealOption(
+        "canonicalContractionData",R,o.IrrelevantIdeal);
     thresholdData := canonicalNefThresholdData(
         R,a,H,ThresholdSearchLimit=>o.ThresholdSearchLimit,
-        IrrelevantIdeal=>o.IrrelevantIdeal);
+        IrrelevantIdeal=>B);
     if not thresholdData#"conclusive" then
         return new HashTable from {
             "conclusive" => false,
@@ -1748,7 +1799,7 @@ canonicalContractionData (Ring,ZZ,BasicDivisor) := o -> (R,a,H) -> (
     result := canonicalContractionAtThresholdData(
         R,a,thresholdData#"threshold",H,
         ContractionMultipleLimit=>o.ContractionMultipleLimit,
-        IrrelevantIdeal=>o.IrrelevantIdeal);
+        IrrelevantIdeal=>B);
     new HashTable from join(pairs result,{"thresholdData" => thresholdData})
     )
 
@@ -2093,9 +2144,7 @@ canonicalIndexData Ring := o -> R -> (
     limit := o.CanonicalIndexSearchLimit;
     if limit =!= null and (not instance(limit,ZZ) or limit <= 0) then
         error "canonicalIndexData: CanonicalIndexSearchLimit must be null or positive";
-    B := o.IrrelevantIdeal;
-    if B =!= null and ring B =!= R then
-        error "canonicalIndexData: IrrelevantIdeal must be an ideal of R";
+    B := normalizeIrrelevantIdealOption("canonicalIndexData",R,o.IrrelevantIdeal);
     K := canonicalDivisor(R,IsGraded=>true);
     -- Try the two cheap, certificate-producing sufficient conditions for
     -- Cartier-ness first (no Hom/Ext call); only fall back to the original,
@@ -2284,9 +2333,8 @@ threefoldMMPData (Ring,ZZ,BasicDivisor) := o -> (initialRing,initialIndex,H) -> 
     maxSteps := o.MMPMaxSteps;
     if maxSteps =!= null and (not instance(maxSteps,ZZ) or maxSteps <= 0) then
         error "threefoldMMPData: MMPMaxSteps must be null or positive";
-    B := o.IrrelevantIdeal;
-    if B =!= null and ring B =!= initialRing then
-        error "threefoldMMPData: IrrelevantIdeal must be an ideal of the initial ring";
+    B := normalizeIrrelevantIdealOption(
+        "threefoldMMPData",initialRing,o.IrrelevantIdeal);
     nefData := canonicalNefData(initialRing,initialIndex,H,
         NefSearchLimit=>o.NefSearchLimit,IrrelevantIdeal=>B);
     if not nefData#"conclusive" then
@@ -2502,9 +2550,8 @@ canonicalNefData (Ring,ZZ,BasicDivisor) := o -> (R,a,H) -> (
     limit := o.NefSearchLimit;
     if limit =!= null and (not instance(limit,ZZ) or limit <= 0) then
         error "canonicalNefData: NefSearchLimit must be null or positive";
-    suppliedB := o.IrrelevantIdeal;
-    if suppliedB =!= null and ring suppliedB =!= R then
-        error "canonicalNefData: IrrelevantIdeal must be an ideal of R";
+    suppliedB := normalizeIrrelevantIdealOption(
+        "canonicalNefData",R,o.IrrelevantIdeal);
     blockData := if suppliedB === null then multigradedBlockData R else null;
     if blockData =!= null and not blockData#"verifiedBlockDiagonal" then error(
         "this ring has a skew (mixed-degree) multigraded variable, so "
@@ -3408,9 +3455,20 @@ Node
       canonicalNefThresholdData, canonicalNefData,
       canonicalContractionAtThresholdData, or canonicalContractionData uses
       B verbatim for that entry point's own Cartier gate instead of
-      re-deriving one, when a caller already holds a known-correct ideal
-      (for instance a B2MProjection's or GraphMorphism's own irrelevantIdeal
-      field).  Default null preserves the previous re-derivation exactly.
+      re-deriving one, when a caller already holds a known-correct ideal.
+      Default null preserves the previous re-derivation exactly.
+    Text
+      The value may also be the B2MProjection or GraphMorphism that built the
+      ring, in place of an ideal: its own irrelevantIdeal field is read and
+      moved into the ring for you, so a caller no longer writes
+      $\mathtt{sub(P\#irrelevantIdeal,R)}$ by hand.  What makes that sound is
+      that an irrelevant ideal is the product of the ideals of the variable
+      blocks and nothing more, so the datum deciding it is the partition of
+      the variables into blocks -- which is precisely what these objects
+      already carry, in their fibreVariables and baseVariables, and precisely
+      what the skew grading defeats multigradedBlockData's heuristic at.  A
+      provenance object whose ambient variables do not match the ring's is
+      rejected rather than substituted by position.
 
 Node
   Key

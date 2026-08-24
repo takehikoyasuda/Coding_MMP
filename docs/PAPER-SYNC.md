@@ -68,6 +68,29 @@ Numbering, terminology and behaviour have been brought in line with v3.
   Documentation only; `make docs` builds clean and `run-tests.sh` passes.
   `flip-computation`'s "bigraded variety" wording follows Definition 2.5,
   which is scheme-theoretic, and was left alone.
+- `IrrelevantIdeal` now accepts the `B2MProjection` or `GraphMorphism` that
+  built the ring, not only an ideal, so a caller no longer writes
+  `sub(P#irrelevantIdeal,R)` by hand. The eight entry points that validated
+  the option separately share one `normalizeIrrelevantIdealOption`, which also
+  rejects a provenance object whose ambient variables do not match the ring's
+  -- `substitute` maps by position between rings of equal generator count, so
+  without that guard an unrelated object would have produced a wrong ideal
+  silently. The existing `(BasicDivisor,B2MProjection)` predicate overloads
+  had no such guard.
+
+  The framing came from the observation that an irrelevant ideal is the
+  product of the ideals of the variable blocks and nothing else, so what
+  decides it is the *partition* of the variables -- not an ideal, which cannot
+  leave the ring it lives in. Measured on `tests/multigraded-skew-cartier.m2`'s
+  ring `Z` and now asserted there: each `B` is exactly its own partition's
+  product, and the provenance and heuristic partitions differ only in where
+  `u_2`, of skew degree `(1,1)`, is put. That is the whole defect.
+
+  The threading stops at the multigraded entry points on purpose. On a singly
+  graded ring there is one block, so `B` is the ideal of all the variables with
+  nothing to classify (asserted for `P^3`), and `threefoldMMPData`'s own
+  `nextRing` is monograded, so the `(Ring,ZZ,List)` loop needs no provenance
+  ideal and accepting one there would only add a way to be wrong.
 
 ## Outstanding
 
@@ -87,28 +110,12 @@ tells the caller to supply `IrrelevantIdeal`. That instruction is currently
 only in `IrrelevantIdeal`'s own node, and the entry points where a caller
 meets it are undocumented.
 
-Sequencing: item 2 below changes what this documentation should say, so do
-item 2 first, or write this one knowing it will need revisiting.
+Sequencing: the provenance-threading item this depended on is done (see the
+previous section), so what the documentation has to say is now settled -- an
+entry point takes `IrrelevantIdeal` as an ideal or as the `B2MProjection` or
+`GraphMorphism` that built the ring.
 
-### 2. Thread the provenance irrelevant ideal through the pipeline
-
-`multigradedBlockData`'s block-classification heuristic is still uncorrected.
-`1e87a0d` made every caller refuse to trust it unless the degree matrix is
-verifiably block *diagonal*, so the failure mode is now a clear error rather
-than a silent wrong answer -- but on a skew ring the caller has to supply
-`IrrelevantIdeal` by hand.
-
-`B2MProjection` and `GraphMorphism` already carry the correct
-`irrelevantIdeal` from the construction that built them. Passing it down
-automatically (from `relativeCanonicalModelFromBaseData` and the contraction
-data into the nef/threshold/contraction calls) would remove the manual step.
-
-This is a usability improvement now, not a correctness fix -- `1e87a0d`
-removed the correctness problem. `tests/multigraded-skew-cartier.m2` pins the
-current behaviour and `research-log/docs/STAGE2-SINGULAR-MEASUREMENT-PLAN.md`
-has the analysis.
-
-### 3. Divisorial relative canonical models are not computed
+### 2. Divisorial relative canonical models are not computed
 
 Lemma 6.6's test asks the projection to be small, so
 `computeRelativeCanonicalModel` accepts only the identity or a small model. A
@@ -121,7 +128,7 @@ so, but the case is not implemented and there is no example of one.
 test constructs that label by passing `ContractionIsSmall => false` to a model
 that is in fact small, so the genuinely divisorial path is untested.
 
-### 4. Repository visibility
+### 3. Repository visibility
 
 `SteinFactorizationM2` is public. `Coding_MMP` and `flip-computation` are
 still private and are to be made public when the revision appears on arXiv.

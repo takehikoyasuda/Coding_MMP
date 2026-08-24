@@ -186,3 +186,80 @@ assert(
     );
 
 print "OK Stage 2 Part 0: canonicalContractionAtThresholdData's own internal search loop, not merely its Cartier gate, now honors a caller-supplied true B -- verified against a concrete base-point-free false positive (Lbig=2K+12H) that the un-threaded predicate reports.";
+
+-- PAPER-SYNC.md item "Thread the provenance irrelevant ideal through the
+-- pipeline".  The irrelevant ideal of a multigraded presentation is the
+-- product of its variable blocks' ideals and nothing else -- multigraded-
+-- BlockData's own B := product blockIdeals and FlipComputation's
+-- bigradedIrrelevantIdeal(ys,xs) = ideal{y*x} are the same formula -- so the
+-- datum that decides B is the *partition* of the variables into blocks.  The
+-- assertions below record that measurement on this very ring: both B's are
+-- exactly the product of their own partition's blocks, and the partitions
+-- differ in the placement of one variable, u_2, whose degree {1,1} is the
+-- skew one.  That is the entire defect; there is no second discrepancy.
+Bfromblocks = (ideal apply(P#fiberVariables, u -> sub(u,Z))) *
+    (ideal apply(P#baseVariables, x -> sub(x,Z)));
+assert(Btrue == Bfromblocks);
+Bmineblocks = product apply(blockData#"blockVariables", vs -> ideal vs);
+assert(Bmine == Bmineblocks);
+assert(sort apply(P#fiberVariables, u -> toString sub(u,Z)) == {"u_1","u_2"});
+assert(sort apply(first blockData#"blockVariables", toString) == {"u_1"});
+assert(degree sub((P#fiberVariables)#1,Z) == {1,1});
+
+-- Because the partition is what matters, and B2MProjection/GraphMorphism
+-- already carry it, IrrelevantIdeal now accepts one of those objects
+-- directly: the caller no longer writes sub(P#irrelevantIdeal,Z) by hand.
+normalizeFn = value(
+    MMPComputation#"private dictionary"#"normalizeIrrelevantIdealOption");
+assert(normalizeFn("probe",Z,null) === null);
+assert(normalizeFn("probe",Z,Btrue) == Btrue);
+-- The point of the change: the provenance object resolves to exactly the
+-- ideal the caller used to have to build.
+assert(normalizeFn("probe",Z,P) == Btrue);
+
+-- The guard.  substitute between two rings with the same generator count maps
+-- by position, so a provenance object built for a different ring must be
+-- rejected rather than silently yielding a wrong ideal.
+Runrelated = QQ[a,b];
+assert(try (normalizeFn("probe",Runrelated,P); false) else true);
+-- And a value that is neither an Ideal nor a provenance object.
+assert(try (normalizeFn("probe",Z,3); false) else true);
+
+-- End to end through a real entry point: a=1, where a*K is genuinely not
+-- Cartier under the true B, so the Cartier gate must reject the call.  This
+-- is the same assertion made with Btrue at the end of the section above, now
+-- made by handing the entry point P itself.
+assert(
+    try (canonicalScaledNefData(Z,1,6,H,IrrelevantIdeal=>P); false)
+    else true
+    );
+
+-- And end to end through a real entry point's own search loop, not just its
+-- Cartier gate: the same canonicalContractionAtThresholdData call as the
+-- Part 0 case above, with the same ContractionMultipleLimit=>1 cap, handed P
+-- instead of Btrue.  It must reach the identical verdict.
+provenanceContraction = canonicalContractionAtThresholdData(
+    Z,2,6,H,IrrelevantIdeal=>P,ContractionMultipleLimit=>1);
+assert(not provenanceContraction#"conclusive");
+assert(provenanceContraction#"multipliersTested"
+    == limitedContraction#"multipliersTested");
+
+print "OK provenance threading: B is determined by the variable-block partition alone (both B's are their own partition's product; the partitions differ only in u_2, of skew degree {1,1}), and IrrelevantIdeal now accepts the B2MProjection that carries that partition, resolving to exactly the hand-built Btrue.";
+
+-- Why the threading stops here and does not continue into the monograded MMP
+-- loop: on a singly graded ring the partition question does not arise.  There
+-- is one block, so B is the ideal of all the variables with nothing to
+-- classify, multigradedBlockData says so itself, and threefoldMMPData(R,a,H)'s
+-- own nextRing is monograded (relativeCanonicalModelFromBaseData's Stein
+-- target is -- see that method's comment).  So the (Ring,ZZ,List) loop needs
+-- no provenance ideal, and giving it one would add a way to be wrong, not a
+-- way to be right.
+Rmono = QQ[p_0..p_3];
+monoBlockData = multigradedBlockDataFn Rmono;
+assert(monoBlockData#"verifiedBlockDiagonal");
+assert(monoBlockData#"rank" == 1);
+assert(monoBlockData#"irrelevantIdeal" == ideal vars Rmono);
+verifiedFn = value(MMPComputation#"private dictionary"#"verifiedIrrelevantIdeal");
+assert(verifiedFn(Rmono,null) == ideal vars Rmono);
+
+print "OK monograded rings need no provenance B: one block, so verifiedBlockDiagonal holds and the irrelevant ideal is the ideal of all variables.";
