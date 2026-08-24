@@ -2763,7 +2763,7 @@ Node
   Description
     Text
       This research package implements the integration-layer algorithms in
-      Takehiko Yasuda, {em An algorithm for the minimal model program in
+      Takehiko Yasuda, {\em An algorithm for the minimal model program in
       dimension three}.  It can test canonical nefness, find the nef
       threshold, construct the associated contraction and relative canonical
       model, and iterate these operations until it reaches a minimal model or
