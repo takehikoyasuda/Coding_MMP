@@ -1,0 +1,118 @@
+i1 : needsPackage("MMPComputation", FileName => "MMPComputation.m2")
+
+o1 = MMPComputation
+
+o1 : Package
+
+i2 : needsPackage("Polyhedra")
+
+o2 = Polyhedra
+
+o2 : Package
+
+i3 : rayList = {{1,0,0}, {0,1,0}, {0,0,1}, {1,1,-2}};
+
+i4 : HB = apply(hilbertBasis dualCone coneFromVData transpose matrix rayList,
+         v -> flatten entries v)
+
+o4 = {{0, 1, 0}, {0, 2, 1}, {1, 0, 0}, {1, 1, 1}, {2, 0, 1}}
+
+o4 : List
+
+i5 : L = QQ[t1,t2,t3];
+
+i6 : S0 = QQ[y_1 .. y_(#HB)];
+
+i7 : I0 = ker map(L,S0, apply(HB, h -> t1^(h#0)*t2^(h#1)*t3^(h#2)))
+
+             2
+o7 = ideal (y  - y y , y y  - y y , y y  - y y )
+             4    2 5   3 4    1 5   2 3    1 4
+
+o7 : Ideal of S0
+
+i8 : S = QQ[y_1 .. y_(#HB),w];
+
+i9 : W = S/sub(I0,S);
+
+i10 : dim W - 1
+
+o10 = 3
+
+i11 : canonicalIdeal W != ideal 1_W
+
+o11 = true
+
+i12 : flipModel = relativeCanonicalModelFromBaseData(W, RelativeCanonicalMultipliers => {1});
+
+i13 : flipModel#"conclusive"
+
+o13 = true
+
+i14 : flipModel#"relativeModelType"
+
+o14 = computed
+
+i15 : flipModel#"isIdentity"
+
+o15 = false
+
+i16 : (relativeCanonicalModelIsomorphismData flipModel)#"isIsomorphism"
+
+o16 = false
+
+i17 : dim(flipModel#"relativeModelRing") - 1
+
+o17 = 3
+
+i18 : class flipModel#"relativeModelGraph"
+
+o18 = GraphMorphism
+
+o18 : Type
+
+i19 : inverseModel = relativeModelInverseRationalMapData flipModel;
+
+i20 : #inverseModel#"coordinateImages"
+
+o20 = 12
+
+i21 : inverseModel#"degreeScale"
+
+o21 = 2
+
+i22 : inverseModel#"modelRelationsVanish"
+
+o22 = true
+
+i23 : inverseModel#"graphRelationsVanish"
+
+o23 = true
+
+i24 : inverseModel#"baseLocusCertified"
+
+o24 = true
+
+i25 : saturate(radical inverseModel#"baseIdeal", ideal vars W) == saturate(radical ideal(W_4,W_3), ideal vars W)
+
+o25 = true
+
+i26 : contraction = new HashTable from {
+          "conclusive" => true,
+          "isBirational" => true,
+          "contractionGraph" => flipModel#"relativeModelGraph"};
+
+i27 : flippingStep = mmpStepRecordData(contraction, flipModel);
+
+i28 : flippingStep#"stepType"
+
+o28 = flipping
+
+i29 : flippingStep#"contractionIsSmall"
+
+o29 = true
+
+i30 : flippingStep#"inverseRelativeModelRequired"
+
+o30 = true
+

@@ -1,0 +1,124 @@
+i1 : needsPackage("MMPComputation", FileName => "MMPComputation.m2")
+
+o1 = MMPComputation
+
+o1 : Package
+
+i2 : R = QQ[x0,x1,x2,x3];
+
+i3 : ample = weightedAmpleDivisorData R;
+
+i4 : ample#"weights"
+
+o4 = {1, 1, 1, 1}
+
+o4 : List
+
+i5 : ample#"cartierDegree"
+
+o5 = 1
+
+i6 : isBasePointFreeDivisor ample#"divisor"
+
+o6 = true
+
+i7 : nefTest = canonicalNefData(R,1);
+
+i8 : nefTest#"conclusive"
+
+o8 = true
+
+i9 : nefTest#"nef"
+
+o9 = false
+
+i10 : nefTest#"witnessType"
+
+o10 = non-nef positive perturbation
+
+i11 : nefTest#"witnessT"
+
+      1
+o11 = -
+      2
+
+o11 : QQ
+
+i12 : nefTest#"scaledTest"#"N"
+
+o12 = 2
+
+i13 : nefTest#"scaledTest"#"guaranteedMultiplier"
+
+o13 = 6
+
+i14 : nefTest#"scaledTest"#"multipliersTested"
+
+o14 = {1, 2, 3, 4, 5, 6}
+
+o14 : List
+
+i15 : nefTest#"scaledTest"#"certificateType"
+
+o15 = effective base-point-free theorem
+
+i16 : thresholdTest = canonicalNefThresholdData(R,1);
+
+i17 : thresholdTest#"threshold"
+
+o17 = 4
+
+o17 : QQ
+
+i18 : (thresholdTest#"lowerBound", thresholdTest#"upperBound")
+
+o18 = (2, 4)
+
+o18 : Sequence
+
+i19 : atThreshold = canonicalScaledNefData(R,1,4);
+
+i20 : (atThreshold#"nef", atThreshold#"basePointFree")
+
+o20 = (true, true)
+
+o20 : Sequence
+
+i21 : contraction = canonicalContractionData(R,1);
+
+i22 : contraction#"contractionType"
+
+o22 = fibration
+
+i23 : contraction#"sourceDimension"
+
+o23 = 3
+
+i24 : contraction#"targetDimension"
+
+o24 = 0
+
+i25 : contraction#"dimensionDrop"
+
+o25 = 3
+
+i26 : contraction#"steinFactorizationType"
+
+o26 = trivial point target
+
+i27 : mmp = threefoldMMPData(R,1);
+
+i28 : mmp#"terminationType"
+
+o28 = K-negative fibration
+
+i29 : mmp#"numberOfSteps"
+
+o29 = 1
+
+i30 : apply(mmp#"steps", s -> s#"stepType")
+
+o30 = {fibration}
+
+o30 : List
+

@@ -1,0 +1,68 @@
+i1 : needsPackage("MMPComputation", FileName => "MMPComputation.m2")
+
+o1 = MMPComputation
+
+o1 : Package
+
+i2 : B = QQ[z00,z01,z02,z10,z11,z12,t0,t1,
+         Degrees => {{1,0},{1,0},{1,0},{1,0},{1,0},{1,0},{0,1},{0,1}}];
+
+i3 : A0 = QQ[s0,s1,x0,x1,x2,sourceScale,targetScale];
+
+i4 : parametrization = map(A0,B,{
+         s0*x0*sourceScale, s0*x1*sourceScale, s0*x2*sourceScale,
+         s1*x0*sourceScale, s1*x1*sourceScale, s1*x2*sourceScale,
+         s0^2*targetScale, s1^2*targetScale});
+
+o4 : RingMap A0 <-- B
+
+i5 : fIdeal = kernel parametrization;
+
+o5 : Ideal of B
+
+i6 : irrelevantTarget = ideal(t0,t1);
+
+o6 : Ideal of B
+
+i7 : generalFibre = saturate(fIdeal + ideal(t0-t1), irrelevantTarget);
+
+o7 : Ideal of B
+
+i8 : #decompose generalFibre
+
+o8 = 2
+
+i9 : branchFibre = saturate(fIdeal + ideal(t1), irrelevantTarget);
+
+o9 : Ideal of B
+
+i10 : #decompose branchFibre
+
+o10 = 1
+
+i11 : steinData = steinHomData(B, fIdeal);
+
+i12 : steinData#"certifiedBound"
+
+o12 = true
+
+i13 : steinAlgebra = steinCoordinateAlgebra steinData;
+
+i14 : dim(steinAlgebra#"ring") - 1
+
+o14 = 1
+
+i15 : dim(steinAlgebra#"baseRing") - 1
+
+o15 = 1
+
+i16 : typeData = contractionTypeData(3, dim(steinAlgebra#"ring") - 1);
+
+i17 : typeData#"dimensionDrop"
+
+o17 = 2
+
+i18 : rank(steinAlgebra#"strandAsAModule")
+
+o18 = 2
+

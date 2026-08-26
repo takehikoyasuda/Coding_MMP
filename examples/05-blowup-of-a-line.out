@@ -1,0 +1,139 @@
+i1 : needsPackage("MMPComputation", FileName => "MMPComputation.m2")
+
+o1 = MMPComputation
+
+o1 : Package
+
+i2 : B = QQ[y00,y01,y10,y11,y20,y21,y30,y31,z0,z1,z2,z3,
+         Degrees => {
+             {1,0},{1,0},{1,0},{1,0},{1,0},{1,0},{1,0},{1,0},
+             {0,1},{0,1},{0,1},{0,1}}];
+
+i3 : A0 = QQ[x0,x1,x2,x3,u,v,sourceScale,targetScale];
+
+i4 : A = A0/ideal(x0*v-x1*u);
+
+i5 : parametrization = map(A,B,{
+         x0*u*sourceScale, x0*v*sourceScale,
+         x1*u*sourceScale, x1*v*sourceScale,
+         x2*u*sourceScale, x2*v*sourceScale,
+         x3*u*sourceScale, x3*v*sourceScale,
+         x0*targetScale, x1*targetScale, x2*targetScale, x3*targetScale});
+
+o5 : RingMap A <-- B
+
+i6 : blowupIdeal = kernel parametrization;
+
+o6 : Ideal of B
+
+i7 : steinData = steinHomData(B, blowupIdeal);
+
+i8 : steinData#"certifiedBound"
+
+o8 = true
+
+i9 : steinAlgebra = steinCoordinateAlgebra steinData;
+
+i10 : dim(steinAlgebra#"ring") - 1
+
+o10 = 3
+
+i11 : degreeLength(steinAlgebra#"ring")
+
+o11 = 1
+
+i12 : typeData = contractionTypeData(3, dim(steinAlgebra#"ring") - 1);
+
+i13 : typeData#"contractionType"
+
+o13 = birational
+
+i14 : typeData#"dimensionDrop"
+
+o14 = 0
+
+i15 : SP = QQ[w00,w01,w10,w11,w20,w21,w30,w31];
+
+i16 : blowupSourceMap = map(SP,B, flatten entries vars SP | toList(4:0_SP));
+
+o16 : RingMap SP <-- B
+
+i17 : blowupSourceRing = SP/blowupSourceMap eliminate(blowupIdeal, drop(flatten entries vars B,8));
+
+i18 : dim blowupSourceRing - 1
+
+o18 = 3
+
+i19 : blowupGraph = mmpGraphMorphism new HashTable from {
+          "jointRing" => B,
+          "graphIdeal" => blowupIdeal,
+          "sourceVariableCount" => 8,
+          "sourceRing" => blowupSourceRing,
+          "targetRing" => steinAlgebra#"ring"};
+
+i20 : smallness = contractionGraphSmallnessData blowupGraph;
+
+i21 : smallness#"isSmall"
+
+o21 = false
+
+i22 : smallness#"exceptionalDimension"
+
+o22 = 2
+
+i23 : smallness#"exceptionalCodimension"
+
+o23 = 1
+
+i24 : ODP = QQ[g0,g1,g2,g3,g4]/ideal(g0*g1-g2*g3);
+
+i25 : smallGraph = b2mToGraphMorphism bigradedReesProjection ideal(ODP_0,ODP_2);
+
+i26 : odpSmallness = contractionGraphSmallnessData smallGraph;
+
+i27 : odpSmallness#"isSmall"
+
+o27 = true
+
+i28 : odpSmallness#"exceptionalDimension"
+
+o28 = 1
+
+i29 : odpSmallness#"exceptionalCodimension"
+
+o29 = 2
+
+i30 : contraction = new HashTable from {
+          "conclusive" => true,
+          "isBirational" => true,
+          "contractionGraph" => blowupGraph,
+          "steinAlgebraData" => new HashTable from {"ring" => steinAlgebra#"ring"}};
+
+i31 : model = relativeCanonicalModelData contraction;
+
+i32 : model#"relativeModelType"
+
+o32 = identity
+
+i33 : blowupStep = mmpStepRecordData(contraction, model);
+
+i34 : blowupStep#"stepType"
+
+o34 = divisorial
+
+i35 : mmp = threefoldMMPData(steinAlgebra#"ring", 1, {blowupStep});
+
+i36 : mmp#"terminationType"
+
+o36 = K-negative fibration
+
+i37 : mmp#"numberOfSteps"
+
+o37 = 2
+
+i38 : apply(mmp#"steps", r -> r#"stepType")
+
+o38 = {divisorial, fibration}
+
+o38 : List
+

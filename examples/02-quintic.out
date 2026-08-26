@@ -1,0 +1,42 @@
+i1 : needsPackage("MMPComputation", FileName => "MMPComputation.m2")
+
+o1 = MMPComputation
+
+o1 : Package
+
+i2 : S = QQ[y0,y1,y2,y3,y4];
+
+i3 : Q = S/ideal(y0^5+y1^5+y2^5+y3^5+y4^5);
+
+i4 : dim Q - 1
+
+o4 = 3
+
+i5 : nefTest = canonicalNefData(Q,1);
+
+i6 : nefTest#"nef"
+
+o6 = true
+
+i7 : nefTest#"iteration"
+
+o7 = 1
+
+i8 : nefTest#"witnessType"
+
+o8 = base-point-free pluricanonical divisor
+
+i9 : isCanonicalNef(Q,1)
+
+o9 = true
+
+i10 : mmp = threefoldMMPData(Q,1);
+
+i11 : mmp#"terminationType"
+
+o11 = minimal model
+
+i12 : mmp#"numberOfSteps"
+
+o12 = 0
+

@@ -23,6 +23,19 @@ real output shown, so what these packages compute can be read without
 installing anything.  The pages are rebuilt from source on every push, and a
 build fails if any example stops working.
 
+### 🧮 See the computations
+
+**[Worked examples](https://takehikoyasuda.github.io/Coding_MMP/examples.html)**
+is the page to start from if the question is what has actually been computed
+rather than what each function does.  It walks through six examples: the nef
+threshold and contraction of `P3`, a quintic threefold as a minimal model, the
+Segre threefold's fibre-type contraction, a Stein factorization whose finite
+part has degree two, the blow-up of a line and the two-step program
+`Bl_L(P3) -> P3 -> point`, and a toric flip.  Each has a brief mathematical account and the Macaulay2 session that
+produces it.  All of them stay inside the paper's setting, with monograded
+varieties and bigraded rings only as graphs of morphisms.  The sources are in
+[`examples/`](examples/README.md).
+
 ## Checkout
 
 ```sh
@@ -51,6 +64,7 @@ The current development environment uses Macaulay2 1.26.06.
 | `docs/ROADMAP.md` | implementation order for the full MMP |
 | `docs/PAPER-SYNC.md` | what the paper's revision changed, what has been followed, and what is outstanding |
 | `scripts/test-upstreams.sh` | reproducible baseline test runner |
+| [`examples/`](examples/README.md) | the worked-examples page: example sources, captured Macaulay2 transcripts, and the page builder |
 | [`research-log/`](research-log/README.md) | archived cost measurements, root-cause investigations, and negative results from performance work; not required reading to use the package |
 
 ## Stein graph status

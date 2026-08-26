@@ -89,12 +89,24 @@ jobs:
       - name: Build the manual
         run: make docs
 
+      # The worked examples are re-run here, not quoted from the committed
+      # transcripts, so the page cannot publish output that the current sources
+      # no longer produce.  All six finish in seconds.  build-page.py stops on
+      # a transcript containing a Macaulay2 error, so a broken example fails
+      # this job instead of reaching the site.
+      - name: Run the worked examples
+        run: examples/run.sh
+
+      - name: Build the worked-examples page
+        run: examples/build-page.py examples.html
+
       - name: Make the pages self-contained
         run: |
           .github/make-site.sh \
             doc-build/share/doc/Macaulay2/MMPComputation/html \
             site MMPComputation \
-            "https://github.com/${{ github.repository }}"
+            "https://github.com/${{ github.repository }}" \
+            examples.html
 
       # The same tar the upload action runs, so that if it objects the message
       # appears here rather than as a bare exit code inside that action.

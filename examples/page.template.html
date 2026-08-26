@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>MMPComputation -- worked examples</title>
+    <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link type="text/css" rel="stylesheet" href="Style/doc.css">
+    <link rel="stylesheet" href="Style/katex/katex.min.css">
+    <script defer="defer" src="Style/katex/katex.min.js"></script>
+    <script defer="defer" src="Style/katex/contrib/auto-render.min.js"></script>
+    <script>
+      var macros = {
+          "\\ZZ": "\\mathbb{Z}",
+          "\\NN": "\\mathbb{N}",
+          "\\QQ": "\\mathbb{Q}",
+          "\\RR": "\\mathbb{R}",
+          "\\CC": "\\mathbb{C}",
+          "\\PP": "\\mathbb{P}",
+          "\\OO": "\\mathcal{O}",
+          "\\Hom": "\\operatorname{Hom}",
+          "\\Proj": "\\operatorname{Proj}",
+          "\\Spec": "\\operatorname{Spec}",
+          "\\Supp": "\\operatorname{Supp}",
+          "\\Exc": "\\operatorname{Exc}",
+          "\\codim": "\\operatorname{codim}"
+      }, delimiters = [
+          { left: "$$",  right: "$$",  display: true},
+          { left: "\\[", right: "\\]", display: true},
+          { left: "$",   right: "$",   display: false},
+          { left: "\\(", right: "\\)", display: false}
+      ], ignoredTags = [
+          "kbd", "var", "samp", "script", "noscript",
+          "style", "textarea", "pre", "code", "option" ];
+      document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, { delimiters: delimiters, macros: macros, ignoredTags: ignoredTags, trust: true });
+        // One control for all six sessions, and a hash pointing into a folded
+        // one opens it -- otherwise following a link to a session would land
+        // on a closed box.
+        var sessions = document.querySelectorAll("details.session");
+        var button = document.getElementById("foldall");
+        if (button) button.addEventListener("click", function() {
+          var opening = button.getAttribute("data-open") !== "yes";
+          sessions.forEach(function(d) { d.open = opening; });
+          button.setAttribute("data-open", opening ? "yes" : "no");
+          button.textContent = opening
+            ? "Collapse every Macaulay2 session"
+            : "Expand every Macaulay2 session";
+        });
+        var openTarget = function() {
+          if (!location.hash) return;
+          var target = document.querySelector(location.hash);
+          while (target) {
+            if (target.tagName === "DETAILS") target.open = true;
+            target = target.parentElement;
+          }
+        };
+        window.addEventListener("hashchange", openTarget);
+        openTarget();
+      });
+    </script>
+    <style>
+      .katex { font-size: 1em; }
+      body { max-width: 52em; margin: 0 auto; padding: 1em 1.2em 4em; }
+      h1 { margin-bottom: .2em; }
+      h2 { margin-top: 2.2em; border-bottom: 1px solid #d8d8d8; padding-bottom: .2em; }
+      h3 { margin-top: 1.6em; font-size: 1.05em; }
+      pre.m2 {
+        background: #f7f7f4; border: 1px solid #ddd; border-left: 3px solid #8a8a72;
+        padding: .7em .9em; overflow-x: auto; font-size: 84%; line-height: 1.35;
+      }
+      /* Each session is folded away: the prose says what the computation
+         decides, the chips carry the values it decided, and the transcript
+         backing them is one click down. */
+      details.session { margin: 1.2em 0; }
+      details.session > summary {
+        cursor: pointer; list-style: none; padding: .5em .7em;
+        border: 1px solid #ddd; border-left: 3px solid #8a8a72; background: #f7f7f4;
+        display: flex; flex-wrap: wrap; align-items: baseline; gap: .45em;
+      }
+      details.session > summary::-webkit-details-marker { display: none; }
+      details.session > summary::before {
+        content: "\25B8"; color: #8a8a72; font-size: 90%;
+      }
+      details.session[open] > summary::before { content: "\25BE"; }
+      details.session[open] > summary { border-bottom: none; }
+      details.session > summary:hover { background: #f0efe8; }
+      summary .what {
+        font-family: sans-serif; font-size: 86%; color: #555;
+        margin-right: .3em; white-space: nowrap;
+      }
+      summary .chip {
+        font-size: 82%; background: #fff; border: 1px solid #ddd;
+        border-radius: 3px; padding: .05em .45em; white-space: nowrap;
+      }
+      summary .chip code { background: none; color: #6a6a55; }
+      summary .chip b { margin-left: .4em; color: #1a1a1a; }
+      details.session > pre.m2 { margin-top: 0; border-top: none; }
+      button.foldall {
+        font-family: sans-serif; font-size: 85%; cursor: pointer;
+        border: 1px solid #c9c9c9; background: #f2f2ee; border-radius: 3px;
+        padding: .3em .8em;
+      }
+      table.runs { border-collapse: collapse; margin: 1em 0; font-size: 93%; }
+      table.runs th, table.runs td { border: 1px solid #ccc; padding: .3em .7em; text-align: left; }
+      table.runs th { background: #f2f2ee; }
+      table.runs td.n { text-align: right; }
+      p.lead { font-size: 105%; }
+      .note { background: #fbf7e8; border: 1px solid #e0d8b8; padding: .6em .9em; font-size: 94%; }
+      ul.toc { list-style: none; padding-left: 0; }
+      ul.toc li { margin: .25em 0; }
+    </style>
+  </head>
+  <body>
+<h1>Worked examples</h1>
+
+<p class="lead">Six worked examples that these packages compute, each with
+the Macaulay2 session that computes it.</p>
+
+<p>Every example has two parts.  First a short explanation of the mathematics.
+Then the session that does the computation.  The sessions are real: the input
+files in <code>examples/*.m2</code> are given to Macaulay2, and the output is
+saved exactly as Macaulay2 printed it.  Each session is folded, with its main
+results shown on the fold.  Click one to read all of it.  The algorithms and
+their proofs are in the paper
+(<a href="https://arxiv.org/abs/2603.13703">arXiv:2603.13703</a>).</p>
+
+<p><button type="button" id="foldall" data-open="no">Expand every Macaulay2 session</button></p>
+
+<p>In every example, $X$ is a normal projective threefold and $R$ is its
+homogeneous coordinate ring.  $K_X$ is the canonical divisor and $H$ is an
+ample Cartier divisor.  The nef threshold is</p>
+
+$$\lambda = \min\{\,t \ge 0 \;:\; K_X + tH \text{ is nef}\,\}.$$
+
+<p>$X$ has to be normal and log terminal.  The package assumes this.  It does
+not check it.</p>
+
+<p>In the paper, $X = \Proj R$ is monograded.  A bigraded ring appears only as
+the graph of a morphism, which is how the Stein factorization is computed.
+Every example here stays inside that setting.  The package also has entry
+points that take a multigraded variety directly.  Those go beyond the paper,
+and this page does not use them.</p>
+
+<h2 id="contents">Contents</h2>
+
+<ul class="toc">
+  <li><a href="#p3">1. Projective space</a></li>
+  <li><a href="#quintic">2. A quintic threefold</a></li>
+  <li><a href="#segre">3. The Segre threefold</a></li>
+  <li><a href="#disconnected">4. A map with disconnected fibres</a></li>
+  <li><a href="#blowup-line">5. Blowing up a line, and a two-step program</a></li>
+  <li><a href="#flip">6. A toric flip</a></li>
+  <li><a href="#cost">Cost</a> &middot; <a href="#reproducing">How to repeat these runs</a> &middot; <a href="#scope">What is not here</a></li>
+</ul>
+
+<h2 id="p3">1. Projective space</h2>
+
+<p>Here $X = \PP^3$ and $K_X = -4H$, where $H$ is the hyperplane class.  The
+example asks three questions.</p>
+
+<p><b>Is $K_X$ nef?</b>  No.  The package tests the divisor $K_X + \tfrac12 H$.
+It checks the first six multiples of that divisor, and none of them is base
+point free.  Six is enough: the effective base point free theorem says so for
+this case.  So $K_X + \tfrac12 H$ is not nef.  If $K_X$ were nef, then
+$K_X + \tfrac12 H$ would be nef too, because $H$ is ample.  So $K_X$ is not
+nef.</p>
+
+<p><b>What is the nef threshold?</b>  $K_X + tH = (t-4)H$, which is nef exactly
+when $t \ge 4$.  So $\lambda = 4$, and the package finds $4$.</p>
+
+<p><b>What does $K_X + \lambda H$ contract?</b>  $K_X + 4H = 0$.  It is base
+point free, and its linear system sends $X$ to one point.  This is a fibre type
+contraction, and the dimension drops by $3$.  The MMP driver stops here, after
+one step, at a $K$-negative fibration.</p>
+
+@@session 01-projective-space | nefTest#"nef" ; thresholdTest#"threshold" ; contraction#"contractionType" ; contraction#"targetDimension" ; mmp#"terminationType" ; mmp#"numberOfSteps"@@
+
+<h2 id="quintic">2. A quintic threefold</h2>
+
+<p>$X$ is a smooth quintic in $\PP^4$.  By adjunction $K_X = (5-5)H = 0$.</p>
+
+<p>The package tests the pluricanonical divisors first.  The first one is $K_X$
+itself, and it is base point free.  So $K_X$ is nef and $X$ is already a
+minimal model.  The driver stops after zero steps.</p>
+
+@@session 02-quintic | nefTest#"nef" ; nefTest#"iteration" ; mmp#"terminationType" ; mmp#"numberOfSteps"@@
+
+<h2 id="segre">3. The Segre threefold</h2>
+
+<p>$X = \PP^1 \times \PP^2$, embedded in $\PP^5$ by the Segre map.  So $R$ is
+the quotient by the $2 \times 2$ minors of a $2 \times 3$ matrix of
+variables.</p>
+
+<p>Here $K_X = \OO(-2,-3)$ and $H = \OO(1,1)$, so $K_X + tH = \OO(t-2,\,t-3)$.
+This is nef exactly when $t \ge 3$.  The package computes $\lambda = 3$, and
+then computes the contraction given by</p>
+
+$$K_X + 3H = \OO(1,0).$$
+
+<p>The linear system of $\OO(1,0)$ is the projection $X \to \PP^1$.  The
+package finds a fibre type contraction with target dimension $1$.</p>
+
+<p>This time the target is not a point, so there is a Stein factorization to
+compute.  The bound that certifies it is computed too, not assumed.  Here the
+factorization is trivial, because $\mathrm{pr}_1$ already has connected fibres.
+Example&nbsp;4 is the same $X$ with a map whose fibres are not connected.</p>
+
+@@session 03-segre-fibration | canonicalNefThreshold(X,1) ; contraction#"contractionType" ; contraction#"dimensionDrop" ; contraction#"steinFactorizationType" ; contraction#"steinHomData"#"certifiedBound"@@
+
+<h2 id="disconnected">4. A map with disconnected fibres</h2>
+
+<p>Stein factorization writes a map $f : Y \to W$ as $f = g \circ h$, where $h$
+has connected fibres and $g$ is finite.  In examples&nbsp;3 and&nbsp;5 the
+finite map $g$ turns out to be an isomorphism, so the factorization does
+nothing.  This example is one where it does something.</p>
+
+<p>Take $Y = \PP^1 \times \PP^2$ again, and the map</p>
+
+$$f : Y \to \PP^1, \qquad ([s_0:s_1],\,x) \longmapsto [s_0^2 : s_1^2].$$
+
+<p>Over a point of $\PP^1$ other than $[1:0]$ and $[0:1]$, the square map has
+two preimages, so the fibre of $f$ is two disjoint copies of $\PP^2$.  Over
+those two points the fibre is one copy.  The session checks this first, with no
+help from the package: it decomposes the fibre over $t_0 = t_1$ and gets two
+pieces, and the fibre over $t_1 = 0$ and gets one.</p>
+
+<p>So $f$ does not have connected fibres, and the factorization has to be</p>
+
+$$Y \;\xrightarrow{\ h = \mathrm{pr}_1\ }\; \PP^1
+\;\xrightarrow{\ g = \text{squaring}\ }\; \PP^1 .$$
+
+<p>The package finds exactly this.  The middle variety $Z$ has dimension $1$,
+and $Y$ has dimension $3$, so $h$ has relative dimension $2$.  The target also
+has dimension $1$, so $g$ is finite.  And the Stein algebra has rank $2$ over
+the coordinate ring of the target, which is the degree of $g$.  Degree $2$
+means $g$ is not an isomorphism.</p>
+
+<p>The same rank is $1$ in example&nbsp;5, where $g$ is an isomorphism.</p>
+
+@@session 04-disconnected-fibres | #decompose generalFibre ; #decompose branchFibre ; steinData#"certifiedBound" ; dim(steinAlgebra#"ring") - 1 ; typeData#"dimensionDrop" ; rank(steinAlgebra#"strandAsAModule")@@
+
+<h2 id="blowup-line">5. Blowing up a line, and a two-step program</h2>
+
+<p>$Y$ is the blow up of $\PP^3$ along a line, and $f : Y \to \PP^3$ is the
+map.  The package is given one thing only: a parametrization of the graph of
+$f$.  Nothing about $f$ is stated.  The graph lives in a bigraded ring, where
+the first block of variables is the source and the second block is the target.
+This is how the paper writes a morphism.</p>
+
+<p><b>Stein factorization.</b>  Write $f = g \circ h$, where $h$ has connected
+fibres and $g$ is finite.  The package computes the coordinate ring of the
+middle variety $Z$.  Two things come out of it.  First, $\dim Z = 3$.  Since
+$\dim Y = 3$ as well, the dimension does not drop, so $f$ is birational.
+Second, the ring of $Z$ is monograded, so the program can go on from $Z$
+without any further work.</p>
+
+<p><b>Is the contraction small?</b>  A birational contraction is called small
+when its exceptional locus has codimension $2$ or more.  A small contraction
+needs a flip.  A divisorial one does not.  The package finds the exceptional
+locus as the support of $\bigwedge^2 \Omega_{Y/Z}$.</p>
+
+<p>For this $f$ the exceptional locus is the exceptional divisor $E$.  The
+package finds dimension $2$ and codimension $1$, so the contraction is
+divisorial.</p>
+
+<p>The same test then runs on a small contraction, for comparison.  Take the
+ordinary double point $\{g_0g_1 = g_2g_3\}$ and blow up the ideal $(g_0,g_2)$.
+This is the standard small resolution.  Its exceptional locus is a curve, of
+dimension $1$ and codimension $2$, so that contraction is small.  Example&nbsp;6
+computes a flip for a case like this one.</p>
+
+<p><b>The program.</b>  The relative canonical model over $Z$ is the identity,
+so no flip is needed and the step is divisorial.  The driver then continues
+from $Z$.  It repeats example&nbsp;1: $\lambda = 4$, and the contraction to a
+point.  The whole program is</p>
+
+$$\mathrm{Bl}_L\PP^3 \;\xrightarrow{\ \text{divisorial}\ }\; \PP^3
+\;\xrightarrow{\ \text{fibration}\ }\; \text{point},$$
+
+<p>two steps, ending at a $K$-negative fibration.  Every ring in the chain is
+monograded, and the only bigraded ring is the graph of $f$.</p>
+
+@@session 05-blowup-of-a-line | steinData#"certifiedBound" ; dim(steinAlgebra#"ring") - 1 ; degreeLength(steinAlgebra#"ring") ; smallness#"exceptionalCodimension" ; odpSmallness#"exceptionalCodimension" ; blowupStep#"stepType" ; mmp#"numberOfSteps"@@
+
+<h2 id="flip">6. A toric flip</h2>
+
+<p>Take four rays in $N = \ZZ^3$:</p>
+
+$$v_1 = e_1,\quad v_2 = e_2,\quad v_3 = e_3,\quad v_4 = (1,1,-2).$$
+
+<p>They satisfy one relation, $v_1 + v_2 = 2v_3 + v_4$.  Four rays with a
+single relation of this shape form a <i>circuit</i>.  The cone $\sigma$ they
+span can be triangulated in two ways, and the two results differ by a flip.
+The cone itself, with no triangulation, is the target of the flipping
+contraction.</p>
+
+<p>$\sigma$ is not $\QQ$-Gorenstein.  To see this, look for an $m$ with
+$\langle m, v_i \rangle = 1$ for all four rays.  The first three rays force
+$m = (1,1,1)$, but $\langle (1,1,1), v_4 \rangle = 0$.  So there is no such
+$m$.</p>
+
+<p>The example builds this variety in Macaulay2.  The dual cone has a Hilbert
+basis of five elements with three relations, and one more variable $w$ makes a
+projective threefold $W$.  The flip is then computed as the relative canonical
+model</p>
+
+$$W^{+} = \Proj \bigoplus_{m \ge 0} H^0\bigl(W, \OO_W(mK_W)\bigr).$$
+
+<p>The session checks that this is a real flip: the result is not the identity
+and not an isomorphism, but it has the same dimension as $W$.  The package also
+writes down the inverse rational map $W \dashrightarrow W^{+}$, checks that its
+equations hold, and finds its base locus $V(y_4,y_5)$.  Recorded as an MMP
+step, this is a flipping step.</p>
+
+@@session 06-toric-flip | flipModel#"relativeModelType" ; flipModel#"isIdentity" ; inverseModel#"baseLocusCertified" ; flippingStep#"stepType"@@
+
+<h2 id="cost">Cost</h2>
+
+<p>Wall time of each session, from start to end.  This includes the time
+Macaulay2 needs to start and to load the packages.  These are the times of the
+run that built this page.</p>
+
+<table class="runs">
+  <tr><th>Example</th><th>Script</th><th>Wall time</th></tr>
+  <tr><td>1. Projective space</td><td><code>01-projective-space.m2</code></td><td class="n">@@seconds 01-projective-space@@ s</td></tr>
+  <tr><td>2. Quintic threefold</td><td><code>02-quintic.m2</code></td><td class="n">@@seconds 02-quintic@@ s</td></tr>
+  <tr><td>3. Segre threefold</td><td><code>03-segre-fibration.m2</code></td><td class="n">@@seconds 03-segre-fibration@@ s</td></tr>
+  <tr><td>4. Disconnected fibres</td><td><code>04-disconnected-fibres.m2</code></td><td class="n">@@seconds 04-disconnected-fibres@@ s</td></tr>
+  <tr><td>5. Blow up of a line</td><td><code>05-blowup-of-a-line.m2</code></td><td class="n">@@seconds 05-blowup-of-a-line@@ s</td></tr>
+  <tr><td>6. Toric flip</td><td><code>06-toric-flip.m2</code></td><td class="n">@@seconds 06-toric-flip@@ s</td></tr>
+</table>
+
+<p>All six run in seconds, and they cover the same ground as
+<code>make test-core</code>.  Every push re-runs them and rebuilds this page,
+so a session that stops working stops the page from being published.</p>
+
+<h2 id="reproducing">How to repeat these runs</h2>
+
+<p>You need Macaulay2 1.26.06 and a checkout with its submodules.</p>
+
+<pre class="m2">git clone --recurse-submodules https://github.com/takehikoyasuda/Coding_MMP
+cd Coding_MMP
+examples/run.sh                                   # all six
+examples/run.sh examples/01-projective-space.m2   # or one of them</pre>
+
+<p>Each run rewrites the <code>.out</code> transcript and the <code>.time</code>
+file next to its script.  This page is built from those files, so it cannot
+quote output that Macaulay2 no longer prints.</p>
+
+<h2 id="scope">What is not here</h2>
+
+<p>These six examples finish.  Some other inputs do not.  Those cases were
+measured rather than guessed, and the measurements are in
+<a href="https://github.com/takehikoyasuda/Coding_MMP/blob/main/research-log/README.md"><code>research-log/</code></a>.
+What the implementation is tested and trusted to do is listed in
+<a href="https://github.com/takehikoyasuda/Coding_MMP/blob/main/docs/IMPLEMENTATION-STATUS.md"><code>docs/IMPLEMENTATION-STATUS.md</code></a>.</p>
+
+<p>The package's multigraded entry points are also not shown here.  They take a
+multigraded variety as input, which the paper does not, so their examples
+belong with the package rather than with the paper.</p>
+
+  </body>
+</html>

@@ -1,4 +1,4 @@
-.PHONY: install docs docs-clean test test-core test-slow test-upstreams status
+.PHONY: install docs docs-clean examples examples-page site test test-core test-slow test-upstreams status
 
 DOCDIR := doc-build
 DOCINDEX := $(DOCDIR)/share/doc/Macaulay2/MMPComputation/html/index.html
@@ -30,6 +30,31 @@ docs:
 
 docs-clean:
 	rm -rf $(DOCDIR)
+
+# The worked-examples page published beside the manual.  `examples` re-runs
+# every example in Macaulay2 and rewrites its transcript and timing.
+# `examples-page` only inlines what is already recorded.  CI does both on every
+# push, so the committed transcripts are for reading, not for publishing.
+examples:
+	./examples/run.sh
+
+# The page links Style/doc.css and Style/katex relatively, the way the site
+# serves them, so opening a bare html file in the repository root would show it
+# unstyled with the mathematics as raw TeX.  The preview directory gets a copy
+# of Macaulay2's Style tree beside the page, which is what `make site` does for
+# the published one.
+examples-page:
+	./examples/build-page.py preview/examples.html
+	rm -rf preview/Style
+	cp -RL "$$(M2 --no-readline -q -e 'print prefixDirectory; exit 0' < /dev/null | tail -1)share/Macaulay2/Style" preview/Style
+	find preview -type l -delete
+	@echo
+	@echo "file://$(CURDIR)/preview/examples.html"
+
+# The published site exactly as CI assembles it, for looking at before pushing.
+site: docs examples-page
+	.github/make-site.sh $(DOCDIR)/share/doc/Macaulay2/MMPComputation/html site MMPComputation https://github.com/takehikoyasuda/Coding_MMP preview/examples.html
+	@echo "file://$(CURDIR)/site/examples.html"
 
 install:
 	M2 --no-readline --stop -q -e 'installPackage("SteinFactorization",FileName=>"third_party/SteinFactorizationM2/SteinFactorization.m2",MakeDocumentation=>false,RunExamples=>false); exit 0'
