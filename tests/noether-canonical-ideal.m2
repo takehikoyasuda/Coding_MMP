@@ -56,17 +56,21 @@ print "OK past the codimension threshold the seed uses Noether normalization and
 -- The canonical divisor itself, not just the seed: canonicalDivisor is
 -- WeilDivisors' own function and runs the same Ext, so without this every
 -- caller would still stop there before the seed was ever asked for.
--- v_3(P^3) is not Gorenstein -- the m-th Veronese of a polynomial ring in n+1
--- variables is Gorenstein exactly when m divides n+1, and 3 does not divide 4 --
--- and K_{P^3} = O(-4) is -4/3 times O(3), so the canonical index is 3.
+--
+-- v_3(P^3) is P^3 re-embedded by O(3), so X is smooth and every divisor on it
+-- is Cartier: the canonical index is 1.  It is worth being explicit that this
+-- is not the same as the smallest m with m*K in Z*H, which is 3 here since
+-- K_{P^3} = O(-4) is -4/3 times O(3).  Conflating the two is exactly the defect
+-- fixed in tests/cartier-index-fastpath.m2: taking the seed certificate's
+-- negative as a verdict computes the second quantity, not the index.
 kdivFn = value(MMPComputation#"private dictionary"#"mmpCanonicalDivisorInternal");
 seedKey = value(MMPComputation#"private dictionary"#"mmpCanonicalIdealSeedData");
 K3 = kdivFn R3;
 assert(K3#cache#?seedKey);
 index3 = canonicalIndexData(R3,CanonicalIndexSearchLimit=>6);
 assert(index3#"conclusive");
-assert(index3#"index" == 3);
-print "OK the canonical divisor and index come out of the Noether route, index 3 on v_3(P3).";
+assert(index3#"index" == 1);
+print "OK the canonical divisor comes out of the Noether route; v_3(P3) is smooth so its index is 1.";
 
 -- The route declines what it cannot handle, so the caller always has a fallback.
 assert(noetherFn (kk[u,v,t,Degrees=>{1,1,2}]) === null);
