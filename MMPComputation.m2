@@ -556,6 +556,219 @@ gradedShiftModuleFromDegree = (R,d) -> (
     R^shifts
     )
 
+-- The Noether-normalization route to the same canonical ideal, used when the
+-- Ext/Hom route below is out of reach.  On the cyclic cover's flip target
+-- Xminus (29 variables, codim 25) that route's Ext exceeds 8GB and M2's
+-- Hom(omega,R) exceeds 9GB for every presentation size and coefficient
+-- density tried; this one returns in about thirteen minutes.
+--
+-- For a homogeneous system of parameters theta_1..theta_d, A = k[theta] -> R
+-- is finite and omega_R = Hom_A(R, omega_A) with no CM hypothesis needed.
+-- When R is Cohen-Macaulay it is moreover free over A, with a basis lifting
+-- any k-basis of the Artinian reduction R/(theta) -- far cheaper than
+-- PushForward's pushFwd, which is itself what dies at this codimension.
+-- dim_k R/(theta) = deg R certifies both that theta is a system of parameters
+-- and that R is CM, so this returns null when it fails and the caller falls
+-- back to the Ext route.
+--
+-- Everything after that stays over k.  Writing R = ⊕_i A e_i with deg e_i =
+-- a_i, the multiplication matrices C_j of the variables come from one change
+-- of basis per degree, since R_m = ⊕_i A_{m-a_i} e_i means the products
+-- theta^alpha e_i are a second k-basis of R_m.  The R-action on omega is
+-- their transpose, and then the same reduction applies three times:
+--
+--   * omega/m*omega = k^rank / sum_j colspace(C_j^T mod theta) gives omega's
+--     minimal generators w_1..w_t over R (124 -> 5 on Xminus);
+--   * ker(psi: R^t -> omega) is free over A -- psi surjects onto the free
+--     A^rank, so the sequence splits -- so its A-generators are a basis, and
+--     its R-minimal generators come from the same quotient one level up
+--     (496 -> 96 on Xminus);
+--   * a map phi: omega -> R of degree e is determined by phi(w_k) in
+--     R_{deg w_k + e} subject to those relations, a linear system over k with
+--     sum_k dim R_{deg w_k + e} unknowns (89 at e = 0 on Xminus).
+--
+-- omega is rank-one torsion-free, being the canonical module of a normal
+-- domain, so any nonzero phi is injective and its image is a canonical ideal.
+noetherCanonicalIdealSeedInternal = R -> (
+    S := ambient R;
+    if degreeLength S != 1 then return null;
+    varList := flatten entries vars S;
+    if #varList == 0 then return null;
+    if any(varList, q -> (degree q)#0 != 1) then return null;
+    kk := coefficientRing S;
+    d := dim R;
+    if d <= 0 then return null;
+    targetDegree := degree R;
+
+    -- A homogeneous system of parameters and the A-basis of R.  basis failing
+    -- means the quotient is not Artinian, i.e. theta is not a system of
+    -- parameters; a length other than deg R means R is not Cohen-Macaulay.
+    thetas := apply(d, i -> random(1,R));
+    Rbar := R/ideal thetas;
+    basBarTry := try (first entries basis Rbar) else null;
+    if basBarTry === null then return null;
+    if #basBarTry != targetDegree then return null;
+    es := apply(basBarTry, q -> sub(q,R));
+    as := apply(basBarTry, q -> first degree q);
+    rank0 := #es;
+
+    basisCache := new MutableHashTable;
+    degBasis := m -> (
+        if not basisCache#?m then basisCache#m = basis(m,R);
+        basisCache#m);
+    Apoly := kk(monoid [Variables => d,
+        VariableBaseName => getSymbol "mmpNoetherParameter"]);
+    thetaMonos := e -> (if e < 0 then {} else first entries basis(e,Apoly));
+    toR := q -> product apply(d, i -> thetas#i ^ ((exponents q)#0#i));
+    coordsBatch := (fs,m) -> (
+        if #fs == 0 then map(kk^0,kk^0,0)
+        else lift(last coefficients(matrix{fs}, Monomials => degBasis m), kk));
+
+    -- One change of basis per degree: theta^alpha e_i against the monomial
+    -- basis of R_m.  Degrees only need to reach max(a_i) + 1.
+    maxDeg := max as + 1;
+    basisMatrix := new MutableHashTable;
+    for m from 0 to maxDeg do (
+        elts := {};
+        for i from 0 to rank0-1 do
+            for q in thetaMonos(m - as#i) do elts = append(elts,(toR q) * es#i);
+        basisMatrix#m = coordsBatch(elts,m));
+
+    -- Multiplication matrices, batched by degree: one coefficients call and
+    -- one solve for each, with the A-coefficients kept in Apoly rather than
+    -- in R (doing this elementwise, or in R, is what makes it intractable).
+    vs := flatten entries vars R;
+    cmat := new MutableHashTable;
+    for m from 1 to maxDeg do (
+        prods := {}; keysm := {};
+        for j from 0 to (#vs)-1 do for i from 0 to rank0-1 do
+            if as#i + 1 == m then (
+                prods = append(prods, vs#j * es#i);
+                keysm = append(keysm,{j,i}));
+        if #prods > 0 then (
+            V := solve(basisMatrix#m, coordsBatch(prods,m));
+            nn := #keysm; rowsSoFar := 0; blocks := {};
+            for l from 0 to rank0-1 do (
+                ml := thetaMonos(m - as#l);
+                if #ml == 0 then blocks = append(blocks, map(Apoly^1,Apoly^nn,0))
+                else (
+                    blocks = append(blocks, (matrix{ml}) *
+                        sub(V^(toList(rowsSoFar..rowsSoFar+(#ml)-1)),Apoly));
+                    rowsSoFar = rowsSoFar + #ml));
+            M := fold(blocks,(a,b) -> a||b);
+            for p from 0 to nn-1 do cmat#(keysm#p) = M_{p}));
+
+    toK := map(kk,Apoly,toList(d:0_kk));
+    Cmatrix := j -> fold(apply(rank0, i ->
+        if cmat#?{j,i} then cmat#{j,i} else map(Apoly^rank0,Apoly^1,0)),
+        (a,b) -> a|b);
+
+    -- omega's minimal generators over R, by linear algebra over k.
+    degF := apply(as, a -> d - a);
+    Bfull := fold(apply(#vs, j -> toK transpose Cmatrix(j)),(a,b) -> a|b);
+    genVecs := {};
+    for g in sort unique degF do (
+        rows := select(toList(0..rank0-1), l -> degF#l == g);
+        mg := mingens coker (Bfull^rows);
+        for c from 0 to (numcols mg)-1 do (
+            v := new MutableList from toList(rank0 : 0_kk);
+            for r from 0 to (#rows)-1 do v#(rows#r) = mg_(r,c);
+            genVecs = append(genVecs,{g,toList v})));
+    ng := #genVecs;
+    if ng == 0 then return null;
+
+    -- psi: R^ng -> omega as a map of free A-modules.  Each column e_i * w_k is
+    -- at most max(a_i) matrix-vector products.
+    Tcache := new MutableHashTable;
+    Tmat := j -> (
+        if not Tcache#?j then Tcache#j = transpose Cmatrix(j);
+        Tcache#j);
+    cols := {};
+    for pr in genVecs do (
+        w0 := sub(transpose matrix {pr#1}, Apoly);
+        for i from 0 to rank0-1 do (
+            v := w0;
+            ev := (exponents basBarTry#i)#0;
+            for j from 0 to (#vs)-1 do
+                for c from 1 to ev#j do v = (Tmat j) * v;
+            cols = append(cols,v)));
+    psiMat := fold(cols,(a,b) -> a|b);
+    srcDeg := flatten apply(genVecs, pr -> apply(as, a -> -(a + pr#0)));
+    psiMap := map(Apoly^(apply(degF, g -> -g)), Apoly^srcDeg, psiMat);
+    Ksyz := gens ker psiMap;
+    kdegs := apply(degrees source Ksyz, dg -> first dg);
+    nsyz := numcols Ksyz;
+
+    -- The relations, minimized over R by the same argument one level up.
+    relVecs := {};
+    if nsyz > 0 then (
+        K0 := toK Ksyz;
+        zeroBlock := map(kk^rank0,kk^rank0,0);
+        blockC := j -> (
+            Cj := toK Cmatrix(j);
+            matrix apply(ng, a -> apply(ng, b -> if a == b then Cj else zeroBlock)));
+        B2 := fold(apply(#vs, j -> ((blockC j) * K0) // K0),(a,b) -> a|b);
+        for g in sort unique kdegs do (
+            rows := select(toList(0..nsyz-1), r -> kdegs#r == g);
+            mg := mingens coker (B2^rows);
+            for c from 0 to (numcols mg)-1 do (
+                v := new MutableList from toList(nsyz : 0_kk);
+                for r from 0 to (#rows)-1 do v#(rows#r) = mg_(r,c);
+                relVecs = append(relVecs,{g,toList v}))));
+    Kred := (if #relVecs == 0 then map(Apoly^(numrows Ksyz),Apoly^0,0)
+        else Ksyz * sub(fold(apply(relVecs, pr -> transpose matrix {pr#1}),
+            (a,b) -> a|b), Apoly));
+    toRfromA := map(R,Apoly,thetas);
+    relMat := (if numcols Kred == 0 then map(R^ng,R^0,0)
+        else fold(apply(numcols Kred, c -> transpose matrix {
+            apply(ng, k -> sum apply(rank0, i ->
+                (toRfromA (Kred_(k*rank0+i,c))) * es#i))}),
+            (a,b) -> a|b));
+
+    -- phi: omega -> R of degree e, as a linear system over k.
+    gdeg := apply(genVecs, pr -> pr#0);
+    reldeg := apply(relVecs, pr -> pr#0);
+    nrel := #relVecs;
+    unknownCount := e -> sum apply(gdeg, g -> numcols degBasis (g+e));
+    constraintsAt := e -> (
+        if nrel == 0 then map(kk^0, kk^(unknownCount e), 0)
+        else fold(apply(nrel, sidx -> (
+            tgt := degBasis (reldeg#sidx + e);
+            fold(apply(ng, k -> (
+                src := degBasis (gdeg#k + e);
+                if numcols src == 0 then map(kk^(numcols tgt),kk^0,0)
+                else lift(last coefficients(relMat_(k,sidx) * src,
+                    Monomials => tgt), kk))),(a,b) -> a|b))),(a,b) -> a||b));
+    embDeg := null; phis := null;
+    for e from -(max gdeg) to (max gdeg) + 4 do (
+        if embDeg === null then (
+            M := constraintsAt e;
+            if numcols M > 0 then (
+                Ksol := if numrows M == 0 then id_(kk^(numcols M)) else gens ker M;
+                sizes := apply(gdeg, g -> numcols degBasis (g+e));
+                for c from 0 to (numcols Ksol)-1 do (
+                    if embDeg === null then (
+                        o := 0;
+                        cand := apply(ng, k -> (
+                            src := degBasis (gdeg#k + e);
+                            val := if sizes#k == 0 then 0_R
+                                else (src * (Ksol^(toList(o..o+sizes#k-1)))_{c})_(0,0);
+                            o = o + sizes#k;
+                            val));
+                        if any(cand, q -> q != 0) then (
+                            embDeg = e; phis = cand))))));
+    if embDeg === null then return null;
+    canonicalIdeal := trim ideal select(phis, q -> q != 0);
+    if canonicalIdeal == ideal 0_R then return null;
+    new HashTable from {
+        "ring" => R,
+        "ideal" => canonicalIdeal,
+        "embeddingDegree" => {embDeg},
+        "certificate" =>
+            "canonical module via Noether normalization, embedding solved over the base field"
+        }
+    )
+
 -- Construct one canonical ideal together with the degree of the homogeneous
 -- embedding omega_R -> R.  If I is the image of that embedding, then
 --
@@ -565,10 +778,29 @@ gradedShiftModuleFromDegree = (R,d) -> (
 -- repeated module double-duals by one canonical-module Ext/Hom computation
 -- plus ideal reflexive powers.  The data are cached on K because the nef
 -- search asks for several multipliers of the same canonical divisor.
+-- Past this codimension the Ext below is not worth attempting: it resolves R
+-- over S to homological degree dim S - dim R, and on Xminus (29 variables,
+-- codim 25) that exceeds 8GB, where the Noether route returns in about
+-- thirteen minutes.  Every ring the existing tests exercise has codimension at
+-- most six, so nothing already working changes route.
+mmpNoetherCodimThreshold = 12;
+
 canonicalIdealSeedDataInternal = (R,K) -> (
     if instance(K,WeilDivisor) and K#cache#?mmpCanonicalIdealSeedData then
         return K#cache#mmpCanonicalIdealSeedData;
     S := ambient R;
+    -- Only in the regime where the Ext is hopeless, and only as an attempt:
+    -- the Noether route returns null on any ring it cannot handle (multigraded,
+    -- non-standard weights, theta not a system of parameters, R not
+    -- Cohen-Macaulay), so the Ext route below remains the default.
+    if dim S - dim R >= mmpNoetherCodimThreshold then (
+        noetherSeed := noetherCanonicalIdealSeedInternal R;
+        if noetherSeed =!= null then (
+            if instance(K,WeilDivisor) then
+                K#cache#mmpCanonicalIdealSeedData = noetherSeed;
+            return noetherSeed;
+            );
+        );
     sourceVars := flatten entries vars S;
     degreeList := if degreeLength S == 1
         then apply(sourceVars,q -> (degree q)#0)
