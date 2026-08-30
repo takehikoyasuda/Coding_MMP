@@ -843,6 +843,45 @@ canonicalIdealSeedDataInternal = (R,K) -> (
     result
     )
 
+-- canonicalDivisor(R,IsGraded=>true) is WeilDivisors' own function, and it runs
+-- the same Ext over the ambient that the seed above exists to avoid.  So on a
+-- ring where that Ext is out of reach the seed never gets its chance, because
+-- every caller needs K first.  This closes that gap: past the same threshold,
+-- K is assembled from the Noether seed instead of from the Ext.
+--
+-- The seed gives phi: omega -> R of degree e with image I, so omega = I(e) as
+-- graded modules and hence, as sheaves, O_X(K) = Ĩ(e) = O_X(-div I + e*H).
+-- H is the class of O(1), which for a standard graded ring is div(f) for any
+-- nonzero linear form -- and the Noether route accepts nothing else, so f is
+-- always available here.  The seed is cached on the divisor produced, so the
+-- caller's later canonicalIdealSeedDataInternal(R,K) reuses it instead of
+-- recomputing the whole construction.
+--
+-- Verified against canonicalDivisor on P^3, the 2-uple Veronese of P^3 and the
+-- quintic threefold: linearly equivalent in each case, which is all that is
+-- ever asked of K -- Cartier-ness, base-point-freeness and the index are
+-- properties of the class.
+mmpCanonicalDivisorInternal = R -> (
+    S := ambient R;
+    if dim S - dim R >= mmpNoetherCodimThreshold then (
+        seed := noetherCanonicalIdealSeedInternal R;
+        if seed =!= null then (
+            linearForms := select(flatten entries vars R, q -> q != 0_R);
+            if #linearForms > 0 then (
+                f := first linearForms;
+                canonicalIdeal := seed#"ideal";
+                shiftDegree := first (seed#"embeddingDegree");
+                base := (if canonicalIdeal == ideal 1_R then 0*divisor(f)
+                    else -divisor(canonicalIdeal));
+                K := base + shiftDegree*divisor(f);
+                K#cache#mmpCanonicalIdealSeedData = seed;
+                return K;
+                );
+            );
+        );
+    canonicalDivisor(R,IsGraded=>true)
+    )
+
 -- Return null when the chart/principal hypotheses needed for this shortcut
 -- are unavailable.  A non-null result is an exact BPF test under the normal
 -- domain hypotheses already required by canonicalDivisor/reflexivePower.
@@ -1409,7 +1448,7 @@ canonicalScaledNefData = method(Options => {
 canonicalScaledNefData (Ring,ZZ,QQ) := o -> (R,a,t) -> (
     if a <= 0 then
         error "canonicalScaledNefData: the index multiple must be positive";
-    K := canonicalDivisor(R,IsGraded=>true);
+    K := mmpCanonicalDivisorInternal R;
     if not isCartier(a*K,IsGraded=>true) then
         error "canonicalScaledNefData: a*K_X is not Cartier";
     H := (weightedAmpleDivisorData R)#"divisor";
@@ -1449,7 +1488,7 @@ canonicalScaledNefData (Ring,ZZ,QQ,BasicDivisor) := o -> (R,a,t,H) -> (
         error "canonicalScaledNefData: the index multiple must be positive";
     if ring H =!= R then
         error "canonicalScaledNefData: H must be a divisor on R";
-    K := canonicalDivisor(R,IsGraded=>true);
+    K := mmpCanonicalDivisorInternal R;
     B := (irrelevantIdealDataInternal(
         "canonicalScaledNefData",R,o.VariableBlocks,o.IrrelevantIdeal))#"irrelevantIdeal";
     if not isCartierSaturatedInternal(a*K,B) then
@@ -1679,7 +1718,7 @@ canonicalNefThresholdData (Ring,ZZ) := o -> (R,a) -> (
     limit := o.ThresholdSearchLimit;
     if limit =!= null and (not instance(limit,ZZ) or limit <= 0) then
         error "canonicalNefThresholdData: ThresholdSearchLimit must be null or positive";
-    K := canonicalDivisor(R,IsGraded=>true);
+    K := mmpCanonicalDivisorInternal R;
     if not isCartier(a*K,IsGraded=>true) then
         error "canonicalNefThresholdData: a*K_X is not Cartier";
     ampleData := weightedAmpleDivisorData R;
@@ -1720,7 +1759,7 @@ canonicalNefThresholdData (Ring,ZZ,BasicDivisor) := o -> (R,a,H) -> (
     limit := o.ThresholdSearchLimit;
     if limit =!= null and (not instance(limit,ZZ) or limit <= 0) then
         error "canonicalNefThresholdData: ThresholdSearchLimit must be null or positive";
-    K := canonicalDivisor(R,IsGraded=>true);
+    K := mmpCanonicalDivisorInternal R;
     idealData := irrelevantIdealDataInternal(
         "canonicalNefThresholdData",R,o.VariableBlocks,o.IrrelevantIdeal);
     B := idealData#"irrelevantIdeal";
@@ -2052,7 +2091,7 @@ canonicalContractionAtThresholdData (Ring,ZZ,QQ) := o -> (R,a,lambda) -> (
     limit := o.ContractionMultipleLimit;
     if limit =!= null and (not instance(limit,ZZ) or limit <= 0) then
         error "canonicalContractionAtThresholdData: ContractionMultipleLimit must be null or positive";
-    K := canonicalDivisor(R,IsGraded=>true);
+    K := mmpCanonicalDivisorInternal R;
     if not isCartier(a*K,IsGraded=>true) then
         error "canonicalContractionAtThresholdData: a*K_X is not Cartier";
     ampleData := weightedAmpleDivisorData R;
@@ -2095,7 +2134,7 @@ canonicalContractionAtThresholdData (Ring,ZZ,QQ,BasicDivisor) := o -> (R,a,lambd
     limit := o.ContractionMultipleLimit;
     if limit =!= null and (not instance(limit,ZZ) or limit <= 0) then
         error "canonicalContractionAtThresholdData: ContractionMultipleLimit must be null or positive";
-    K := canonicalDivisor(R,IsGraded=>true);
+    K := mmpCanonicalDivisorInternal R;
     idealData := irrelevantIdealDataInternal(
         "canonicalContractionAtThresholdData",R,o.VariableBlocks,
         o.IrrelevantIdeal);
@@ -2531,7 +2570,7 @@ canonicalIndexData Ring := o -> R -> (
         (multigradedBlockData(R,o.VariableBlocks))#"irrelevantIdeal"
         ) else normalizeIrrelevantIdealOption(
             "canonicalIndexData",R,o.IrrelevantIdeal);
-    K := canonicalDivisor(R,IsGraded=>true);
+    K := mmpCanonicalDivisorInternal R;
     -- Try the two cheap, certificate-producing sufficient conditions for
     -- Cartier-ness first (no Hom/Ext call); only fall back to the original,
     -- expensive general test when neither applies.  Both certificates can
@@ -2904,7 +2943,7 @@ canonicalNefData (Ring,ZZ) := o -> (R,a) -> (
     limit := o.NefSearchLimit;
     if limit =!= null and (not instance(limit,ZZ) or limit <= 0) then
         error "canonicalNefData: NefSearchLimit must be null or positive";
-    K := canonicalDivisor(R,IsGraded=>true);
+    K := mmpCanonicalDivisorInternal R;
     if not isCartier(a*K,IsGraded=>true) then
         error "canonicalNefData: a*K_X is not Cartier";
     ampleData := weightedAmpleDivisorData R;
@@ -2944,7 +2983,7 @@ canonicalNefData (Ring,ZZ,BasicDivisor) := o -> (R,a,H) -> (
     geometricDimension := idealData#"geometricDimension";
     if geometricDimension != 3 then
         error "canonicalNefData: expected a projective threefold";
-    K := canonicalDivisor(R,IsGraded=>true);
+    K := mmpCanonicalDivisorInternal R;
     B := idealData#"irrelevantIdeal";
     if not isCartierSaturatedInternal(a*K,B) then
         error "canonicalNefData: a*K_X is not Cartier";

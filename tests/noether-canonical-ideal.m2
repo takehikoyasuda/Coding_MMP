@@ -53,6 +53,21 @@ assert(apply(toList(0..5), i -> hilbertFunction(i, module (seed3#"ideal")))
     == expected);
 print "OK past the codimension threshold the seed uses Noether normalization and matches theory.";
 
+-- The canonical divisor itself, not just the seed: canonicalDivisor is
+-- WeilDivisors' own function and runs the same Ext, so without this every
+-- caller would still stop there before the seed was ever asked for.
+-- v_3(P^3) is not Gorenstein -- the m-th Veronese of a polynomial ring in n+1
+-- variables is Gorenstein exactly when m divides n+1, and 3 does not divide 4 --
+-- and K_{P^3} = O(-4) is -4/3 times O(3), so the canonical index is 3.
+kdivFn = value(MMPComputation#"private dictionary"#"mmpCanonicalDivisorInternal");
+seedKey = value(MMPComputation#"private dictionary"#"mmpCanonicalIdealSeedData");
+K3 = kdivFn R3;
+assert(K3#cache#?seedKey);
+index3 = canonicalIndexData(R3,CanonicalIndexSearchLimit=>6);
+assert(index3#"conclusive");
+assert(index3#"index" == 3);
+print "OK the canonical divisor and index come out of the Noether route, index 3 on v_3(P3).";
+
 -- The route declines what it cannot handle, so the caller always has a fallback.
 assert(noetherFn (kk[u,v,t,Degrees=>{1,1,2}]) === null);
 Abi = kk[a0,a1,b0,b1,Degrees=>{{1,0},{1,0},{0,1},{0,1}}];
