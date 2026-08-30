@@ -198,8 +198,66 @@ flush stdio;
 srcDeg = flatten apply(genVecs, pr -> apply(as, a -> -(a + pr#0)));
 tgtDeg = apply(degF, g -> -g);
 psiMap = map(Apoly^tgtDeg, Apoly^srcDeg, psiMat);
-Ksyz = timeIt("ker psi  (A = k[t_1.." | toString d | "] 上)",() -> gens ker psiMap);
-print("    関係式 " | toString numcols Ksyz | " 本");
+Kmod = timeIt("ker psi  (A = k[t_1.." | toString d | "] 上)",() -> ker psiMap);
+Ksyz = gens Kmod;
+kdegs = apply(degrees source Ksyz, dg -> first dg);
+print("    A 上の関係式 " | toString numcols Ksyz | " 本"
+    | "   (rank = " | toString (numcols psiMat) | " - " | toString rank0
+    | " = " | toString (numcols psiMat - rank0) | " なので A 上は極小)");
+print("    次数分布 = " | toString tally kdegs);
+flush stdio;
+
+-- R 上で極小化する.  生成元のときと同じ k 上の線形代数を一段上に適用する.
+-- K は自由 (psi 全射 + A^rank0 自由 -> 列が分裂) なので Ksyz は自由基底で,
+-- K/(t)K -> A^src/(t) は単射.  よって x_j の K 上の作用行列は
+--     X_j mod t = solve(K0, (C_j^{(ng)} mod t) K0),   K0 = Ksyz mod t
+-- で k 上だけで求まる.  そして
+--     Rel/m*Rel = k^496 / Σ_j colspace(X_j mod t).
+ng = #genVecs;
+nsyz = numcols Ksyz;
+K0 = toK Ksyz;
+blockC = j -> (
+    Cj := toK Cmatrix(j);
+    zz := map(kk^rank0,kk^rank0,0);
+    matrix apply(ng, a -> apply(ng, b -> if a == b then Cj else zz)));
+Xmats = timeIt("x_j の K 上の作用 (k 上, " | toString (#vs) | " 本)",
+    () -> apply(#vs, j -> ((blockC j) * K0) // K0));
+if nsyz > 0 then (
+    exact := all(#vs, j -> (blockC j) * K0 == K0 * (Xmats#j));
+    print("    除算が厳密か (C_j^{(ng)} K0 = K0 X_j) ?  " | toString exact);
+    flush stdio;
+    );
+relData = timeIt("Rel/m*Rel  (k 上の線形代数)",() -> (
+    B2 := fold(Xmats,(a,b) -> a|b);
+    {B2, rank B2, nsyz - rank B2}));
+print("    stack した行列 = " | toString nsyz | " x " | toString (#vs * nsyz)
+    | ",  rank " | toString (relData#1));
+print("    dim Rel/m*Rel = " | toString (relData#2)
+    | "   ( = R 上の極小関係式の本数 )");
+flush stdio;
+
+-- 次数ごとに極小関係式のベクトルを取り出す.
+B2 = relData#0;
+relVecs = timeIt("極小関係式ベクトル",() -> (
+    acc := {};
+    for g in sort unique kdegs do (
+        rows := select(toList(0..nsyz-1), r -> kdegs#r == g);
+        mg := mingens coker (B2^rows);
+        for c from 0 to (numcols mg)-1 do (
+            v := new MutableList from toList(nsyz : 0_kk);
+            for r from 0 to (#rows)-1 do v#(rows#r) = mg_(r,c);
+            acc = append(acc,{g,toList v})));
+    acc));
+print("    極小関係式 " | toString (#relVecs) | " 本,  次数 "
+    | toString tally apply(relVecs, pr -> pr#0));
+flush stdio;
+
+Kred = (if #relVecs == 0 then map(Apoly^(numrows Ksyz),Apoly^0,0)
+    else Ksyz * sub(fold(apply(relVecs, pr -> transpose matrix {pr#1}),
+        (a,b) -> a|b), Apoly));
+Ksyz = Kred;
+print("    縮約後の関係式行列 (A 上) = " | toString numrows Ksyz
+    | " x " | toString numcols Ksyz);
 flush stdio;
 
 -- 各関係式を R^(#gens) の元に変換.  スロット k は Σ_i v_(i,k)(t) e_i.
