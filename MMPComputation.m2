@@ -31,6 +31,7 @@ newPackage(
     )
 
 protect mmpCanonicalIdealSeedData;
+protect mmpNoetherCanonicalDivisor;
 
 export {
     "weightedAmpleDivisorData",
@@ -861,7 +862,14 @@ canonicalIdealSeedDataInternal = (R,K) -> (
 -- quintic threefold: linearly equivalent in each case, which is all that is
 -- ever asked of K -- Cartier-ness, base-point-freeness and the index are
 -- properties of the class.
+-- Cached on the ring, not only on the divisor: every entry point recomputes K
+-- from scratch, and threefoldMMPData goes through several of them, so without
+-- this the Noether construction would be paid again at each step -- about
+-- thirteen minutes apiece on the cyclic cover's flip target.  Any divisor with
+-- O_X(K) = omega will do, so reusing one across calls is sound.
 mmpCanonicalDivisorInternal = R -> (
+    if R.cache#?mmpNoetherCanonicalDivisor then
+        return R.cache#mmpNoetherCanonicalDivisor;
     S := ambient R;
     if dim S - dim R >= mmpNoetherCodimThreshold then (
         seed := noetherCanonicalIdealSeedInternal R;
@@ -875,6 +883,7 @@ mmpCanonicalDivisorInternal = R -> (
                     else -divisor(canonicalIdeal));
                 K := base + shiftDegree*divisor(f);
                 K#cache#mmpCanonicalIdealSeedData = seed;
+                R.cache#mmpNoetherCanonicalDivisor = K;
                 return K;
                 );
             );
