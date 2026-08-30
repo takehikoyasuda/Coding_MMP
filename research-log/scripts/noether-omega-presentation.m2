@@ -288,34 +288,80 @@ if (getenv "MMPMIN") == "on" then (
     flush stdio;
     );
 
-print "  [Hom(omega,R) -> 標準イデアル]"; flush stdio;
-dualOmega = timeIt("Hom(omega,R)",() -> Hom(omegaMin,R^1));
-hdegs = apply(degrees dualOmega, dg -> first dg);
-print("    Hom の生成元 " | toString numgens dualOmega | ",  次数 " | toString tally hdegs);
-flush stdio;
-ord = sort apply(#hdegs, i -> {hdegs#i, i});
-embedding = null; embDeg = null; canIdeal = null;
-timeIt("最小次数の埋め込み",() -> (
-    for pr in ord do (
-        if embedding === null then (
-            f := homomorphism dualOmega_(pr#1);
-            J := trim ideal matrix f;
-            if J != ideal 0_R then (embedding = f; embDeg = pr#0; canIdeal = J)));
+-- M2 の汎用 Hom(omega,R) は 29 変数環上で 9GB を超える (関係式 496/96,
+-- 座標 密/疎 の 4 通りすべて).  そこで Hom も k 上の線形代数で解く.
+--
+--   phi: omega -> R を次数 e とすると phi は phi(w_k) in R_{g_k+e} で決まり,
+--   96 本の関係式 Σ_k r_{k,s} w_k = 0 が  Σ_k r_{k,s} phi(w_k) = 0  を課す.
+--   これは k 上の線形系:  未知数 Σ_k dim R_{g_k+e},  方程式 Σ_s dim R_{D_s+e}.
+--   e=0 なら未知数 2*1 + 3*29 = 89 個.
+--
+--   omega は正規整域の標準加群なので階数 1 で捩れなし.  よって非零の phi は
+--   自動的に単射で, 像 I = (phi(w_1),...,phi(w_5)) が標準イデアル.
+print "  [Hom を k 上の線形代数で解く]"; flush stdio;
+gdeg = apply(genVecs, pr -> pr#0);
+reldeg = apply(relVecs, pr -> pr#0);
+nrel = #relVecs;
+
+constraintsAt = e -> (
+    if nrel == 0 then map(kk^0, kk^(sum apply(gdeg, g -> numcols basis(g+e,R))), 0)
+    else (
+        blocks := apply(nrel, sidx -> (
+            tgt := basis(reldeg#sidx + e, R);
+            row := apply(ng, k -> (
+                src := basis(gdeg#k + e, R);
+                if numcols src == 0 then map(kk^(numcols tgt),kk^0,0)
+                else lift(last coefficients(relMat_(k,sidx) * src,
+                    Monomials => tgt), kk)));
+            fold(row,(a,b) -> a|b)));
+        fold(blocks,(a,b) -> a||b)));
+
+solAt = e -> (
+    M := constraintsAt e;
+    if numcols M == 0 then null
+    else (
+        K := if numrows M == 0 then id_(kk^(numcols M)) else gens ker M;
+        if numcols K == 0 then null else K));
+
+embDeg = null; phis = null;
+timeIt("e を下から探す",() -> (
+    for e from -(max gdeg) to 5 do (
+        if embDeg === null then (
+            K := solAt e;
+            if K =!= null then (
+                -- 列ごとに, 全成分が 0 でない解を選ぶ.
+                off := 0; sizes := apply(gdeg, g -> numcols basis(g+e,R));
+                for c from 0 to (numcols K)-1 do (
+                    if embDeg === null then (
+                        o := 0;
+                        cand := apply(ng, k -> (
+                            src := basis(gdeg#k + e, R);
+                            v := if sizes#k == 0 then 0_R
+                                else (src * (K^(toList(o..o+sizes#k-1)))_{c})_(0,0);
+                            o = o + sizes#k;
+                            v));
+                        if any(cand, q -> q != 0) then (embDeg = e; phis = cand)))))); 
     true));
-if canIdeal === null then (
-    print "    ** 非零の埋め込みが見つからない **";
+
+if embDeg === null then (
+    print "    ** 非零の phi が e <= 5 で見つからない **";
     ) else (
     print("    埋め込み次数 e = " | toString embDeg);
-    print("    標準イデアル:  生成元 " | toString numgens canIdeal
+    print("    phi(w_k) の次数 = " | toString apply(phis, q ->
+        if q == 0 then "0" else toString first degree q));
+    flush stdio;
+    canIdeal := timeIt("標準イデアル I = (phi(w_1),...,phi(w_5))",
+        () -> trim ideal select(phis, q -> q != 0));
+    print("    生成元 " | toString numgens canIdeal
         | ",  次数 " | toString tally apply(first entries gens canIdeal,
             q -> first degree q));
-    -- Hilbert 関数の突き合わせ (重い場合があるので最後に).
+    flush stdio;
     hfI := timeIt("hf(I)",() ->
         apply(toList(0..6), m -> hilbertFunction(m, module canIdeal)));
     print("    hf(I)         = " | toString hfI);
     flush stdio;
     hfW := timeIt("hf(omega)",() -> apply(toList(0..6), m -> (
-        if m-embDeg < 0 then 0 else hilbertFunction(m-embDeg, omegaMin))));
+        if m-embDeg < 0 then 0 else hilbertFunction(m-embDeg, omega))));
     print("    hf(omega(-e)) = " | toString hfW);
     print("    一致 ?  " | toString (hfI == hfW));
     );
