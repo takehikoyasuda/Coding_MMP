@@ -108,84 +108,57 @@ cmat = timeIt("掛け算行列 (次数ごとに一括)",() -> (
             for p from 0 to N-1 do out#(keysm#p) = M_{p}));
     out));
 
--- omega = coker N.  生成元 g_l の次数は d - a_l.
-toRing = map(R,Apoly,thetas);
-Nmat = timeIt("関係式行列 N (" | toString rank0 | " x " | toString (#vs * rank0) | ")",() -> (
-    cols := {};
-    for j from 0 to (#vs)-1 do
-        for l from 0 to rank0-1 do (
-            col := new MutableList from toList(rank0 : 0_R);
-            for i from 0 to rank0-1 do
-                if cmat#?{j,i} then (
-                    cc := (cmat#{j,i})_(l,0);
-                    if cc != 0 then col#i = col#i - toRing cc);
-            col#l = col#l + vs#j;
-            cols = append(cols, transpose matrix {toList col}));
-    fold(cols,(a,b) -> a|b)));
+-- ここから: 関係式行列 (124 x 3596) を作る前に, omega の R 上の極小生成元を
+-- k 上の線形代数だけで求める.
+--
+--   m*omega = sum_j x_j*omega,  theta_i は変数そのものなので
+--   theta_i*omega = t_i*omega ⊆ (t)*omega.  よって
+--
+--       omega/m*omega = k^rank0 / sum_{j: theta 以外} colspace(T_j mod t)
+--
+--   T_j = C_j^T,  (C_j)_{l,i} = c_{li}  (x_j e_i = Σ_l c_{li} e_l).
+--   同時に C_{theta_i} = t_i * I  (theta 由来の関係式が恒等的に 0) も検算する.
 
-omegaDeg = apply(as, a -> a - d);          -- 生成元 g_l は次数 d - a_l
--- 元の疎な座標に戻してから omega を作る.
-Nmat0 = timeIt("N を元の座標へ戻す",() -> backToR0 Nmat);
-omega = timeIt("omega = coker N  (元の座標)",() -> (
-    F := R0^omegaDeg;
-    coker map(F, , Nmat0)));
-print("  omega:  生成元 " | toString numgens omega); flush stdio;
-omegaMin = timeIt("極小化",() -> minimalPresentation omega);
-print("  極小生成元 " | toString numgens omegaMin
-    | ",  次数 " | toString tally flatten flatten degrees omegaMin);
-flush stdio;
-print("  Hilbert 関数 (0..5) = "
-    | toString apply(toList(0..5), i -> hilbertFunction(i,omegaMin)));
+toK = map(kk,Apoly,toList(d:0_kk));
+
+Cmatrix = j -> (
+    cols := apply(rank0, i -> if cmat#?{j,i} then cmat#{j,i}
+        else map(Apoly^rank0,Apoly^1,0));
+    fold(cols,(a,b) -> a|b));
+
+thetaIdx = toList((#vs-d)..(#vs-1));
+print "  [theta 由来の関係式が自明か検算]";
+okTheta = timeIt("C_{theta_i} = t_i * I か",() -> (
+    all(d, s -> (
+        j := thetaIdx#s;
+        entries Cmatrix(j) == entries ((Apoly_s) * id_(Apoly^rank0))))));
+print("    " | toString okTheta
+    | "   (true なら " | toString (d*rank0) | " 本の関係式は落とせる)");
 flush stdio;
 
--- パッケージの fastpath が実際に消費するのは WeilDivisor ではなく
--- 「標準イデアル」 I = (omega -> R の最小次数の埋め込みの像) である
--- (MMPComputation.m2:558-566, 600-602).  そこまでを omega から直接作る.
-print "  [Hom(omega,R) -> 標準イデアル]"; flush stdio;
-dualOmega = timeIt("Hom(omega, R)",() -> Hom(omegaMin, R0^1));
-hdegs = apply(degrees dualOmega, dg -> first dg);
-print("    Hom の生成元 " | toString numgens dualOmega
-    | ",  次数 " | toString tally hdegs);
+nonTheta = select(toList(0..(#vs)-1), j -> not member(j,thetaIdx));
+gensData = timeIt("omega/m*omega  (k 上の線形代数)",() -> (
+    blocks := apply(nonTheta, j -> toK transpose Cmatrix(j));
+    B := fold(blocks,(a,b) -> a|b);
+    r := rank B;
+    {B, r, rank0 - r}));
+print("    stack した行列 = " | toString rank0 | " x "
+    | toString (#nonTheta * rank0)
+    | ",  rank " | toString (gensData#1));
+print("    dim omega/m*omega = " | toString (gensData#2)
+    | "   ( = R 上の極小生成元の個数 )");
 flush stdio;
-ord = sort apply(#hdegs, i -> {hdegs#i, i});
-embedding = null; embDeg = null; canIdeal = null;
-timeIt("最小次数の埋め込みを選ぶ",() -> (
-    for pr in ord do (
-        if embedding === null then (
-            f := homomorphism dualOmega_(pr#1);
-            J := trim ideal matrix f;
-            if J != ideal 0_R0 then (
-                embedding = f; embDeg = pr#0; canIdeal = J)));
-    true));
-hfI = null;
-if canIdeal === null then (
-    print "    ** 非零の埋め込みが見つからない **";
-    ) else (
-    print("    埋め込み次数 e = " | toString embDeg);
-    print("    標準イデアル:  生成元 " | toString numgens canIdeal
-        | ",  次数 " | toString tally apply(first entries gens canIdeal,
-            q -> first degree q));
-    flush stdio;
-    -- 検算:  I = omega(-e) なので  hf(m,I) = hf(m-e,omega).
-    hfI = apply(toList(0..6), m -> hilbertFunction(m, module canIdeal));
-    hfW := apply(toList(0..6), m -> (
-        if m-embDeg < 0 then 0 else hilbertFunction(m-embDeg, omegaMin)));
-    print("    hf(I)          = " | toString hfI);
-    print("    hf(omega(-e))  = " | toString hfW);
-    print("    一致 ?  " | toString (hfI == hfW));
-    flush stdio;
-    );
 
--- 小例では既存機構とも突き合わせる.
-if tgt == "veronese2" and canIdeal =!= null then (
-    seedFn := value(MMPComputation#"private dictionary"#"canonicalIdealSeedDataInternal");
-    K := timeIt("canonicalDivisor(R0) [既存]",() -> canonicalDivisor(R0,IsGraded=>true));
-    seed := timeIt("canonicalIdealSeedDataInternal [既存]",() -> seedFn(R0,K));
-    print("    既存の標準イデアル:  生成元 " | toString numgens (seed#"ideal")
-        | ",  埋め込み次数 " | toString (seed#"embeddingDegree"));
-    hfS := apply(toList(0..6), m -> hilbertFunction(m, module (seed#"ideal")));
-    print("    hf(既存の I)   = " | toString hfS);
-    print("    Hilbert 関数一致 ?  " | toString (hfI == hfS));
-    );
+-- 生成元の次数:  f_l の次数は d - a_l.  余核の基底がどの次数に出るか.
+degF = apply(as, a -> d - a);
+gensDeg = timeIt("生成元の次数",() -> (
+    B := gensData#0;
+    piv := set flatten entries (transpose (matrix{{}})); -- placeholder
+    -- 余核の次数分布:  各次数ごとに部分行列の rank を取る.
+    tally flatten apply(unique degF, g -> (
+        rows := select(toList(0..rank0-1), l -> degF#l == g);
+        sub1 := B^rows;
+        toList((#rows - rank sub1) : g)))));
+print("    生成元の次数分布 (上界) = " | toString gensDeg);
 flush stdio;
 print "=== 完了 ===";
