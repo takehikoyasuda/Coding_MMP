@@ -72,6 +72,7 @@ test-core:
 	M2 --no-readline --stop -q tests/multigraded-section-representatives.m2
 	M2 --no-readline --stop -q tests/bpf-class-degree-fastpath.m2
 	M2 --no-readline --stop -q tests/canonical-seed-bpf-fastpath.m2
+	M2 --no-readline --stop -q tests/noether-canonical-ideal.m2
 	M2 --no-readline --stop -q tests/cartier-index-fastpath.m2
 	M2 --no-readline --stop -q tests/threshold-cost-aware-search.m2
 	M2 --no-readline --stop -q tests/multigraded-mmp-driver.m2

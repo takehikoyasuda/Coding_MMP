@@ -53,3 +53,25 @@ assert(indexDataB#"conclusive");
 assert(indexDataB#"index" == 1);
 
 print "OK canonicalIndexData Cartier fastpath: index certified without the generic isCartier/Hom double dual.";
+
+-- Regression: a negative from the seed certificate must not become the verdict.
+-- canonicalIdealSeedInvertibleInternal tests whether the reflexive power of the
+-- canonical ideal is a principal ideal.  That certifies Cartier-ness but is
+-- strictly stronger than it, and the two part company as soon as Pic(X) is
+-- bigger than Z*H.  The Segre threefold P1xP2 is smooth, so its canonical index
+-- is 1, but K = O(-2,-3) is not a multiple of H = O(1,1); the seed test answers
+-- false at m = 1, and canonicalIndexData used to take that as a verdict and
+-- report "inconclusive" on a smooth threefold.
+segreAmbient = QQ[z00,z01,z02,z10,z11,z12];
+segre = segreAmbient/minors(2,matrix{{z00,z01,z02},{z10,z11,z12}});
+seedInvFn = value(
+    MMPComputation#"private dictionary"#"canonicalIdealSeedInvertibleInternal");
+kdivFn = value(
+    MMPComputation#"private dictionary"#"mmpCanonicalDivisorInternal");
+segreK = kdivFn segre;
+assert(isCartier(segreK,IsGraded=>true));
+assert(seedInvFn(segre,segreK,1) === false);
+segreIndex = canonicalIndexData(segre,CanonicalIndexSearchLimit=>6);
+assert(segreIndex#"conclusive");
+assert(segreIndex#"index" == 1);
+print "OK a false from the seed certificate is not taken as a verdict: smooth Segre threefold has index 1.";
