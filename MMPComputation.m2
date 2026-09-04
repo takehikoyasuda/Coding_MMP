@@ -180,17 +180,32 @@ multigradedBlockData Ring := R -> (
     -- each variable by the last nonzero entry of its reordered degree
     -- vector, and require that entry to be positive.  Returns a list of
     -- 1-indexed block numbers, or null if the order fails some variable.
+    -- A variable whose degree vector is entirely zero is not a badly
+    -- classified block variable: it is a coordinate on the base.  Its
+    -- coordinate lies in R_0, so R_0 is not k and X = Proj R is a projective
+    -- scheme over the affine Spec R_0 rather than over a point.  The
+    -- irrelevant ideal is then the product of the block ideals of the
+    -- *positively graded* variables and nothing else -- a base variable
+    -- generates no relevant ideal and is not excluded from Proj -- so such
+    -- variables are assigned block 0 here and dropped before B is formed.
+    -- Rejecting them, as this did before, made the whole relative setting
+    -- unreachable; nothing changes when every variable carries a nonzero
+    -- degree, where no variable is ever assigned block 0.
+    baseIndices := select(n, j -> all(degree avars#j, c -> c == 0));
     tryOrder := perm -> (
         assignment := new MutableList from toList(n:null);
         ok := true;
         scan(n, j -> if ok then (
-            dg := degree avars#j;
-            reordered := apply(perm, i -> dg#i);
-            lastNonzero := 0;
-            scan(#reordered, k -> if reordered#k != 0 then lastNonzero = k+1);
-            if lastNonzero == 0 or reordered#(lastNonzero-1) <= 0 then
-                ok = false
-            else assignment#j = lastNonzero;
+            if member(j,baseIndices) then assignment#j = 0
+            else (
+                dg := degree avars#j;
+                reordered := apply(perm, i -> dg#i);
+                lastNonzero := 0;
+                scan(#reordered, k -> if reordered#k != 0 then lastNonzero = k+1);
+                if reordered#(lastNonzero-1) <= 0 then
+                    ok = false
+                else assignment#j = lastNonzero;
+                );
             ));
         if ok then toList assignment else null
         );
@@ -232,7 +247,12 @@ multigradedBlockData Ring := R -> (
     -- disagree about.  Callers that cannot supply their own known-correct
     -- irrelevant ideal should treat "irrelevantIdeal" as trustworthy only
     -- when this flag is true; see verifiedIrrelevantIdeal below.
-    reorderedDegrees := apply(n, j -> apply(usedPermutation, i -> (degree avars#j)#i));
+    -- Base variables are excluded from the block-diagonality check: they are
+    -- unambiguous (they belong to no block at all), so they cannot be the
+    -- source of the misclassification this flag guards against.
+    nonBaseIndices := select(n, j -> not member(j,baseIndices));
+    reorderedDegrees := apply(nonBaseIndices,
+        j -> apply(usedPermutation, i -> (degree avars#j)#i));
     verifiedBlockDiagonal := all(reorderedDegrees, dg -> #select(dg, x -> x != 0) == 1);
     new HashTable from {
         "ring" => R,
@@ -243,6 +263,7 @@ multigradedBlockData Ring := R -> (
         "blockVariables" => blockVariables,
         "blockIdeals" => blockIdeals,
         "irrelevantIdeal" => B,
+        "baseVariables" => apply(baseIndices, j -> Rvars#j),
         "geometricDimension" => dim R - r,
         "verifiedBlockDiagonal" => verifiedBlockDiagonal,
         "blocksSupplied" => false
@@ -448,6 +469,22 @@ irrelevantIdealResultKeysInternal = idealData -> (
 -- with coordinate weights c_i and l=lcm(c_i), then O_X(l) is ample and
 -- invertible.  A nonzero coordinate power of weighted degree l supplies an
 -- effective Cartier representative H.
+--
+-- Weight zero is allowed, and means something specific: the paper's
+-- Definition 2.1 has R_0 = k, but a variable of degree zero puts its
+-- coordinate in R_0 instead, presenting X = Proj R as a projective scheme
+-- over the affine base Spec R_0 rather than over a point.  The lemma still
+-- holds there, over that base: l is the lcm of the *positive* weights, the
+-- degree-zero variables contribute nothing to it, and O_X(l) is invertible
+-- and f-ample by the same Veronese argument applied to the positively graded
+-- part.  The Cartier representative must then be built from a coordinate of
+-- positive weight -- a degree-zero coordinate is a unit in the relevant
+-- sense and its divisor is not a fibre-direction divisor at all -- so the
+-- candidate search is restricted accordingly.  Negative weights remain an
+-- error: there Proj is not the object the paper's algorithms address.
+--
+-- This changes nothing for a caller whose weights are all positive, where
+-- the lcm and the candidate list are exactly what they were.
 weightedAmpleDivisorData = method()
 weightedAmpleDivisorData Ring := R -> (
     S := ambient R;
@@ -455,11 +492,15 @@ weightedAmpleDivisorData Ring := R -> (
         error "weightedAmpleDivisorData: expected a singly graded ring";
     ambientVars := flatten entries vars S;
     weights := apply(ambientVars,q -> (degree q)#0);
-    if any(weights,c -> c <= 0) then
-        error "weightedAmpleDivisorData: all coordinate weights must be positive";
+    if any(weights,c -> c < 0) then
+        error "weightedAmpleDivisorData: coordinate weights must be nonnegative";
+    positiveIndices := select(#ambientVars,i -> weights#i > 0);
+    if #positiveIndices == 0 then
+        error("weightedAmpleDivisorData: no coordinate has positive weight, "
+            | "so Proj R is empty");
     ell := 1;
-    scan(weights,c -> ell = lcm(ell,c));
-    candidates := select(#ambientVars,i -> sub(ambientVars#i,R) != 0);
+    scan(positiveIndices,i -> ell = lcm(ell,weights#i));
+    candidates := select(positiveIndices,i -> sub(ambientVars#i,R) != 0);
     if #candidates == 0 then
         error "weightedAmpleDivisorData: every coordinate vanishes on X";
     coordinateIndex := first candidates;
