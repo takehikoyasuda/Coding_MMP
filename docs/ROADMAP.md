@@ -130,11 +130,18 @@ statements need there; this milestone is what the code needs.
 8. **Not implemented:** the fibre-type case of item 7, where connected fibres
    need the `A`-module version of `lem:section-ring-over-k` (sections 5 and 6
    of the audit); it is refused with a warning naming that lemma.  The cost of
-   item 7 is also open: the normality check is `isNormal` on the target, whose
-   codimension-nine Jacobian minors ran past twenty-seven minutes on a
-   thirteen-variable target, and `R1` cannot simply be dropped -- birationality
-   only makes the codimension-one points of the image have finite fibres, which
-   does not stop the image from being singular there.
+   item 7 is also open: `isNormal` on the target of the toric two-step input
+   ran for four hours and seventeen minutes at 6 GB without finishing.  The cost
+   is intrinsic and not a redundant presentation -- none of that target's eight
+   fibre variables is removable by a unit-coefficient relation, so the
+   thirteen-variable presentation is already minimal and `R1` needs size-nine
+   minors of a 13 by 49 Jacobian.  `R1` cannot simply be dropped either:
+   birationality only makes the codimension-one points of the image have finite
+   fibres, which does not stop the image from being singular there.  This is
+   what keeps the two-step program that contains a *flip*
+   (`X --divisorial--> Y --flip--> Z` on the same toric circuit) out of reach,
+   while the two-step program in the worked example, whose target is
+   `A^2 x P^1` and so needs no work to normalize, runs in eighteen seconds.
 9. **Not implemented:** an exact Cartier test for weighted gradings.  On a
    weighted presentation `Spec R - V(B)` is not a torsor over `X`, so a divisor
    can be locally free on the punctured cone without being invertible on `X`,

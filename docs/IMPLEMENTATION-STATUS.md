@@ -114,9 +114,11 @@ Three things are not done.  The fibre-type case of the above is refused:
 certifying connected fibres there needs the `A`-module version of
 `lem:section-ring-over-k`, and the refusal names it.  The cost of the
 birational case is open: `isNormal` on the intermediate target of the toric
-two-step input, thirteen variables, ran past twenty-seven minutes without
-finishing, its cost being the codimension-nine Jacobian minors, and `R1` cannot
-simply be dropped -- birationality only makes the codimension-one points of the
+two-step input ran for four hours and seventeen minutes at 6 GB without
+finishing.  The cost is intrinsic, not a redundant presentation -- none of the
+eight fibre variables is removable, so the thirteen-variable presentation is
+already minimal, and `R1` needs size-nine minors of a 13 by 49 Jacobian.  `R1`
+cannot simply be dropped -- birationality only makes the codimension-one points of the
 image have finite fibres, which does not stop the image from being singular
 there.  And the Cartier test is not exact for weighted gradings: on a weighted
 presentation `Spec R - V(B)` is not a torsor over `X`, so a divisor can be
