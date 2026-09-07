@@ -356,14 +356,40 @@ $\tfrac12(1,1,1)$ point forces.</p>
 
 <p>The session then checks that the ring the program returns really is $Z$: a
 relabelling of the variables that preserves degrees carries one defining ideal
-onto the other.  Two more inputs follow.  $\mathrm{Bl}_0(\AA^3)$, as $\Proj$ of
-the Rees algebra of $(a,b,c)$, gives the other kind of birational step over an
-affine base &mdash; the contraction is not small, its exceptional locus being a
-surface, so the step is divisorial and the target is $\AA^3$.  And the weights
+onto the other.  Three more inputs follow.  $\mathrm{Bl}_0(\AA^3)$, as $\Proj$
+of the Rees algebra of $(a,b,c)$, gives the other kind of birational step over
+an affine base &mdash; the contraction is not small, its exceptional locus being
+a surface, so the step is divisorial and the target is $\AA^3$.  The weights
 $(1,1,-1,-3)$ give a flip of canonical index three, whose threshold is
 $\tfrac23$.</p>
 
-@@session 07-affine-base-flip | indexData#"index" ; nefData#"nef" ; contraction#"contractionType" ; contraction#"steinFactorizationType" ; smallness#"isSmall" ; smallness#"exceptionalCodimension" ; mmp#"terminationType" ; sameRing(Z, groundTruthZ) ; blowupSmallness#"isSmall" ; blowupMMP#"terminationType" ; mmp3#"terminationType"@@
+<p>The last input is a program with <i>two</i> steps.  Over a fixed affine base
+the contraction to $\Spec R_0$ is the end of the road: Algorithm 4 returns the
+whole relative canonical model at once, so one birational step exhausts the
+program.  A longer one has to contract to a target that is neither the base nor
+a point.  Take $X = \mathrm{Bl}_0(\AA^2) \times \PP^1$ over the affine base
+$\AA^2$, polarized by $\OO(1,3)$.  Its two extremal rays over $\AA^2$ are the
+exceptional curve $E \times \mathrm{pt}$, with $K \cdot C = -1$ and
+$H \cdot C = 1$, and the fibre $\mathrm{pt} \times \PP^1$, with $K \cdot C = -2$
+and $H \cdot C = 3$.  The thresholds are $1$ and $\tfrac23$, so the larger is
+attained by $E$ alone and the contraction at $t = 1$ contracts
+$E \times \PP^1$ and nothing else, onto $\AA^2 \times \PP^1$.  The second step
+then contracts that to $\AA^2$: a $K$-negative fibration, and the program
+stops.</p>
+
+<p>The intermediate target is built as $\Proj$ over $\Spec R_0$ of the
+$R_0$-algebra the sections generate, which is again a presentation of the shape
+the program reads, so the next step starts from it with nothing to convert.
+The Stein factorization is not run on it; it is <i>certified</i> unnecessary.
+The morphism is certified birational onto its image &mdash; with $R$ generated
+in degree one over $R_0$, $K(X)$ is generated over $\mathrm{Frac}(R_0)$ by the
+ratios $u/u_1$ of the degree-one variables, and a degree-zero syzygy exhibiting
+$u_1 A = u B$ puts $u/u_1 = A/B$ in $\mathrm{Frac}(T)$ &mdash; and the image is
+checked normal, so Zariski's main theorem gives $\Phi_* \OO_X = \OO$ of the
+image.  Here the image is $\AA^2 \times \PP^1$ on the nose: two coordinates of
+degree one, the base's two of degree zero, and no relations at all.</p>
+
+@@session 07-affine-base-flip | indexData#"index" ; nefData#"nef" ; contraction#"contractionType" ; contraction#"steinFactorizationType" ; smallness#"isSmall" ; smallness#"exceptionalCodimension" ; mmp#"terminationType" ; sameRing(Z, groundTruthZ) ; blowupSmallness#"isSmall" ; blowupMMP#"terminationType" ; mmp3#"terminationType" ; twoStepContraction#"contractionType" ; twoStepMMP#"terminationType" ; twoStepMMP#"numberOfSteps"@@
 
 <h2 id="cost">Cost</h2>
 

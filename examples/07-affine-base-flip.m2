@@ -80,3 +80,21 @@ mmp3 = threefoldMMPData(Y3, 3);
 mmp3#"terminationType"
 apply(mmp3#"steps", r -> r#"stepType")
 (canonicalIndexData mmp3#"finalRing")#"index"
+segre = QQ[a,b,x,y,z0,z1]/ideal(a*y-b*x);
+twoStepAmbient = QQ[w_1 .. w_8, wa, wb, Degrees => {1,1,1,1,1,1,1,1,0,0}];
+twoStep = twoStepAmbient/ker map(segre, twoStepAmbient,
+    flatten apply({x,y}, f -> apply({z0^3,z0^2*z1,z0*z1^2,z1^3}, g -> f*g))
+    | {a,b});
+dim twoStep - 1
+canonicalNefThreshold(twoStep, 1)
+twoStepContraction = canonicalContractionData(twoStep, 1);
+twoStepContraction#"contractionType"
+twoStepContraction#"targetDimension"
+twoStepContraction#"steinFactorizationType"
+flatten degrees twoStepContraction#"relativeTargetRing"
+ideal twoStepContraction#"relativeTargetRing"
+(contractionSmallnessData twoStepContraction)#"exceptionalDimension"
+twoStepMMP = threefoldMMPData(twoStep, 1);
+twoStepMMP#"terminationType"
+twoStepMMP#"numberOfSteps"
+apply(twoStepMMP#"steps", r -> r#"stepType")

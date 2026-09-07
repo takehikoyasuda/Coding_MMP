@@ -257,3 +257,68 @@ i55 : (canonicalIndexData mmp3#"finalRing")#"index"
 
 o55 = 1
 
+i56 : segre = QQ[a,b,x,y,z0,z1]/ideal(a*y-b*x);
+
+i57 : twoStepAmbient = QQ[w_1 .. w_8, wa, wb, Degrees => {1,1,1,1,1,1,1,1,0,0}];
+
+i58 : twoStep = twoStepAmbient/ker map(segre, twoStepAmbient,
+          flatten apply({x,y}, f -> apply({z0^3,z0^2*z1,z0*z1^2,z1^3}, g -> f*g))
+          | {a,b});
+
+i59 : dim twoStep - 1
+
+o59 = 3
+
+i60 : canonicalNefThreshold(twoStep, 1)
+
+o60 = 1
+
+o60 : QQ
+
+i61 : twoStepContraction = canonicalContractionData(twoStep, 1);
+
+i62 : twoStepContraction#"contractionType"
+
+o62 = birational
+
+i63 : twoStepContraction#"targetDimension"
+
+o63 = 3
+
+i64 : twoStepContraction#"steinFactorizationType"
+
+o64 = trivial: birational onto a normal image over the affine base
+
+i65 : flatten degrees twoStepContraction#"relativeTargetRing"
+
+o65 = {1, 1, 0, 0}
+
+o65 : List
+
+i66 : ideal twoStepContraction#"relativeTargetRing"
+
+o66 = ideal ()
+
+o66 : Ideal of QQ[mmpRelativeTargetVariable ..mmpRelativeTargetVariable , wa, wb]
+                                           1                           2
+
+i67 : (contractionSmallnessData twoStepContraction)#"exceptionalDimension"
+
+o67 = 2
+
+i68 : twoStepMMP = threefoldMMPData(twoStep, 1);
+
+i69 : twoStepMMP#"terminationType"
+
+o69 = K-negative fibration
+
+i70 : twoStepMMP#"numberOfSteps"
+
+o70 = 2
+
+i71 : apply(twoStepMMP#"steps", r -> r#"stepType")
+
+o71 = {divisorial, fibration}
+
+o71 : List
+

@@ -117,16 +117,25 @@ statements need there; this milestone is what the code needs.
    search range is that locus; the two intersection numbers with `a*K` and `H`
    are computed once and every threshold candidate is then decided by
    arithmetic.  Without it the threshold search does not finish.
-7. **Not implemented:** a contraction whose target is neither the base nor a
-   point.  `Phi_{|MD|}` is built as a morphism to `P^{n-1}`, which over an
-   affine base is the absolute morphism and forgets the base; the relative
-   target is a `Proj` over `Spec R_0`, and the Stein factorization of it needs
-   the `A`-module version of `lem:section-ring-over-k` (sections 5 and 6 of the
-   audit).  That case is refused with a warning rather than answered.  Until it
-   is in, a relative MMP over a fixed affine base is at most one birational
-   step long, since the only contraction it can build is the one to the base
-   and Algorithm 4 then returns the whole relative canonical model at once.
-8. **Not implemented:** an exact Cartier test for weighted gradings.  On a
+7. **Implemented for the birational case:** a contraction whose target is
+   neither the base nor a point.  The relative target is `Proj` over
+   `Spec R_0` of the `R_0`-algebra the section representatives generate, which
+   is again a presentation of the shape the driver reads.  Stein factorization
+   is skipped only on a certificate: the morphism is certified birational onto
+   its image, from an explicit ratio of sections for each coordinate, and the
+   image is checked normal, so Zariski's main theorem applies.  This is what
+   makes a relative MMP more than one birational step long; before it, the only
+   contraction the code could build was the one to the base, and Algorithm 4
+   returns the whole relative canonical model there in one go.
+8. **Not implemented:** the fibre-type case of item 7, where connected fibres
+   need the `A`-module version of `lem:section-ring-over-k` (sections 5 and 6
+   of the audit); it is refused with a warning naming that lemma.  The cost of
+   item 7 is also open: the normality check is `isNormal` on the target, whose
+   codimension-nine Jacobian minors ran past twenty-seven minutes on a
+   thirteen-variable target, and `R1` cannot simply be dropped -- birationality
+   only makes the codimension-one points of the image have finite fibres, which
+   does not stop the image from being singular there.
+9. **Not implemented:** an exact Cartier test for weighted gradings.  On a
    weighted presentation `Spec R - V(B)` is not a torsor over `X`, so a divisor
    can be locally free on the punctured cone without being invertible on `X`,
    and the test over-reports.  A Veronese presentation avoids it; see

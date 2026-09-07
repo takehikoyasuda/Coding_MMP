@@ -12,7 +12,7 @@ Macaulay2 sessions and published at
 | `04-disconnected-fibres.m2` | `P1xP2 -> P1` through the squaring map: a Stein factorization whose finite part has degree 2 |
 | `05-blowup-of-a-line.m2` | `Bl_L(P3)`: Stein factorization, divisorial (codimension 1) against the ODP small resolution (codimension 2), then `Bl_L(P3) -> P3 -> point` |
 | `06-toric-flip.m2` | toric circuit target: relative canonical model is a flip, with a certified inverse rational map |
-| `07-affine-base-flip.m2` | over an affine base: `threefoldMMPData` finds the flipping contraction itself and returns the flip; also a divisorial step and an index-three flip |
+| `07-affine-base-flip.m2` | over an affine base: `threefoldMMPData` finds the flipping contraction itself and returns the flip; also a divisorial step, an index-three flip, and a two-step program through an intermediate target |
 
 ## Scope
 

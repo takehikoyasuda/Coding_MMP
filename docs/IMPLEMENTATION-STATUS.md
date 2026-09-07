@@ -94,13 +94,31 @@ when `R_0 = k`.
   `hilbertFunction`, since `R/Q` keeps `R`'s degree-zero variables and so has
   no heft vector either.
 
-Two things are not done.  A contraction whose target is neither the base nor a
-point is refused: the relative target is a `Proj` over `Spec R_0`, and its
-Stein factorization needs the `A`-module version of `lem:section-ring-over-k`.
-Until that is in, a relative MMP over a fixed affine base is at most one
-birational step long, because the only contraction it can build is the one to
-the base and Algorithm 4 returns the whole relative canonical model at once.
-And the Cartier test is not exact for weighted gradings: on a weighted
+- **Targets that are neither the base nor a point.**  The relative target is
+  `Proj` over `Spec R_0` of the `R_0`-algebra the section representatives
+  generate -- again a presentation of the shape the driver reads, so the next
+  step starts from it directly.  Building it costs 0.19 s on the toric input
+  measured.  Stein factorization is skipped only on a certificate: the morphism
+  is certified birational onto its image (0.33 s; with `R` generated in degree
+  one over `R_0`, `K(X)` is generated over `Frac(R_0)` by the ratios of the
+  degree-one variables, and a degree-zero syzygy exhibiting `u_1 A = u B` puts
+  `u/u_1 = A/B` in `Frac(T)`), and the image is checked normal, so Zariski's
+  main theorem gives `Phi_* O_X = O` of the image.  Smallness there uses
+  `Omega_{X/T}` rather than the graph, and needs no exterior power: the cone map
+  is a `mu_e` quotient whose fixed locus lies in `V(B)` and is saturated away,
+  and the extension is algebraic, so `Omega` is generically zero and its
+  annihilator cuts out the support.  This is what makes a relative program more
+  than one birational step long.
+
+Three things are not done.  The fibre-type case of the above is refused:
+certifying connected fibres there needs the `A`-module version of
+`lem:section-ring-over-k`, and the refusal names it.  The cost of the
+birational case is open: `isNormal` on the intermediate target of the toric
+two-step input, thirteen variables, ran past twenty-seven minutes without
+finishing, its cost being the codimension-nine Jacobian minors, and `R1` cannot
+simply be dropped -- birationality only makes the codimension-one points of the
+image have finite fibres, which does not stop the image from being singular
+there.  And the Cartier test is not exact for weighted gradings: on a weighted
 presentation `Spec R - V(B)` is not a torsor over `X`, so a divisor can be
 locally free on the punctured cone without being invertible on `X` -- the same
 thing that happens to `O(1)` on `P(1,1,2)` -- and the test over-reports.  A
