@@ -158,6 +158,59 @@ matchesGroundTruth = (A,B) -> (
     found);
 assert(matchesGroundTruth(flipRing,Z));
 
+-- That the output is a minimal model is checked three ways, all by
+-- computation, because "the program said minimal model" is only as good as
+-- what the program checked.
+--
+-- First, the driver's own termination: the nefness test it ran on the ring the
+-- flip produced -- and that ring, not some other one, since the final ring is
+-- the step's nextRing.  The verdict is conclusive and its certificate is a
+-- base-point-free pluricanonical divisor at i = 1, so K_Z is semi-ample and
+-- hence nef, rather than merely not yet shown non-nef.
+assert(flipRing === flipStep#"nextRing");
+finalNef = mmp#"finalNefData";
+assert(finalNef#"conclusive");
+assert(finalNef#"nef");
+assert(finalNef#"witnessType" == "base-point-free pluricanonical divisor");
+
+-- Second, the same question asked again from the outside, on the output ring.
+assert((canonicalIndexData flipRing)#"index" == 1);
+assert((canonicalNefData(flipRing,1))#"nef");
+
+-- Third, a different method entirely.  Over an affine base every curve proper
+-- over k lies in a fibre, so nefness of K is exactly K.C >= 0 on those finitely
+-- many curves.  There is one, and the sign flips across the operation: -1 on
+-- the source, +1 on the flip.  That sign flip is what makes this a flip and not
+-- a flop or an isomorphism.
+curveDegreeFn = value(
+    MMPComputation#"private dictionary"#"affineCurveDegreeDataInternal");
+canonicalDivisorFn = value(
+    MMPComputation#"private dictionary"#"mmpCanonicalDivisorInternal");
+curveDegrees = (R,a) -> curveDegreeFn(R,canonicalDivisorFn R,
+    (weightedAmpleDivisorData R)#"divisor",a);
+sourceCurveDegrees = curveDegrees(Y,2);
+outputCurveDegrees = curveDegrees(flipRing,1);
+assert(#sourceCurveDegrees == 1);
+assert(#outputCurveDegrees == 1);
+assert((first sourceCurveDegrees)#"canonicalDegree" == -1);
+assert((first outputCurveDegrees)#"canonicalDegree" == 1);
+
+-- "Minimal model" also assumes the singularities the algorithm is written for,
+-- which the package assumes and does not check.  Here the assumption is not in
+-- doubt: the flip is smooth, where the source had the 1/2(1,1,1) point.
+flipIrrelevant = ideal select(flatten entries vars flipRing,
+    q -> (degree q)#0 > 0);
+assert(saturate(sub(ideal singularLocus flipRing,flipRing),flipIrrelevant)
+    == ideal 1_flipRing);
+sourceIrrelevant = ideal select(flatten entries vars Y, q -> (degree q)#0 > 0);
+sourceSingular = saturate(sub(ideal singularLocus Y,Y),sourceIrrelevant);
+assert(sourceSingular != ideal 1_Y);
+assert(dim(Y/sourceSingular)-1 == 0);
+
+<< "OK relative affine flip: the flip is a minimal model -- K nef by a "
+   << "base-point-free pluricanonical certificate, K.C going from -1 to +1 on "
+   << "the one complete curve, and the output smooth." << endl;
+
 << "OK relative affine flip: threefoldMMPData reaches a minimal model in one "
    << "flipping step, and the flip is the expected toric Z." << endl;
 
