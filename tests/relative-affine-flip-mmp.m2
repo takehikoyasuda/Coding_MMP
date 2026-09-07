@@ -161,21 +161,50 @@ assert(matchesGroundTruth(flipRing,Z));
 << "OK relative affine flip: threefoldMMPData reaches a minimal model in one "
    << "flipping step, and the flip is the expected toric Z." << endl;
 
--- Control: the same smallness test says NOT small on a divisorial contraction
--- over an affine base.  Bl_0(A^3), as Proj of the Rees algebra of (a,b,c),
--- contracts the exceptional surface E, of dimension two in a threefold.
+-- The other kind of birational step over an affine base: a divisorial one.
+--
+-- Bl_0(A^3), as Proj of the Rees algebra of (a,b,c), contracts the exceptional
+-- surface E back to the origin.  K = 2E and O_X(1) = -E, so K + tH = (2-t)E is
+-- nef exactly for t >= 2, and the contraction at the threshold is again the
+-- structure morphism to the affine base -- this time not small, its exceptional
+-- locus being a surface in a threefold.  The relative canonical model of A^3 is
+-- A^3, so the step is divisorial and the MMP stops there.
+--
+-- This input used to be refused.  The section counts of K + mH came out 0, 1,
+-- 4, 9 where the linear system at the threshold is trivial and should have had
+-- one degree-zero generator, so the contraction was reported non-conclusive; it
+-- was the ghost component -1*[B] of the code's canonical divisor, and dropping
+-- it is what makes the count 1 and the target the base.
 S2 = QQ[a,b,c,x,y,z, Degrees => {0,0,0,1,1,1}];
 blowup = S2/minors(2, matrix{{a,b,c},{x,y,z}});
-blowupContraction = new HashTable from {
-    "conclusive" => true,
-    "isBirational" => true,
-    "contractionIsStructureMorphism" => true,
-    "sourceRing" => blowup
-    };
+assert((canonicalIndexData blowup)#"index" == 1);
+assert(not (canonicalNefData(blowup,1))#"nef");
+assert(canonicalNefThreshold(blowup,1) == 2);
+
+blowupContraction = canonicalContractionData(blowup,1);
+assert(blowupContraction#"conclusive");
+assert(blowupContraction#"isBirational");
+assert(blowupContraction#"contractionIsStructureMorphism");
+assert(blowupContraction#"affineBaseDimension" == 3);
 blowupSmallness = contractionSmallnessData blowupContraction;
 assert(not blowupSmallness#"isSmall");
 assert(blowupSmallness#"exceptionalDimension" == 2);
 assert(blowupSmallness#"exceptionalCodimension" == 1);
+
+blowupMMP = threefoldMMPData(blowup,1);
+assert(blowupMMP#"conclusive");
+assert(blowupMMP#"terminationType" == "minimal model");
+assert(blowupMMP#"numberOfSteps" == 1);
+assert(((blowupMMP#"steps")#0)#"stepType" == "divisorial");
+assert(not ((blowupMMP#"steps")#0)#"contractionIsSmall");
+-- The target is A^3, handed back as Proj of A^3[t] so that the next iteration
+-- has a Proj to read: three variables of degree zero and one of degree one.
+blowupTarget = blowupMMP#"finalRing";
+assert(dim blowupTarget - 1 == 3);
+assert(sort flatten degrees blowupTarget == {0,0,0,1});
+
+<< "OK relative affine flip: Bl_0(A^3) contracts divisorially to A^3 over the "
+   << "affine base and the MMP stops there." << endl;
 
 -- Control: the test refuses a fibration, where the structure morphism is not
 -- generically finite and the relative differentials do not have rank one.

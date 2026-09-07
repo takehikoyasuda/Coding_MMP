@@ -2748,6 +2748,26 @@ canonicalContractionData (Ring,ZZ,BasicDivisor) := o -> (R,a,H) -> (
 -- This is exactly the shape of presentation the driver started from, so a flip
 -- computed over an affine base can be fed straight back into the nefness test
 -- for the next step.
+-- Spec W, presented the way this package reads a variety: as Proj of a graded
+-- ring whose degree-zero part is W.  W[t] with deg t = 1 is that ring, and its
+-- Proj is Spec W.
+--
+-- This is what a divisorial step over an affine base has to hand back.  Its
+-- target is the affine base itself, and the driver's next iteration asks for
+-- the nefness of the canonical divisor of a Proj, so an affine ring is not
+-- something it can continue from -- dim W - 1 is 2, not 3, and the threefold
+-- gate rejects it.  Every generator of W is given degree zero, so W's ideal is
+-- homogeneous for the new grading whatever it was for the old one.
+affineTargetPresentationInternal = W -> (
+    A := ambient W;
+    kk := coefficientRing A;
+    fibre := getSymbol "mmpAffineFibreVariable";
+    graded := kk(monoid [gens A, fibre,
+        Degrees => join(toList(numgens A : {0}),{{1}})]);
+    J := sub(ideal W,graded);
+    graded/J
+    )
+
 affineRelativeModelRingInternal = P -> (
     A := P#ambientRing;
     us := P#fiberVariables;
@@ -2785,11 +2805,16 @@ relativeCanonicalModelFromBaseData Ring := o -> W -> (
         error(if projectiveBase
             then "relativeCanonicalModelFromBaseData: expected a projective threefold"
             else "relativeCanonicalModelFromBaseData: expected an affine threefold");
+    -- The relative model of an affine base is Spec W, and the driver's next
+    -- iteration reads a Proj, so hand it W[t] rather than W.  On a projective
+    -- base W already is the presentation, and this is the identical object it
+    -- always was.
+    identityRing := if projectiveBase then W else affineTargetPresentationInternal W;
     if canonicalIdeal W == ideal 1_W then
         return new HashTable from {
             "conclusive" => true,
             "baseRing" => W,
-            "relativeModelRing" => W,
+            "relativeModelRing" => identityRing,
             "relativeModelGraph" => null,
             "relativeModelProjection" => null,
             "relativeModelType" => "identity",
@@ -2853,7 +2878,7 @@ relativeCanonicalModelFromBaseData Ring := o -> W -> (
         return new HashTable from {
             "conclusive" => true,
             "baseRing" => W,
-            "relativeModelRing" => W,
+            "relativeModelRing" => identityRing,
             "relativeModelGraph" => null,
             "relativeModelProjection" => modelProjection,
             "canonicalBlowupIdeal" => baseCanonicalIdeal,
