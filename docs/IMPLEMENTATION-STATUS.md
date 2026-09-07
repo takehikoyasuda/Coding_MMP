@@ -41,7 +41,74 @@ The source repositories had the following local state at import time:
 | Weighted relative-model graph | `b2mDiagonalData`, `b2mToGraphMorphism` | skew Rees degrees use an interior positive diagonal; weighted toric flip passes end to end |
 | Contraction smallness | `contractionGraphSmallnessData`, `contractionSmallnessData` | exterior-power criterion audited; blow-up divisor, ODP small resolution, and identity regressions pass |
 | MMP step records | `mmpStepRecordData` | graph-preserving divisorial/flipping/mixed records with automatic smallness |
-| Top-level threefold MMP loop | `threefoldMMPData` | P3 K-negative-fibration, quintic minimal-model, and certified Bl_L(P3) birational-continuation regressions pass |
+| Top-level threefold MMP loop | `threefoldMMPData` | P3 K-negative-fibration, quintic minimal-model, and certified Bl_L(P3) birational-continuation regressions pass; over an affine base it finds and carries out a flip from the ring alone |
+| Affine base, `R_0` not a field | `affineBaseRingInternal`, `affineBaseIrrelevantIdealInternal`, `dropIrrelevantComponentsInternal`, `mmpIsCartierInternal`, `affineContractionSmallnessInternal`, `affineExceptionalIdealInternal`, `affineFibreCurvesInternal`, `affineNegativeCurveShortcutInternal`, `affineTargetPresentationInternal`, `affineRelativeModelRingInternal` | see below |
+
+## The relative setting: `X = Proj R` over the affine `Spec R_0`
+
+Giving an ambient variable degree zero puts its coordinate in `R_0`, and
+`X = Proj R` becomes projective over the affine `Spec R_0` rather than over a
+point.  The standard three-fold flips live there without being compactified
+first.  `references/AlgoMMP/RELATIVE-SETTING-AUDIT.md` audits what the paper's
+statements need; what follows is what the code needed.  Every item is inert
+when `R_0 = k`.
+
+- **Ghost components.**  Classically the irrelevant ideal `B` is the
+  homogeneous maximal ideal, of height `dim R >= 2`, so `V(B)` carries no
+  divisor.  Over an affine base `ht(B)` is one exactly when `X -> Spec R_0` is
+  birational, and then a Weil divisor of `Spec R` can have prime components
+  inside `V(B)`.  Those are not on `X`, but they change the graded module and
+  every section count taken from it.  In degree zero dropping them is exact:
+  `ht(B) = 1` makes `K(X) = Frac(R_0)`, so `ord_P` vanishes on `K(X)` for a
+  ghost prime `P` and the condition the component imposes reads `c_P >= 0`.
+  Measured on `Bl_0(A^3)`: the degree-zero sections of `K + 2H` are 4 with the
+  ghost and 1 without, and `K + 2H` is trivial there.
+- **Cartier tests.**  `isCartier(D, IsGraded => true)` saturates the
+  non-Cartier locus against `getIrrelevantIdeal(R)`, the homogeneous maximal
+  ideal.  Over an affine base that ideal contains the base coordinates, so the
+  saturation discards the point of `X` over the origin of `Spec R_0` -- where a
+  relative contraction's singularity sits.  `mmpIsCartierInternal` saturates
+  only against `B`, which is the identical answer classically (`B` is generated
+  by variables, so `B` is contained in `m` and
+  `saturate(saturate(J,m),B) = saturate(J,B)`).
+- **The canonical-ideal seed is refused.**  It embeds `omega_R`, which is
+  `O_{Spec R}(K)` for the unnormalized divisor, so its degree bookkeeping
+  answers about the wrong module.
+- **Contraction and smallness.**  In the one-section case the contraction is
+  the structure morphism `X -> Spec R_0`; its target ring and an affine-base
+  flag are recorded on the result.  Smallness cannot be read off the linear
+  system's graph there, since that graph is the absolute morphism to `P^0`;
+  `affineContractionSmallnessInternal` applies the same exterior-power
+  criterion to `Spec R` over `Spec R_0`.  Its rank assertion is
+  `dim R - dim R_0 = 1` rather than a module rank, because over an affine base
+  no heft vector exists and `rank`, `prune` and `hilbertFunction` all fail.
+- **Negative curves.**  Every curve proper over `k` lies in a fibre, and for a
+  birational structure morphism the positive-dimensional fibres are the
+  exceptional locus, so the search range is narrower than in the absolute
+  setting.  `(a*K).C` and `H.C` are computed once and every threshold candidate
+  `p/q` is decided by `q*(a*K).C + a*p*(H.C)`.  Without this the threshold
+  search does not finish: on the flip's source the bracket is `(1/4, 1/2]`,
+  whose candidates have denominators up to 31, and a base-point-free test at
+  denominator 8 runs for more than fifteen minutes.  The `t = 1/4` test drops
+  from 51 seconds to 0.48.  The degrees are read with `basis` rather than
+  `hilbertFunction`, since `R/Q` keeps `R`'s degree-zero variables and so has
+  no heft vector either.
+
+Two things are not done.  A contraction whose target is neither the base nor a
+point is refused: the relative target is a `Proj` over `Spec R_0`, and its
+Stein factorization needs the `A`-module version of `lem:section-ring-over-k`.
+Until that is in, a relative MMP over a fixed affine base is at most one
+birational step long, because the only contraction it can build is the one to
+the base and Algorithm 4 returns the whole relative canonical model at once.
+And the Cartier test is not exact for weighted gradings: on a weighted
+presentation `Spec R - V(B)` is not a torsor over `X`, so a divisor can be
+locally free on the punctured cone without being invertible on `X` -- the same
+thing that happens to `O(1)` on `P(1,1,2)` -- and the test over-reports.  A
+Veronese presentation, where every positive-degree generator has degree one,
+avoids it.
+
+Regression: `tests/relative-affine-flip-mmp.m2`.  Worked example:
+`examples/07-affine-base-flip.m2`.
 
 ## Canonical ideal past codimension 12
 

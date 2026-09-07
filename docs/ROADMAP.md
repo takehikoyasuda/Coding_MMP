@@ -79,3 +79,55 @@ Completed:
 
 Every milestone should add worked examples whose expected geometry is known
 independently of the implementation.
+
+## Milestone 5: the relative setting, over an affine base
+
+The paper's Definition 2.1 has `R_0 = k`, so `X = Proj R` is projective over a
+point.  Giving some ambient variables degree zero puts their coordinates in
+`R_0` and makes `X` projective over the affine `Spec R_0`.  This is where the
+standard three-fold flips live without being compactified first, and it removes
+both of the walls the compact search ran into: no compactification has to be
+found, and no Segre flattening is needed to raise the dimension.
+`references/AlgoMMP/RELATIVE-SETTING-AUDIT.md` audits what the paper's
+statements need there; this milestone is what the code needs.
+
+1. **Implemented:** decide canonical nefness over an affine base.  A
+   degree-zero variable is a coordinate on the base, not a malformed input:
+   `weightedAmpleDivisorData` takes the lcm of the positive weights only, and
+   `multigradedBlockData` assigns such a variable to no block.
+2. **Implemented:** contract to the affine base.  In the one-section case the
+   morphism is the structure morphism `X -> Spec R_0`, whose target has
+   dimension `dim R_0` and not zero.
+3. **Implemented:** normalize divisors by the irrelevant ideal.  Over an affine
+   base `ht(B)` can be one, and then a divisor of `Spec R` can have components
+   inside `V(B)` that are not on `X` but do change the graded module and every
+   section count taken from it (section 9.1 of the audit).
+4. **Implemented:** the Cartier test, the canonical index, and the
+   canonical-ideal seed over an affine base.  `isCartier`'s graded branch
+   saturates against the homogeneous maximal ideal, which there contains the
+   base coordinates and discards the point over the origin of `Spec R_0`; the
+   seed embeds `omega_R`, which is the unnormalized divisor's module.
+5. **Implemented:** smallness of the structure morphism, from the relative
+   differentials of `Spec R` over `Spec R_0`, and the relative canonical model
+   over an affine base, re-graded from FlipComputation's Rees presentation into
+   the form the driver reads.
+6. **Implemented:** a negative-curve certificate for the relative setting.
+   Every curve proper over `k` lies in a fibre, and for a birational structure
+   morphism the positive-dimensional fibres are its exceptional locus, so the
+   search range is that locus; the two intersection numbers with `a*K` and `H`
+   are computed once and every threshold candidate is then decided by
+   arithmetic.  Without it the threshold search does not finish.
+7. **Not implemented:** a contraction whose target is neither the base nor a
+   point.  `Phi_{|MD|}` is built as a morphism to `P^{n-1}`, which over an
+   affine base is the absolute morphism and forgets the base; the relative
+   target is a `Proj` over `Spec R_0`, and the Stein factorization of it needs
+   the `A`-module version of `lem:section-ring-over-k` (sections 5 and 6 of the
+   audit).  That case is refused with a warning rather than answered.  Until it
+   is in, a relative MMP over a fixed affine base is at most one birational
+   step long, since the only contraction it can build is the one to the base
+   and Algorithm 4 then returns the whole relative canonical model at once.
+8. **Not implemented:** an exact Cartier test for weighted gradings.  On a
+   weighted presentation `Spec R - V(B)` is not a torsor over `X`, so a divisor
+   can be locally free on the punctured cone without being invertible on `X`,
+   and the test over-reports.  A Veronese presentation avoids it; see
+   `examples/07-affine-base-flip.m2`.

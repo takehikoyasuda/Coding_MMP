@@ -33,7 +33,7 @@
           "style", "textarea", "pre", "code", "option" ];
       document.addEventListener("DOMContentLoaded", function() {
         renderMathInElement(document.body, { delimiters: delimiters, macros: macros, ignoredTags: ignoredTags, trust: true });
-        // One control for all six sessions, and a hash pointing into a folded
+        // One control for all seven sessions, and a hash pointing into a folded
         // one opens it -- otherwise following a link to a session would land
         // on a closed box.
         var sessions = document.querySelectorAll("details.session");
@@ -113,7 +113,7 @@
   <body>
 <h1>Worked examples</h1>
 
-<p class="lead">Six worked examples that these packages compute, each with
+<p class="lead">Seven worked examples that these packages compute, each with
 the Macaulay2 session that computes it.</p>
 
 <p>Every example has two parts.  First a short explanation of the mathematics.
@@ -126,20 +126,24 @@ their proofs are in the paper
 
 <p><button type="button" id="foldall" data-open="no">Expand every Macaulay2 session</button></p>
 
-<p>In every example, $X$ is a normal projective threefold and $R$ is its
-homogeneous coordinate ring.  $K_X$ is the canonical divisor and $H$ is an
-ample Cartier divisor.  The nef threshold is</p>
+<p>In Examples 1 to 6, $X$ is a normal projective threefold and $R$ is its
+homogeneous coordinate ring.  Example 7 relaxes that: some of the variables are
+given degree zero, their coordinates land in $R_0$, and $X = \Proj R$ is then
+projective over the affine $\Spec R_0$ rather than over a point.  In all of
+them $K_X$ is the canonical divisor and $H$ is an ample Cartier divisor, ample
+over the base where there is one.  The nef threshold is</p>
 
 $$\lambda = \min\{\,t \ge 0 \;:\; K_X + tH \text{ is nef}\,\}.$$
 
 <p>$X$ has to be normal and log terminal.  The package assumes this.  It does
 not check it.</p>
 
-<p>In the paper, $X = \Proj R$ is monograded.  A bigraded ring appears only as
-the graph of a morphism, which is how the Stein factorization is computed.
-Every example here stays inside that setting.  The package also has entry
-points that take a multigraded variety directly.  Those go beyond the paper,
-and this page does not use them.</p>
+<p>In the paper, $X = \Proj R$ is monograded with $R_0 = k$.  A bigraded ring
+appears only as the graph of a morphism, which is how the Stein factorization
+is computed.  Examples 1 to 6 stay inside that setting.  Example 7 keeps the
+single grading but drops $R_0 = k$, which is the relative setting; the package
+also has entry points that take a multigraded variety directly, and those go
+beyond the paper too, but this page does not use them.</p>
 
 <h2 id="contents">Contents</h2>
 
@@ -150,6 +154,7 @@ and this page does not use them.</p>
   <li><a href="#disconnected">4. A map with disconnected fibres</a></li>
   <li><a href="#blowup-line">5. Blowing up a line, and a two-step program</a></li>
   <li><a href="#flip">6. A toric flip</a></li>
+  <li><a href="#affine-flip">7. A flip the program finds by itself, over an affine base</a></li>
   <li><a href="#cost">Cost</a> &middot; <a href="#reproducing">How to repeat these runs</a> &middot; <a href="#scope">What is not here</a></li>
 </ul>
 
@@ -314,6 +319,52 @@ step, this is a flipping step.</p>
 
 @@session 06-toric-flip | flipModel#"relativeModelType" ; flipModel#"isIdentity" ; inverseModel#"baseLocusCertified" ; flippingStep#"stepType"@@
 
+<h2 id="affine-flip">7. A flip the program finds by itself, over an affine base</h2>
+
+<p>Example 6 computes a flip, but it is handed the contraction: the flipping
+contraction is supplied and the relative canonical model is asked for.  This
+one is given nothing but a ring.  It decides that $K$ is not nef, finds the
+threshold, builds the contraction, checks that the contraction is small, and
+only then flips &mdash; a minimal model program with a flip in it, run from
+end to end.</p>
+
+<p>What makes that possible is the base.  The paper writes $X = \Proj R$ with
+$R_0 = k$, so $X$ is projective over a point, and the standard flips are not
+projective &mdash; a flipping contraction contracts a curve to a point of an
+affine variety.  Giving some of the ambient variables degree zero puts their
+coordinates in $R_0$ instead, and $X = \Proj R$ becomes projective over the
+affine $\Spec R_0$.  The three-fold flips then exist without being
+compactified first.</p>
+
+<p>The input is the same circuit as in Example 6, read through its Cox ring.
+The relation $v_1 + v_2 = 2v_3 + v_4$ makes $\mathrm{Cl}(X) = \ZZ$ with
+$\deg(z_1,z_2,z_3,z_4) = (1,1,-2,-1)$, and the two triangulations are the two
+geometric invariant theory quotients: $Y$, where the monomials of nonpositive
+weight are the relevant ones, and $Z$, where the nonnegative ones are.  On the
+wall curve $K_Y \cdot C = -1$ and $K_Z \cdot C = +1$, so $Y \to \Spec R_0$ is
+the flipping contraction and $Z$ is its flip.</p>
+
+<p>$Y$ is presented by the <i>second Veronese</i> of its section ring.  That
+ring needs a generator of degree two, and under a weighted grading
+$\Spec R \setminus V(B)$ is not a torsor: at the $\tfrac12(1,1,1)$ point the
+stabiliser is $\mu_2$, and a divisor can be locally free on the punctured cone
+without being invertible on $Y$.  The Cartier test then over-reports &mdash;
+the same thing happens to $\OO(1)$ on $\PP(1,1,2)$ &mdash; and the canonical
+index comes back as $1$.  The Veronese puts every positive-degree generator in
+degree one, and the index comes out as $2$, which is what the
+$\tfrac12(1,1,1)$ point forces.</p>
+
+<p>The session then checks that the ring the program returns really is $Z$: a
+relabelling of the variables that preserves degrees carries one defining ideal
+onto the other.  Two more inputs follow.  $\mathrm{Bl}_0(\AA^3)$, as $\Proj$ of
+the Rees algebra of $(a,b,c)$, gives the other kind of birational step over an
+affine base &mdash; the contraction is not small, its exceptional locus being a
+surface, so the step is divisorial and the target is $\AA^3$.  And the weights
+$(1,1,-1,-3)$ give a flip of canonical index three, whose threshold is
+$\tfrac23$.</p>
+
+@@session 07-affine-base-flip | indexData#"index" ; nefData#"nef" ; contraction#"contractionType" ; contraction#"steinFactorizationType" ; smallness#"isSmall" ; smallness#"exceptionalCodimension" ; mmp#"terminationType" ; sameRing(Z, groundTruthZ) ; blowupSmallness#"isSmall" ; blowupMMP#"terminationType" ; mmp3#"terminationType"@@
+
 <h2 id="cost">Cost</h2>
 
 <p>Wall time of each session, from start to end.  This includes the time
@@ -328,9 +379,10 @@ run that built this page.</p>
   <tr><td>4. Disconnected fibres</td><td><code>04-disconnected-fibres.m2</code></td><td class="n">@@seconds 04-disconnected-fibres@@ s</td></tr>
   <tr><td>5. Blow up of a line</td><td><code>05-blowup-of-a-line.m2</code></td><td class="n">@@seconds 05-blowup-of-a-line@@ s</td></tr>
   <tr><td>6. Toric flip</td><td><code>06-toric-flip.m2</code></td><td class="n">@@seconds 06-toric-flip@@ s</td></tr>
+  <tr><td>7. Flip over an affine base</td><td><code>07-affine-base-flip.m2</code></td><td class="n">@@seconds 07-affine-base-flip@@ s</td></tr>
 </table>
 
-<p>All six run in seconds, and they cover the same ground as
+<p>All seven run in seconds, and they cover the same ground as
 <code>make test-core</code>.  Every push re-runs them and rebuilds this page,
 so a session that stops working stops the page from being published.</p>
 
@@ -340,7 +392,7 @@ so a session that stops working stops the page from being published.</p>
 
 <pre class="m2">git clone --recurse-submodules https://github.com/takehikoyasuda/Coding_MMP
 cd Coding_MMP
-examples/run.sh                                   # all six
+examples/run.sh                                   # all seven
 examples/run.sh examples/01-projective-space.m2   # or one of them</pre>
 
 <p>Each run rewrites the <code>.out</code> transcript and the <code>.time</code>
@@ -349,7 +401,7 @@ quote output that Macaulay2 no longer prints.</p>
 
 <h2 id="scope">What is not here</h2>
 
-<p>These six examples finish.  Some other inputs do not.  Those cases were
+<p>These seven examples finish.  Some other inputs do not.  Those cases were
 measured rather than guessed, and the measurements are in
 <a href="https://github.com/takehikoyasuda/Coding_MMP/blob/main/research-log/README.md"><code>research-log/</code></a>.
 What the implementation is tested and trusted to do is listed in
