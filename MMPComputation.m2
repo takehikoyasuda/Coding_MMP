@@ -2516,8 +2516,23 @@ canonicalContractionAtThresholdDataCore = (R,a,lambda,K,H,d,limit,buildLinearSys
     -- affineBaseDimensionInternal returns 0 when R_0 = k, so the classical
     -- reading is unchanged.
     baseDimension := affineBaseDimensionInternal R;
-    if linearSystemGraph#"targetVariableCount" != 1 and baseDimension > 0 then
-        return new HashTable from {
+    -- More than one degree-zero generator over an affine base: the target is
+    -- neither the base nor a point but an intermediate variety, Proj over
+    -- Spec R_0 of the R_0-algebra the section representatives generate.  That
+    -- is built here rather than left to the graph representation, which cannot
+    -- express it.
+    --
+    -- Stein factorization is not run on it; it is certified unnecessary in the
+    -- one case that is accepted.  When the image has the same dimension as X
+    -- the morphism is birational, and if the image is normal then Zariski's
+    -- main theorem makes Phi_* O_X = O of the image, so the fibres are already
+    -- connected and Phi is its own Stein factorization.  A fibre-type image, or
+    -- an image that is not normal, needs the A-module version of the section
+    -- ring lemma and is refused instead of guessed at.
+    if linearSystemGraph#"targetVariableCount" != 1 and baseDimension > 0 then (
+        sections := linearSystemGraph#"sectionImages";
+        relativeTarget := affineRelativeTargetRingInternal(R,sections);
+        refuse := reason -> new HashTable from {
             "conclusive" => false,
             "threshold" => lambda,
             "N" => N,
@@ -2528,16 +2543,66 @@ canonicalContractionAtThresholdDataCore = (R,a,lambda,K,H,d,limit,buildLinearSys
             "linearSystemGraph" => linearSystemGraph,
             "canonicalDivisor" => K,
             "affineBaseDimension" => baseDimension,
+            "relativeTargetRing" => relativeTarget,
             "phase" => "contraction target over an affine base",
-            "warning" => "R_0 is not a field, so X = Proj R lies over the "
-                | "affine base Spec R_0, and the linear system has more than "
-                | "one degree-zero generator.  The target would then be built "
-                | "by a Stein factorization that constructs the absolute "
-                | "morphism to P^{n-1} and forgets the base, so it is refused "
-                | "rather than reported.  Only the one-generator case, where "
-                | "the contraction is the structure morphism to the base, is "
-                | "supported over an affine base today."
-            };
+            "warning" => reason};
+        if relativeTarget === null then
+            return refuse("R_0 is not a field and the linear system has more "
+                | "than one degree-zero generator, so the contraction's target "
+                | "is an intermediate variety over Spec R_0; its coordinate "
+                | "algebra could not be built from the section "
+                | "representatives.");
+        relativeTargetDimension := dim relativeTarget - 1;
+        if relativeTargetDimension != d then
+            return refuse("the contraction over the affine base is of fibre "
+                | "type, its image having dimension "
+                | toString relativeTargetDimension | " where the source has "
+                | toString d | ".  Certifying that the fibres are connected "
+                | "then needs the A-module version of the section ring lemma "
+                | "(section 6 of the relative-setting audit), which is not "
+                | "implemented, so the Stein factorization is refused rather "
+                | "than assumed trivial.");
+        if not affineTargetBirationalInternal(R,sections) then
+            return refuse("the contraction over the affine base is generically "
+                | "finite onto its image, but this could not be certified "
+                | "birational.  Without that certificate the image need not be "
+                | "the contraction -- the morphism could be generically finite "
+                | "of higher degree -- and skipping the Stein factorization "
+                | "would be a guess.  The A-module version of the section ring "
+                | "lemma (section 6 of the relative-setting audit) is what "
+                | "would settle the general case.");
+        if not isNormal relativeTarget then
+            return refuse("the contraction over the affine base is birational "
+                | "onto its image but that image is not normal, so Zariski's "
+                | "main theorem does not certify that the fibres are connected "
+                | "and the Stein factorization cannot be skipped; the target "
+                | "would be the normalization of the image.");
+        return new HashTable from join({
+            "conclusive" => true,
+            "threshold" => lambda,
+            "N" => N,
+            "cartierThresholdDivisor" => cartierThresholdDivisor,
+            "multiplier" => multiplier,
+            "guaranteedMultiplier" => guaranteedMultiplier,
+            "morphismDivisor" => morphismDivisor,
+            "linearSystemGraph" => linearSystemGraph,
+            "canonicalDivisor" => K,
+            "affineBaseDimension" => baseDimension,
+            "sourceRing" => R,
+            "relativeTargetRing" => relativeTarget,
+            "relativeTargetSections" => sections,
+            "steinFactorizationType" => "trivial: birational onto a normal "
+                | "image over the affine base",
+            "steinAlgebraData" => new HashTable from {
+                "ring" => relativeTarget,
+                "baseIsProjective" => true,
+                "certificate" => "Proj over Spec R_0 of the R_0-algebra "
+                    | "generated by the sections; birational onto it by an "
+                    | "explicit ratio of sections for each coordinate, and "
+                    | "normal, so Zariski's main theorem makes Phi its own "
+                    | "Stein factorization"}
+            },pairs contractionTypeData(d,relativeTargetDimension));
+        );
     if linearSystemGraph#"targetVariableCount" == 1 then
         return new HashTable from join({
             "conclusive" => true,
@@ -2748,6 +2813,102 @@ canonicalContractionData (Ring,ZZ,BasicDivisor) := o -> (R,a,H) -> (
 -- This is exactly the shape of presentation the driver started from, so a flip
 -- computed over an affine base can be fed straight back into the nefness test
 -- for the next step.
+-- The target of a contraction over an affine base whose image is not the base.
+--
+-- Phi_{|MD|} is built by the linear system as a morphism to P^{n-1}, and over
+-- an affine base that is the *absolute* morphism: it forgets Spec R_0.  The
+-- relative morphism is the one to P^{n-1} x Spec R_0, and its image is Proj of
+-- the R_0-subalgebra of R generated by the section representatives.  That
+-- subalgebra is again a graded ring whose degree-zero part is R_0, so the
+-- target comes out in the same shape the driver reads and the next step can
+-- start from it.
+--
+-- The section representatives share a degree e, so the kernel of
+-- R_0[Y] --> R, Y_i |--> s_i is homogeneous when Y_i is given degree e; every
+-- monomial of a relation then has the same Y-degree, so the same generators are
+-- homogeneous for degree one as well, and it is that grading the result
+-- carries.  Multiplying every representative by a common factor does not change
+-- the kernel (R is a domain), so the artificial common factor a rational
+-- trivialization can introduce is harmless here.
+affineRelativeTargetRingInternal = (R,sections) -> (
+    if #sections == 0 then return null;
+    degrees0 := unique apply(sections, f -> (degree f)#0);
+    if #degrees0 != 1 then return null;
+    e := first degrees0;
+    if e <= 0 then return null;
+    S := ambient R;
+    svars := flatten entries vars S;
+    baseIndices := select(#svars, j -> all(degree svars#j, c -> c == 0));
+    if #baseIndices == 0 then return null;
+    baseNames := apply(baseIndices, j -> svars#j);
+    kk := coefficientRing S;
+    fibre := getSymbol "mmpRelativeTargetVariable";
+    coarse := kk(monoid [fibre_1 .. fibre_(#sections), baseNames,
+        Degrees => join(toList(#sections : {e}),toList(#baseIndices : {0}))]);
+    phi := map(R,coarse,
+        join(sections,apply(baseIndices, j -> sub(svars#j,R))));
+    relations := ker phi;
+    fine := kk(monoid [fibre_1 .. fibre_(#sections), baseNames,
+        Degrees => join(toList(#sections : {1}),toList(#baseIndices : {0}))]);
+    J := sub(relations,fine);
+    if not isHomogeneous J then return null;
+    fine/J
+    )
+
+-- Is Phi birational onto its image?  A definite true is a certificate; false
+-- means only that this test did not find one.
+--
+-- The test needs R generated in degree one over R_0, which it checks.  Then
+-- K(X) = Frac(R)_0 is generated over Frac(R_0) by the ratios u/u_1 of the
+-- degree-one variables, and Frac(R_0) is inside Frac(T)_0 because R_0 = T_0.
+-- So Phi is birational onto its image exactly when every such ratio lies in
+-- Frac(T)_0, and one witness for that is a pair A, B in T_1 with B nonzero and
+-- u_1 A = u B, which gives u/u_1 = A/B.  T_1 is the R_0-span of the section
+-- representatives, so the pairs are the coefficients of a syzygy of one row
+-- vector, in the single degree where those coefficients have degree zero.
+--
+-- Birationality is what lets the Stein factorization be skipped: with it, and
+-- the image normal, Zariski's main theorem gives Phi_* O_X = O of the image.
+-- Without it the morphism could be generically finite of higher degree onto a
+-- perfectly normal image, and then the image is not the contraction.
+-- A ratio may need A and B of degree higher than one -- the strand T_1 is only
+-- the R_0-span of the representatives themselves -- so the search climbs
+-- through the products of m of them until it succeeds or runs out of tries.
+affineTargetBirationalInternal = method(Options => {NefSearchLimit => 3})
+affineTargetBirationalInternal (Ring,List) := o -> (R,sections) -> (
+    if #sections == 0 then return false;
+    fibreVars := select(flatten entries vars R, q -> (degree q)#0 > 0);
+    if #fibreVars == 0 then return false;
+    if any(fibreVars, q -> (degree q)#0 != 1) then return false;
+    if any(flatten entries vars R, q -> (degree q)#0 < 0) then return false;
+    u1 := first fibreVars;
+    e := (degree first sections)#0;
+    strand := m -> (
+        current := {1_R};
+        scan(m, i -> current = unique flatten apply(current,
+            f -> apply(sections, g -> f*g)));
+        select(current, f -> f != 0));
+    ratioFound := u -> (
+        answer := false;
+        scan(1..o.NefSearchLimit, m -> if not answer then (
+            products := strand m;
+            k := #products;
+            if k > 0 then (
+                row := matrix{join(apply(products, f -> u1*f),
+                    apply(products, f -> -u*f))};
+                syzygies := ker row;
+                -- basis of a submodule returns coordinates in that module's own
+                -- generators, so super is needed to read the actual vectors of
+                -- coefficients in the ambient free module.
+                witnesses := super basis({m*e+1},syzygies);
+                if any(numColumns witnesses, c ->
+                    any(k, i -> witnesses_(k+i,c) != 0)) then answer = true;
+                );
+            ));
+        answer);
+    all(fibreVars, u -> u == u1 or ratioFound u)
+    )
+
 -- Spec W, presented the way this package reads a variety: as Proj of a graded
 -- ring whose degree-zero part is W.  W[t] with deg t = 1 is that ring, and its
 -- Proj is Spec W.
@@ -2810,6 +2971,38 @@ relativeCanonicalModelFromBaseData Ring := o -> W -> (
     -- base W already is the presentation, and this is the identical object it
     -- always was.
     identityRing := if projectiveBase then W else affineTargetPresentationInternal W;
+    -- A Q-Gorenstein base is its own relative canonical model, which is what
+    -- the identity branch means.  If K_W is Q-Cartier of index r then
+    -- omega^{[r]} is invertible, so the r-th Veronese of the canonical algebra
+    -- is the Rees algebra of a line bundle and its Proj is W; Proj is
+    -- insensitive to passing to a Veronese, so the model is W.
+    --
+    -- Only a positive is taken: a search that runs out of multiples says
+    -- nothing.  The check is made only when the presentation has an affine
+    -- base, so no classical caller pays for it or changes route -- and there
+    -- it is not an optimization but the only way through, since a target that
+    -- is Proj over Spec R_0 has variables of bidegree zero in FlipComputation's
+    -- Rees construction and no heft vector exists for that ring.
+    if affineBaseIrrelevantIdealInternal W =!= null then (
+        indexData := canonicalIndexData(W,CanonicalIndexSearchLimit=>12);
+        if indexData#"conclusive" then
+            return new HashTable from {
+                "conclusive" => true,
+                "baseRing" => W,
+                "relativeModelRing" => identityRing,
+                "relativeModelGraph" => null,
+                "relativeModelProjection" => null,
+                "relativeModelType" => "identity",
+                "isIdentity" => true,
+                "baseIsProjective" => projectiveBase,
+                "canonicalIndex" => indexData#"index",
+                "identityCertificate" => "K_W is Q-Cartier of index "
+                    | toString(indexData#"index")
+                    | ", so W is its own relative canonical model",
+                "sourceDimension" => dim W-coneCorrection,
+                "targetDimension" => dim W-coneCorrection
+                };
+        );
     if canonicalIdeal W == ideal 1_W then
         return new HashTable from {
             "conclusive" => true,
@@ -3134,6 +3327,54 @@ affineContractionSmallnessInternal = R -> (
         }
     )
 
+-- Smallness of a birational morphism to an intermediate target over an affine
+-- base, given by the section representatives that define it.
+--
+-- Omega_{X/T} is the cokernel of f^*Omega_{T/R_0} --> Omega_{X/R_0}, and for a
+-- birational morphism of normal varieties in characteristic zero its support is
+-- the exceptional locus: f is an isomorphism away from Exc, where Omega
+-- vanishes, and is not one on Exc, where it does not.  On the cone this is the
+-- cokernel of the Jacobian of I taken with respect to the positively graded
+-- variables, extended by the columns of partial derivatives of the section
+-- representatives, since those generate T over R_0.
+--
+-- The cone map Spec R --> Spec T' is not itself birational.  T' contains the
+-- representatives, of degree e, so Frac(R) is degree e over Frac(T') and the
+-- map is a mu_e quotient in the cone direction.  That costs nothing: the fixed
+-- locus of mu_e is the zero section V(R_+), which lies inside V(B) and is
+-- saturated away below, so what is left is the exceptional locus of f and
+-- nothing else.  It is also why no exterior power appears here where the
+-- graph version needs one: the extension is algebraic, so Omega_{R/T'} is
+-- generically zero and its annihilator already cuts out the support.
+affineTargetSmallnessInternal = (R,sections,sourceDimension) -> (
+    S := ambient R;
+    svars := flatten entries vars S;
+    fibreIndices := select(#svars, j -> not all(degree svars#j, c -> c == 0));
+    if #fibreIndices == 0 then
+        error "affineTargetSmallnessData: no variable of positive degree";
+    B := ideal apply(fibreIndices, j -> sub(svars#j,R));
+    lifted := apply(sections, f -> lift(f,S));
+    relativeJacobian := sub(submatrix(
+        jacobian ideal R | jacobian matrix{lifted},fibreIndices,),R);
+    exceptionalIdeal := saturate(ann coker relativeJacobian,B);
+    empty := exceptionalIdeal == ideal 1_R;
+    exceptionalDimension := if empty then -1 else dim(R/exceptionalIdeal)-1;
+    exceptionalCodimension := if empty then sourceDimension+1
+        else sourceDimension-exceptionalDimension;
+    new HashTable from {
+        "isSmall" => exceptionalCodimension >= 2,
+        "sourceDimension" => sourceDimension,
+        "exceptionalDimension" => exceptionalDimension,
+        "exceptionalCodimension" => exceptionalCodimension,
+        "exceptionalLocusEmpty" => empty,
+        "exceptionalIdeal" => exceptionalIdeal,
+        "criterion" => "codimension of the support of the relative "
+            | "differentials of X over the image of the linear system",
+        "assumptions" => "integral separable birational morphism of normal "
+            | "varieties over Spec R_0"
+        }
+    )
+
 contractionGraphSmallnessData = method()
 contractionGraphSmallnessData HashTable := graph -> (
     if not graph#?"jointRing" or not graph#?"graphIdeal"
@@ -3165,6 +3406,15 @@ contractionSmallnessData HashTable := contraction -> (
                 error "contractionSmallnessData: missing source ring";
             return affineContractionSmallnessInternal contraction#"sourceRing";
             );
+    -- And it can be a morphism to an intermediate target over that base, which
+    -- has no graph either: what determines it is the section representatives.
+    if contraction#?"relativeTargetSections" then (
+        if not contraction#?"sourceRing" then
+            error "contractionSmallnessData: missing source ring";
+        return affineTargetSmallnessInternal(
+            contraction#"sourceRing",contraction#"relativeTargetSections",
+            contraction#"sourceDimension");
+        );
     if not contraction#?"contractionGraph" then
         error "contractionSmallnessData: missing contraction graph";
     contractionGraphSmallnessData contraction#"contractionGraph"
@@ -3206,7 +3456,12 @@ mmpStepRecordData (HashTable,HashTable) := o -> (contraction,model) -> (
     -- the contraction.  Every other contraction still has to carry its graph.
     structureMorphism := contraction#?"contractionIsStructureMorphism"
         and contraction#"contractionIsStructureMorphism";
-    if not structureMorphism and (not contraction#?"contractionGraph"
+    -- A contraction to an intermediate target over an affine base has no graph
+    -- either: what determines it is the section representatives, and the target
+    -- ring is on the contraction.
+    relativeTarget := contraction#?"relativeTargetSections";
+    if not structureMorphism and not relativeTarget
+        and (not contraction#?"contractionGraph"
         or not instance(contraction#"contractionGraph",GraphMorphism)) then
         error "mmpStepRecordData: expected a GraphMorphism contraction graph";
     if not model#?"conclusive" or not model#"conclusive" then
@@ -3239,9 +3494,10 @@ mmpStepRecordData (HashTable,HashTable) := o -> (contraction,model) -> (
         "contractionIsSmall" => small,
         "contractionSmallnessData" => smallnessData,
         "contractionData" => contraction,
-        "contractionGraph" => if structureMorphism then null
+        "contractionGraph" => if structureMorphism or relativeTarget then null
             else contraction#"contractionGraph",
         "contractionIsStructureMorphism" => structureMorphism,
+        "contractionToRelativeTarget" => relativeTarget,
         "relativeModelData" => model,
         "relativeModelGraph" => model#"relativeModelGraph",
         "inverseRelativeModelData" => inverseData,

@@ -219,3 +219,65 @@ assert(try (contractionSmallnessData fibrationContraction; false) else true);
 
 << "OK relative affine flip: the smallness test separates the small "
    << "contraction from a divisorial one and refuses a fibration." << endl;
+
+-- A two-step relative MMP, through a target that is neither the base nor a
+-- point.
+--
+-- X = Bl_0(A^2) x P^1, over the affine base A^2, polarized by O(1,3).  Its two
+-- extremal rays over A^2 are the exceptional curve E x pt, with K.C = -1 and
+-- H.C = 1, and the fibre pt x P^1, with K.C = -2 and H.C = 3.  So the
+-- thresholds are 1 and 2/3, the larger is attained by E alone, and the
+-- contraction at t = 1 contracts E x P^1 and nothing else: a divisorial
+-- contraction onto A^2 x P^1.  That target is an *intermediate* one -- neither
+-- Spec R_0 nor a point -- so it is built as Proj over Spec R_0 of the algebra
+-- the sections generate, and the Stein factorization is skipped only on a
+-- certificate: the morphism is certified birational onto its image by an
+-- explicit ratio of sections for each coordinate, and the image is normal, so
+-- Zariski's main theorem does the rest.
+--
+-- The second step then runs on A^2 x P^1, where K is not nef along the fibres,
+-- and contracts to the base: a K-negative fibration, and the program stops.
+segre = QQ[a,b,x,y,z0,z1]/ideal(a*y-b*x);
+twoStepSections = flatten apply({x,y},
+    f -> apply({z0^3,z0^2*z1,z0*z1^2,z1^3}, g -> f*g));
+twoStepAmbient = QQ[w_1 .. w_8, wa, wb,
+    Degrees => {1,1,1,1,1,1,1,1,0,0}];
+twoStep = twoStepAmbient/ker map(segre, twoStepAmbient,
+    twoStepSections | {a,b});
+assert(dim twoStep - 1 == 3);
+assert(isNormal twoStep);
+assert((canonicalIndexData twoStep)#"index" == 1);
+assert(not (canonicalNefData(twoStep,1))#"nef");
+assert(canonicalNefThreshold(twoStep,1) == 1);
+
+twoStepContraction = canonicalContractionData(twoStep,1);
+assert(twoStepContraction#"conclusive");
+assert(twoStepContraction#"isBirational");
+assert(twoStepContraction#"targetDimension" == 3);
+assert(not twoStepContraction#?"contractionIsStructureMorphism");
+assert(twoStepContraction#?"relativeTargetSections");
+assert(twoStepContraction#"steinFactorizationType"
+    == "trivial: birational onto a normal image over the affine base");
+-- the image is A^2 x P^1: two coordinates of degree one, the base's two of
+-- degree zero, and no relations at all
+twoStepTarget = twoStepContraction#"relativeTargetRing";
+assert(dim twoStepTarget - 1 == 3);
+assert(sort flatten degrees twoStepTarget == {0,0,1,1});
+assert(ideal twoStepTarget == ideal 0_(ambient twoStepTarget));
+
+twoStepSmallness = contractionSmallnessData twoStepContraction;
+assert(not twoStepSmallness#"isSmall");
+assert(twoStepSmallness#"exceptionalDimension" == 2);
+
+twoStepMMP = threefoldMMPData(twoStep,1);
+assert(twoStepMMP#"conclusive");
+assert(twoStepMMP#"terminationType" == "K-negative fibration");
+assert(twoStepMMP#"numberOfSteps" == 2);
+assert(((twoStepMMP#"steps")#0)#"stepType" == "divisorial");
+assert(((twoStepMMP#"steps")#0)#"contractionToRelativeTarget");
+assert(not ((twoStepMMP#"steps")#0)#"contractionIsSmall");
+assert(((twoStepMMP#"steps")#1)#"stepType" == "fibration");
+assert(((twoStepMMP#"steps")#1)#"terminal");
+
+<< "OK relative affine flip: a two-step relative program, divisorial onto an "
+   << "intermediate target and then a K-negative fibration to the base." << endl;
