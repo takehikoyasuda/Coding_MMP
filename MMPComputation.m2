@@ -1017,6 +1017,79 @@ canonicalIdealSeedDataInternal = (R,K) -> (
     result
     )
 
+-- canonicalDivisor(R,IsGraded=>true) stops with
+--
+--     error: no method for binary operator - applied to objects:
+--         -infinity (of class InfiniteNumber) - {0} (of class List)
+--
+-- on some perfectly ordinary rings.  WeilDivisors' internalModuleToIdeal
+-- embeds omega as an ideal by walking the columns of
+-- syz transpose presentation omega -- each one a homogeneous map omega -> R --
+-- until it finds an injective one, and then reads the degree of the embedding
+-- as
+--
+--     degree(t#0) - (degrees omega)#0
+--
+-- (WeilDivisors.m2:1808).  That is the right difference only when the section's
+-- *first* component is nonzero.  The map is homogeneous, so every index j with
+-- t#j != 0 gives the same difference and any one of them will do -- but when
+-- t#0 = 0 the degree of the zero element is -infinity and the subtraction has
+-- no meaning.  It is not an exotic situation: on the toric threefold
+-- S3 x A^1 over A^3 of tests/three-step-relative-mmp.m2, omega has four
+-- generators and all three candidate sections start with a zero,
+--
+--     {0, u_5, -u_6, -u_7},  {0, -u_3, u_2*u_5, u_4*u_5},
+--     {0, u_2^3, -u_2*u_4, -u_4^2},
+--
+-- so the very first candidate crashes it.
+--
+-- This is the same construction with the shift read off the first nonzero
+-- component instead, and is used only where WeilDivisors' own function fails,
+-- so nothing that works today changes answer.  The rest of the function body
+-- is WeilDivisors' canonicalDivisor and divisor(Module,IsGraded=>true) in
+-- sequence, with their Ext and their findElementOfDegree.  Checked against
+-- canonicalDivisor on the rings where that one does return: identical divisor,
+-- not merely a linearly equivalent one.
+gradedCanonicalDivisorRetryInternal = R -> (
+    S := ambient R;
+    ambientVariables := flatten entries vars S;
+    if #ambientVariables == 0 then return null;
+    degreeList := if #(degree first ambientVariables) == 1
+        then apply(ambientVariables, q -> (degree q)#0)
+        else apply(ambientVariables, q -> degree q);
+    omega := (Ext^(dim S - dim R)(
+        S^1/(ideal R), S^{-(sum degreeList)})) ** R;
+    if omega == 0 then return null;
+    omegaDegrees := degrees omega;
+    section := null;
+    shift := null;
+    scan(entries transpose syz transpose presentation omega,
+        candidate -> if section === null then (
+            j := position(candidate, entry -> entry != 0);
+            if j =!= null and isInjective map(R^1,omega,{candidate}) then (
+                section = candidate;
+                shift = degree(candidate#j) - omegaDegrees#j;
+                );
+            ));
+    if section === null then return null;
+    correction := findElementOfDegree((-1)*shift,R);
+    -divisor(trim ideal section) - divisor(correction#0)
+        + divisor(correction#1)
+    )
+
+-- WeilDivisors' graded canonical divisor, with the retry above standing in
+-- where it stops on the degree bug the retry documents.
+mmpGradedCanonicalDivisorInternal = R -> (
+    answer := try canonicalDivisor(R,IsGraded=>true) else null;
+    if answer =!= null then return answer;
+    answer = gradedCanonicalDivisorRetryInternal R;
+    if answer === null then
+        error("mmpCanonicalDivisorInternal: WeilDivisors' canonicalDivisor "
+            | "failed on this ring and the graded embedding retry found no "
+            | "homogeneous section of the canonical module");
+    answer
+    )
+
 -- canonicalDivisor(R,IsGraded=>true) is WeilDivisors' own function, and it runs
 -- the same Ext over the ambient that the seed above exists to avoid.  So on a
 -- ring where that Ext is out of reach the seed never gets its chance, because
@@ -1060,7 +1133,7 @@ mmpCanonicalDivisorInternal = R -> (
     affineB := affineBaseIrrelevantIdealInternal R;
     if affineB =!= null then
         return dropIrrelevantComponentsInternal(
-            canonicalDivisor(R,IsGraded=>true),affineB);
+            mmpGradedCanonicalDivisorInternal R,affineB);
     S := ambient R;
     if dim S - dim R >= mmpNoetherCodimThreshold then (
         seed := noetherCanonicalIdealSeedInternal R;
@@ -1079,7 +1152,7 @@ mmpCanonicalDivisorInternal = R -> (
                 );
             );
         );
-    canonicalDivisor(R,IsGraded=>true)
+    mmpGradedCanonicalDivisorInternal R
     )
 
 -- Return null when the chart/principal hypotheses needed for this shortcut
@@ -2843,13 +2916,31 @@ affineRelativeTargetRingInternal = (R,sections) -> (
     baseNames := apply(baseIndices, j -> svars#j);
     kk := coefficientRing S;
     fibre := getSymbol "mmpRelativeTargetVariable";
-    coarse := kk(monoid [fibre_1 .. fibre_(#sections), baseNames,
-        Degrees => join(toList(#sections : {e}),toList(#baseIndices : {0}))]);
+    -- The base coordinates go first, ahead of the section variables.  Nothing
+    -- downstream reads a variable by position -- the fibre and base blocks are
+    -- always selected by degree -- but the order is the tie-break of the
+    -- monomial order, and over an affine base that tie-break decides
+    -- everything: the degree-zero variables make whole strata of monomials
+    -- equal in degree, so the graded reverse lexicographic order falls through
+    -- to position on all of them.
+    --
+    -- Measured on the second model of tests/three-step-relative-mmp.m2, the
+    -- same ring presented both ways: canonicalNefThreshold takes 0.68 seconds
+    -- with the base coordinates first and 203.5 seconds with the section
+    -- variables first, a factor of three hundred on one identical question.
+    -- The three-step program as a whole goes from about 230 seconds to about
+    -- eight.  The presentation the driver hands to its own next iteration was
+    -- the slow one, while every presentation written by hand in this
+    -- repository's tests and examples is the fast one, which is why the cost
+    -- only showed up once a step had to start from a ring an earlier step had
+    -- built.
+    coarse := kk(monoid [baseNames, fibre_1 .. fibre_(#sections),
+        Degrees => join(toList(#baseIndices : {0}),toList(#sections : {e}))]);
     phi := map(R,coarse,
-        join(sections,apply(baseIndices, j -> sub(svars#j,R))));
+        join(apply(baseIndices, j -> sub(svars#j,R)),sections));
     relations := ker phi;
-    fine := kk(monoid [fibre_1 .. fibre_(#sections), baseNames,
-        Degrees => join(toList(#sections : {1}),toList(#baseIndices : {0}))]);
+    fine := kk(monoid [baseNames, fibre_1 .. fibre_(#sections),
+        Degrees => join(toList(#baseIndices : {0}),toList(#sections : {1}))]);
     J := sub(relations,fine);
     if not isHomogeneous J then return null;
     fine/J

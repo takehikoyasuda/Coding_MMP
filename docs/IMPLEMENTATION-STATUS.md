@@ -41,7 +41,7 @@ The source repositories had the following local state at import time:
 | Weighted relative-model graph | `b2mDiagonalData`, `b2mToGraphMorphism` | skew Rees degrees use an interior positive diagonal; weighted toric flip passes end to end |
 | Contraction smallness | `contractionGraphSmallnessData`, `contractionSmallnessData` | exterior-power criterion audited; blow-up divisor, ODP small resolution, and identity regressions pass |
 | MMP step records | `mmpStepRecordData` | graph-preserving divisorial/flipping/mixed records with automatic smallness |
-| Top-level threefold MMP loop | `threefoldMMPData` | P3 K-negative-fibration, quintic minimal-model, and certified Bl_L(P3) birational-continuation regressions pass; over an affine base it finds and carries out a flip from the ring alone |
+| Top-level threefold MMP loop | `threefoldMMPData` | P3 K-negative-fibration, quintic minimal-model, and certified Bl_L(P3) birational-continuation regressions pass; over an affine base it finds and carries out a flip from the ring alone, and runs a three-step program of divisorial contractions through two intermediate targets it builds itself |
 | Affine base, `R_0` not a field | `affineBaseRingInternal`, `affineBaseIrrelevantIdealInternal`, `dropIrrelevantComponentsInternal`, `mmpIsCartierInternal`, `affineContractionSmallnessInternal`, `affineExceptionalIdealInternal`, `affineFibreCurvesInternal`, `affineNegativeCurveShortcutInternal`, `affineTargetPresentationInternal`, `affineRelativeModelRingInternal` | see below |
 
 ## The relative setting: `X = Proj R` over the affine `Spec R_0`
@@ -110,13 +110,50 @@ when `R_0 = k`.
   annihilator cuts out the support.  This is what makes a relative program more
   than one birational step long.
 
+- **Programs three steps long.**  Two steps is the shortest length at which a
+  sequence exists at all, and in the two-step input each step is also an end:
+  the first contracts to an intermediate target, the second is the fibration
+  that stops it.  `S3 x A^1` over `A^3` -- the toric surface obtained from `A^2`
+  by three successive point blow-ups, times a line -- gives a program with a
+  middle.  Its three exceptional curves have `K.E = 0, 0, -1`, and the same
+  holds again after each contraction, so the program is forced to contract them
+  one at a time and reaches `A^3` in three divisorial steps, the second of which
+  both starts from a ring the first step built and hands one on to the third.
+  Multiplying by `A^1` rather than by `P^1` keeps the structure morphism
+  birational, so `dim R - dim R_0 = 1` and the negative-curve certificate
+  applies.  The `P^1` version has the same program on paper, but there the
+  fibre has a threshold of its own and it must stay under both surface ones or
+  the fibration comes first and the program is over in one step; that forces
+  `H.F >= 5`, hence eighteen degree-one generators instead of four, and that
+  input was not carried through -- its canonical index alone had not returned
+  after eight minutes and ten gigabytes.
+- **Variable order in the target presentation.**  The base coordinates go ahead
+  of the section variables in `affineRelativeTargetRingInternal`.  Nothing
+  downstream reads a variable by position, but the order is the tie-break of the
+  monomial order, and over an affine base the degree-zero variables make whole
+  strata of monomials equal in degree, so graded reverse lexicographic falls
+  through to position on all of them.  Measured on the second model of the
+  three-step program, the same ring presented both ways:
+  `canonicalNefThreshold` takes 0.68 s with the base coordinates first and
+  203.5 s with the section variables first, and the whole three-step program
+  goes from about 230 s to about 8.  Only a presentation the driver builds for
+  its own next iteration was ever the slow one -- every presentation written by
+  hand in this repository is the fast one -- which is why the cost appeared only
+  once a step had to start from a ring an earlier step had built.
+
 Three things are not done.  The fibre-type case of the above is refused:
 certifying connected fibres there needs the `A`-module version of
 `lem:section-ring-over-k`, and the refusal names it.  The cost of the
-birational case is open: `isNormal` on the intermediate target of the toric
-two-step input ran for four hours and seventeen minutes at 6 GB without
-finishing.  The cost is intrinsic, not a redundant presentation -- none of the
-eight fibre variables is removable, so the thirteen-variable presentation is
+birational case has no bound in advance: the normality check on the image is a
+normality check on whatever ring the sections happen to generate, and that is
+cheap when the ring is small.  The two intermediate targets of the three-step
+program above are a six- and a five-variable ring, the contraction that builds
+the first of them costs 2.5 s with its certificate inside it, and the whole
+three-step program through both of them is about eight seconds.  On the
+thirteen-variable target of one toric two-step input, the same `isNormal` ran
+for four hours and seventeen minutes at 6 GB without finishing.  That cost is
+intrinsic there, not a redundant presentation
+-- none of the eight fibre variables is removable, so the presentation is
 already minimal, and `R1` needs size-nine minors of a 13 by 49 Jacobian.  `R1`
 cannot simply be dropped -- birationality only makes the codimension-one points of the
 image have finite fibres, which does not stop the image from being singular
@@ -127,8 +164,35 @@ thing that happens to `O(1)` on `P(1,1,2)` -- and the test over-reports.  A
 Veronese presentation, where every positive-degree generator has degree one,
 avoids it.
 
-Regression: `tests/relative-affine-flip-mmp.m2`.  Worked example:
-`examples/07-affine-base-flip.m2`.
+Regressions: `tests/relative-affine-flip-mmp.m2`,
+`tests/three-step-relative-mmp.m2`.  Worked examples:
+`examples/07-affine-base-flip.m2`, `examples/08-three-step-program.m2`.
+
+## WeilDivisors' graded canonical divisor, where its degree read fails
+
+`canonicalDivisor(R,IsGraded=>true)` stops with
+
+```text
+error: no method for binary operator - applied to objects:
+    -infinity (of class InfiniteNumber) - {0} (of class List)
+```
+
+on some ordinary rings.  `internalModuleToIdeal` embeds `omega` as an ideal by
+walking the columns of `syz transpose presentation omega`, each a homogeneous
+map `omega -> R`, until one is injective, and then reads the degree of the
+embedding as `degree(t#0) - (degrees omega)#0` (WeilDivisors.m2:1808).  That
+difference is the right one only when the section's *first* component is
+nonzero.  The map is homogeneous, so every index `j` with `t#j != 0` gives the
+same answer and any one of them will do -- but with `t#0 = 0` the degree of the
+zero element is `-infinity` and the subtraction is meaningless.
+
+It is not a corner case.  On `S3 x A^1` over `A^3`, `omega` has four generators
+and all three candidate sections start with a zero, so the first candidate
+crashes it.  `gradedCanonicalDivisorRetryInternal` is the same construction with
+the shift read off the first nonzero component, and `mmpCanonicalDivisorInternal`
+uses it only where WeilDivisors' own function fails, so nothing that works today
+changes answer.  Checked against `canonicalDivisor` on rings where that one does
+return: the identical divisor, not merely a linearly equivalent one.
 
 ## Canonical ideal past codimension 12
 

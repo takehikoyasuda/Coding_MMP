@@ -1,0 +1,225 @@
+i1 : needsPackage("MMPComputation", FileName => "MMPComputation.m2")
+
+o1 = MMPComputation
+
+o1 : Package
+
+i2 : monomials4 = QQ[ea,eb,ec,et]
+
+o2 = monomials4
+
+o2 : PolynomialRing
+
+i3 : ambientX = QQ[a,b,c,w_0,w_1,w_2,w_3, Degrees => {0,0,0,1,1,1,1}]
+
+o3 = ambientX
+
+o3 : PolynomialRing
+
+i4 : X = ambientX/ker map(monomials4, ambientX,
+         {ea,eb,ec, ea^3*et, ea^2*eb*et, ea*eb^3*et, eb^6*et})
+
+o4 = X
+
+o4 : QuotientRing
+
+i5 : dim X - 1
+
+o5 = 3
+
+i6 : isNormal X
+
+o6 = true
+
+i7 : flatten degrees X
+
+o7 = {0, 0, 0, 1, 1, 1, 1}
+
+o7 : List
+
+i8 : ideal X
+
+                            2            2            2          2    
+o8 = ideal (b*w  - a*w , b*w  - w w , a*w  - w w , b*w  - w w , b w  -
+               0      1     2    1 3     2    0 3     1    0 2     1  
+     ---------------------------------------------------------------------
+              3    3     3              3    2
+     a*w , w w  - w w , b w  - a*w , a*w  - w w )
+        2   0 2    1 3     2      3     1    0 2
+
+o8 : Ideal of ambientX
+
+i9 : (canonicalIndexData X)#"index"
+
+o9 = 1
+
+i10 : (canonicalNefData(X, 1))#"nef"
+
+o10 = false
+
+i11 : canonicalNefThreshold(X, 1)
+
+o11 = 1
+
+o11 : QQ
+
+i12 : contraction = canonicalContractionData(X, 1);
+
+i13 : contraction#"contractionType"
+
+o13 = birational
+
+i14 : contraction#"targetDimension"
+
+o14 = 3
+
+i15 : contraction#"steinFactorizationType"
+
+o15 = trivial: birational onto a normal image over the affine base
+
+i16 : flatten degrees contraction#"relativeTargetRing"
+
+o16 = {0, 0, 0, 1, 1, 1}
+
+o16 : List
+
+i17 : smallness = contractionSmallnessData contraction;
+
+i18 : smallness#"isSmall"
+
+o18 = false
+
+i19 : smallness#"exceptionalDimension"
+
+o19 = 2
+
+i20 : mmp = threefoldMMPData(X, 1);
+
+i21 : mmp#"terminationType"
+
+o21 = minimal model
+
+i22 : mmp#"numberOfSteps"
+
+o22 = 3
+
+i23 : apply(mmp#"steps", r -> r#"stepType")
+
+o23 = {divisorial, divisorial, divisorial}
+
+o23 : List
+
+i24 : apply(mmp#"steps", r -> r#"contractionToRelativeTarget")
+
+o24 = {true, true, false}
+
+o24 : List
+
+i25 : apply(mmp#"steps", r -> r#"contractionIsStructureMorphism")
+
+o25 = {false, false, true}
+
+o25 : List
+
+i26 : apply(mmp#"steps", r -> flatten degrees r#"nextRing")
+
+o26 = {{0, 0, 0, 1, 1, 1}, {0, 0, 0, 1, 1}, {0, 0, 0, 1}}
+
+o26 : List
+
+i27 : flatten degrees mmp#"finalRing"
+
+o27 = {0, 0, 0, 1}
+
+o27 : List
+
+i28 : ideal mmp#"finalRing"
+
+o28 = ideal ()
+
+o28 : Ideal of QQ[a..c, mmpAffineFibreVariable]
+
+i29 : (mmp#"finalNefData")#"witnessType"
+
+o29 = base-point-free pluricanonical divisor
+
+i30 : ambientY = QQ[a,b,c,v_0,v_1,v_2, Degrees => {0,0,0,1,1,1}]
+
+o30 = ambientY
+
+o30 : PolynomialRing
+
+i31 : groundTruthY = ambientY/ker map(monomials4, ambientY,
+          {ea,eb,ec, ea^2*et, ea*eb*et, eb^3*et})
+
+o31 = groundTruthY
+
+o31 : QuotientRing
+
+i32 : ambientZ = QQ[a,b,c,z_0,z_1, Degrees => {0,0,0,1,1}]
+
+o32 = ambientZ
+
+o32 : PolynomialRing
+
+i33 : groundTruthZ = ambientZ/ker map(monomials4, ambientZ, {ea,eb,ec, ea*et, eb*et})
+
+o33 = groundTruthZ
+
+o33 : QuotientRing
+
+i34 : ideal groundTruthY
+
+                             2          2              3    2
+o34 = ideal (b*v  - a*v , b*v  - v v , b v  - a*v , a*v  - v v )
+                0      1     1    0 2     1      2     1    0 2
+
+o34 : Ideal of ambientY
+
+i35 : ideal groundTruthZ
+
+o35 = ideal(b*z  - a*z )
+               0      1
+
+o35 : Ideal of ambientZ
+
+i36 : sameRing = (A, B) -> (
+          ambA := ambient A; ambB := ambient B;
+          byDegree := amb -> (
+              vs := flatten entries vars amb;
+              {select(vs, v -> (degree v)#0 == 1), select(vs, v -> (degree v)#0 == 0)});
+          src := byDegree ambA; tgt := byDegree ambB;
+          found := false;
+          scan(permutations tgt#0, p1 -> if not found then
+              scan(permutations tgt#1, p0 -> if not found then (
+                  images := new MutableList from toList(numgens ambA : null);
+                  scan(#(src#0), i -> images#(index (src#0)#i) = p1#i);
+                  scan(#(src#1), i -> images#(index (src#1)#i) = p0#i);
+                  if (map(ambB, ambA, toList images))(ideal A) == ideal B then
+                      found = true)));
+          found)
+
+o36 = sameRing
+
+o36 : FunctionClosure
+
+i37 : sameRing(mmp#"steps"#0#"nextRing", groundTruthY)
+
+o37 = true
+
+i38 : sameRing(mmp#"steps"#1#"nextRing", groundTruthZ)
+
+o38 = true
+
+i39 : canonicalNefThreshold(groundTruthY, 1)
+
+o39 = 1
+
+o39 : QQ
+
+i40 : canonicalNefThreshold(groundTruthZ, 1)
+
+o40 = 1
+
+o40 : QQ
+

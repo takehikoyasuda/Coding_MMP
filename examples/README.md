@@ -13,6 +13,7 @@ Macaulay2 sessions and published at
 | `05-blowup-of-a-line.m2` | `Bl_L(P3)`: Stein factorization, divisorial (codimension 1) against the ODP small resolution (codimension 2), then `Bl_L(P3) -> P3 -> point` |
 | `06-toric-flip.m2` | toric circuit target: relative canonical model is a flip, with a certified inverse rational map |
 | `07-affine-base-flip.m2` | over an affine base: `threefoldMMPData` finds the flipping contraction itself and returns the flip; also a divisorial step, an index-three flip, and a two-step program through an intermediate target |
+| `08-three-step-program.m2` | `S3 x A^1` over `A^3`: a program three steps long, three divisorial contractions in a row, with both intermediate models checked against ground truth |
 
 ## Scope
 
@@ -23,7 +24,9 @@ are graphs of morphisms.  Example 7 keeps the single grading and drops
 `R_0 = k`, so `X` is projective over the affine `Spec R_0`; that is the
 relative setting, audited in `references/AlgoMMP/RELATIVE-SETTING-AUDIT.md`,
 and it is where the standard three-fold flips live without being compactified
-first.  The package's multigraded entry points, which take a multigraded
+first.  Example 8 stays there and makes the program longer: three steps, so
+that one of them starts from a ring an earlier step built and hands another
+on.  The package's multigraded entry points, which take a multigraded
 variety directly, are a separate extension beyond the paper (see
 `docs/PAPER-SYNC.md`), and this page does not use them.
 
@@ -37,7 +40,7 @@ the published page is transcribed by hand, so it cannot quote output Macaulay2
 no longer produces.
 
 ```sh
-make examples        # re-run all seven and rewrite every .out and .time
+make examples        # re-run all eight and rewrite every .out and .time
 make examples-page   # build ./preview/examples.html and look at it
 make site            # the whole published site, manual included, into ./site
 ```

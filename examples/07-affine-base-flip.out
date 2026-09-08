@@ -291,7 +291,7 @@ o64 = trivial: birational onto a normal image over the affine base
 
 i65 : flatten degrees twoStepContraction#"relativeTargetRing"
 
-o65 = {1, 1, 0, 0}
+o65 = {0, 0, 1, 1}
 
 o65 : List
 
@@ -299,8 +299,8 @@ i66 : ideal twoStepContraction#"relativeTargetRing"
 
 o66 = ideal ()
 
-o66 : Ideal of QQ[mmpRelativeTargetVariable ..mmpRelativeTargetVariable , wa, wb]
-                                           1                           2
+o66 : Ideal of QQ[wa, wb, mmpRelativeTargetVariable ..mmpRelativeTargetVariable ]
+                                                   1                           2
 
 i67 : (contractionSmallnessData twoStepContraction)#"exceptionalDimension"
 

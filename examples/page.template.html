@@ -16,6 +16,7 @@
           "\\RR": "\\mathbb{R}",
           "\\CC": "\\mathbb{C}",
           "\\PP": "\\mathbb{P}",
+          "\\AA": "\\mathbb{A}",
           "\\OO": "\\mathcal{O}",
           "\\Hom": "\\operatorname{Hom}",
           "\\Proj": "\\operatorname{Proj}",
@@ -155,6 +156,7 @@ beyond the paper too, but this page does not use them.</p>
   <li><a href="#blowup-line">5. Blowing up a line, and a two-step program</a></li>
   <li><a href="#flip">6. A toric flip</a></li>
   <li><a href="#affine-flip">7. A flip the program finds by itself, over an affine base</a></li>
+  <li><a href="#three-step">8. A program three steps long</a></li>
   <li><a href="#cost">Cost</a> &middot; <a href="#reproducing">How to repeat these runs</a> &middot; <a href="#scope">What is not here</a></li>
 </ul>
 
@@ -391,6 +393,62 @@ degree one, the base's two of degree zero, and no relations at all.</p>
 
 @@session 07-affine-base-flip | indexData#"index" ; nefData#"nef" ; contraction#"contractionType" ; contraction#"steinFactorizationType" ; smallness#"isSmall" ; smallness#"exceptionalCodimension" ; mmp#"terminationType" ; sameRing(Z, groundTruthZ) ; blowupSmallness#"isSmall" ; blowupMMP#"terminationType" ; mmp3#"terminationType" ; twoStepContraction#"contractionType" ; twoStepMMP#"terminationType" ; twoStepMMP#"numberOfSteps"@@
 
+<h2 id="three-step">8. A program three steps long</h2>
+
+<p>Example 7 ends with a program of two steps, and two is the shortest length
+at which a <i>sequence</i> exists at all.  In that program each step is also an
+end: the first contracts to an intermediate target, the second is the fibration
+that stops it.  This one has a middle &mdash; a step that starts from a ring an
+earlier step built and hands another on.</p>
+
+<p>The input is a surface times a line.  In $N = \ZZ^2$ subdivide the fan of
+$\AA^2 = \mathrm{cone}(u_1,u_2)$, with $u_1 = (1,0)$ and $u_2 = (0,1)$, by</p>
+
+<p>$$u_3 = (1,1), \qquad u_4 = u_1 + u_3 = (2,1), \qquad u_5 = u_1 + u_4 = (3,1),$$</p>
+
+<p>each a star subdivision at a torus-fixed point of the exceptional curve
+before it, so $S_3 \to \AA^2$ is a chain of three smooth point blow-ups.
+Write $E_1, E_2, E_3$ for the divisors of $u_3, u_4, u_5$.  The neighbours in
+the fan give $u_4 + u_2 = 2u_3$, $u_5 + u_3 = 2u_4$ and $u_1 + u_4 = u_5$, so
+$E_1^2 = E_2^2 = -2$ and $E_3^2 = -1$, and adjunction turns that into</p>
+
+<p>$$K \cdot E_1 = K \cdot E_2 = 0, \qquad K \cdot E_3 = -1.$$</p>
+
+<p>Exactly one of the three curves is $K$-negative &mdash; and the same is true
+again once $E_3$ is contracted, and again once $E_2$ is.  So the program over
+$\AA^2$ is forced: contract $E_3$, then $E_2$, then $E_1$, and only then is $K$
+nef.  Three steps, with no choice made anywhere and no coincidence of
+thresholds to arrange.  $X = S_3 \times \AA^1$ is that surface as a threefold,
+projective over the affine base $\AA^3 = \AA^2 \times \AA^1$, polarized by
+the relatively ample $A$ on $S_3$ with
+$A \cdot E_1 = A \cdot E_2 = A \cdot E_3 = 1$, whose sections over $k[a,b]$
+are the four monomials $a^3, a^2b, ab^3, b^6$.  Since every curve has
+$A \cdot C = 1$, the threshold is $1$ at each of the three steps.</p>
+
+<p>Multiplying by $\AA^1$ rather than by $\PP^1$ is what keeps this
+affordable.  The structure morphism stays birational, so
+$\dim R - \dim R_0 = 1$ and the negative-curve certificate of the relative
+setting applies: every threshold candidate is decided by an intersection number
+on a fibre curve rather than by a base-point-free test.  With $\PP^1$ the same
+three-step program exists &mdash; divisorial, divisorial, then the fibration to
+$\AA^2$ &mdash; but the fibre has to be polarized heavily enough for its own
+threshold to stay below the two surface ones, and the smallest polarization
+that does needs $\OO(5)$ on the fibre: eighteen degree-one generators instead
+of four, and the first nefness test does not finish.</p>
+
+<p>The session checks the two intermediate models against ground truth built
+independently from their own polarizations &mdash; on $S_2$ the class with
+$A \cdot E_1 = A \cdot E_2 = 1$, with sections $a^2, ab, b^3$, and on $S_1$
+the class with $A \cdot E_1 = 1$, with sections $a, b$, which is the Rees
+algebra of $(a,b)$, so $\mathrm{Bl}_0(\AA^2) \times \AA^1$.  A relabelling
+of the variables preserving degrees carries each defining ideal onto the other,
+so the models are the expected ones and not merely rings with their numbers.
+The last target is the affine base itself, handed back as $\Proj$ of
+$\AA^3[t]$ so that the final nefness test has a $\Proj$ to read, and $K$ is
+nef there on a base-point-free pluricanonical certificate.</p>
+
+@@session 08-three-step-program | (canonicalIndexData X)#"index" ; (canonicalNefData(X, 1))#"nef" ; canonicalNefThreshold(X, 1) ; contraction#"contractionType" ; contraction#"steinFactorizationType" ; smallness#"isSmall" ; smallness#"exceptionalDimension" ; mmp#"terminationType" ; mmp#"numberOfSteps" ; (mmp#"finalNefData")#"witnessType" ; sameRing(mmp#"steps"#0#"nextRing", groundTruthY) ; sameRing(mmp#"steps"#1#"nextRing", groundTruthZ)@@
+
 <h2 id="cost">Cost</h2>
 
 <p>Wall time of each session, from start to end.  This includes the time
@@ -406,9 +464,10 @@ run that built this page.</p>
   <tr><td>5. Blow up of a line</td><td><code>05-blowup-of-a-line.m2</code></td><td class="n">@@seconds 05-blowup-of-a-line@@ s</td></tr>
   <tr><td>6. Toric flip</td><td><code>06-toric-flip.m2</code></td><td class="n">@@seconds 06-toric-flip@@ s</td></tr>
   <tr><td>7. Flip over an affine base</td><td><code>07-affine-base-flip.m2</code></td><td class="n">@@seconds 07-affine-base-flip@@ s</td></tr>
+  <tr><td>8. A three-step program</td><td><code>08-three-step-program.m2</code></td><td class="n">@@seconds 08-three-step-program@@ s</td></tr>
 </table>
 
-<p>All seven run in seconds, and they cover the same ground as
+<p>All eight run in seconds, and they cover the same ground as
 <code>make test-core</code>.  Every push re-runs them and rebuilds this page,
 so a session that stops working stops the page from being published.</p>
 
@@ -418,7 +477,7 @@ so a session that stops working stops the page from being published.</p>
 
 <pre class="m2">git clone --recurse-submodules https://github.com/takehikoyasuda/Coding_MMP
 cd Coding_MMP
-examples/run.sh                                   # all seven
+examples/run.sh                                   # all eight
 examples/run.sh examples/01-projective-space.m2   # or one of them</pre>
 
 <p>Each run rewrites the <code>.out</code> transcript and the <code>.time</code>
@@ -427,7 +486,7 @@ quote output that Macaulay2 no longer prints.</p>
 
 <h2 id="scope">What is not here</h2>
 
-<p>These seven examples finish.  Some other inputs do not.  Those cases were
+<p>These eight examples finish.  Some other inputs do not.  Those cases were
 measured rather than guessed, and the measurements are in
 <a href="https://github.com/takehikoyasuda/Coding_MMP/blob/main/research-log/README.md"><code>research-log/</code></a>.
 What the implementation is tested and trusted to do is listed in

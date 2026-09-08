@@ -27,17 +27,19 @@ build fails if any example stops working.
 
 **[Worked examples](https://takehikoyasuda.github.io/Coding_MMP/examples.html)**
 is the page to start from if the question is what has actually been computed
-rather than what each function does.  It walks through seven examples: the nef
+rather than what each function does.  It walks through eight examples: the nef
 threshold and contraction of `P3`, a quintic threefold as a minimal model, the
 Segre threefold's fibre-type contraction, a Stein factorization whose finite
 part has degree two, the blow-up of a line and the two-step program
-`Bl_L(P3) -> P3 -> point`, a toric flip, and a minimal model program that finds
-a flipping contraction by itself and flips it.  Each has a brief mathematical
-account and the Macaulay2 session that produces it.  The first six stay inside
-the paper's setting, with monograded varieties and bigraded rings only as
-graphs of morphisms; the seventh keeps the single grading and drops `R_0 = k`,
-so that `X` is projective over an affine base, which is where the standard
-three-fold flips live.  The sources are in [`examples/`](examples/README.md).
+`Bl_L(P3) -> P3 -> point`, a toric flip, a minimal model program that finds a
+flipping contraction by itself and flips it, and a program three steps long.
+Each has a brief mathematical account and the Macaulay2 session that produces
+it.  The first six stay inside the paper's setting, with monograded varieties
+and bigraded rings only as graphs of morphisms; the last two keep the single
+grading and drop `R_0 = k`, so that `X` is projective over an affine base,
+which is where the standard three-fold flips live and where a program can run
+for more than one birational step.  The sources are in
+[`examples/`](examples/README.md).
 
 ## Checkout
 
