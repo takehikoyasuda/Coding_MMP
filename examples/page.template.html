@@ -155,7 +155,7 @@ beyond the paper too, but this page does not use them.</p>
   <li><a href="#disconnected">4. A map with disconnected fibres</a></li>
   <li><a href="#blowup-line">5. Blowing up a line, and a two-step program</a></li>
   <li><a href="#flip">6. A toric flip</a></li>
-  <li><a href="#affine-flip">7. A flip the program finds by itself, over an affine base</a></li>
+  <li><a href="#affine-flip">7. Four programs over an affine base</a></li>
   <li><a href="#three-step">8. A program three steps long</a></li>
   <li><a href="#flip-program">9. Three steps ending in a flip</a></li>
   <li><a href="#cost">Cost</a> &middot; <a href="#reproducing">How to repeat these runs</a> &middot; <a href="#scope">What is not here</a></li>
@@ -322,10 +322,12 @@ step, this is a flipping step.</p>
 
 @@session 06-toric-flip | flipModel#"relativeModelType" ; flipModel#"isIdentity" ; inverseModel#"baseLocusCertified" ; flippingStep#"stepType"@@
 
-<h2 id="affine-flip">7. A flip the program finds by itself, over an affine base</h2>
+<h2 id="affine-flip">7. Four programs over an affine base</h2>
 
-<p>Example 6 is handed the flipping contraction.  Here the program is given a
-ring and nothing else, four times over.  Giving an ambient variable degree zero
+<p>This session runs the program four times, on four unrelated rings, and the
+table below is one row per run.  The first row is what the section is here for:
+Example 6 is handed its flipping contraction, while this one is given a ring and
+nothing else and finds the flip itself.  Giving an ambient variable degree zero
 puts its coordinate in $R_0$, so $X = \Proj R$ is projective over the affine
 $\Spec R_0$ &mdash; where the three-fold flips are, a flipping contraction
 contracting a curve to a point of an affine variety.  Two of the four inputs are
@@ -370,7 +372,8 @@ fan.</p>
 
 <h2 id="three-step">8. A program three steps long</h2>
 
-<p>In $N = \ZZ^2$ subdivide the fan of $\AA^2 = \mathrm{cone}(u_1,u_2)$, with
+<p>One ring in, one program out, three steps long.  To build the ring: in
+$N = \ZZ^2$ subdivide the fan of $\AA^2 = \mathrm{cone}(u_1,u_2)$, with
 $u_1 = (1,0)$ and $u_2 = (0,1)$, by</p>
 
 <p>$$u_3 = (1,1), \qquad u_4 = u_1 + u_3 = (2,1), \qquad u_5 = u_1 + u_4 = (3,1),$$</p>
@@ -412,9 +415,11 @@ what makes each threshold one intersection number on a fibre curve.</p>
 
 <h2 id="flip-program">9. Three steps ending in a flip</h2>
 
-<p>The base is Example 7's: $\Spec R_0$ is not $\QQ$-Gorenstein, and the
-flipping side $Y$ of the circuit has one $\tfrac12(1,1,1)$ point, the cone
-$\langle v_1,v_2,v_4\rangle$ of multiplicity two.  Two rays go in above $Y$:</p>
+<p>Again one ring in and one program out, three steps long, and the last of the
+three is a flip.  The base is Example 7's first row: $\Spec R_0$ is not
+$\QQ$-Gorenstein, and the flipping side $Y$ of the circuit has one
+$\tfrac12(1,1,1)$ point, the cone $\langle v_1,v_2,v_4\rangle$ of multiplicity
+two.  Two rays go in above $Y$:</p>
 
 <p>$$w = (1,1,-1) \quad\text{interior to that cone},\qquad
 w_2 = v_2 + v_4 = (1,2,-2) \quad\text{on a facet of } \sigma.$$</p>
@@ -468,7 +473,7 @@ run that built this page.</p>
   <tr><td>4. Disconnected fibres</td><td><code>04-disconnected-fibres.m2</code></td><td class="n">@@seconds 04-disconnected-fibres@@ s</td></tr>
   <tr><td>5. Blow up of a line</td><td><code>05-blowup-of-a-line.m2</code></td><td class="n">@@seconds 05-blowup-of-a-line@@ s</td></tr>
   <tr><td>6. Toric flip</td><td><code>06-toric-flip.m2</code></td><td class="n">@@seconds 06-toric-flip@@ s</td></tr>
-  <tr><td>7. Flip over an affine base</td><td><code>07-affine-base-flip.m2</code></td><td class="n">@@seconds 07-affine-base-flip@@ s</td></tr>
+  <tr><td>7. Four programs over an affine base</td><td><code>07-affine-base-flip.m2</code></td><td class="n">@@seconds 07-affine-base-flip@@ s</td></tr>
   <tr><td>8. A three-step program</td><td><code>08-three-step-program.m2</code></td><td class="n">@@seconds 08-three-step-program@@ s</td></tr>
   <tr><td>9. Three steps ending in a flip</td><td><code>09-three-step-flip.m2</code></td><td class="n">@@seconds 09-three-step-flip@@ s</td></tr>
 </table>
