@@ -324,46 +324,47 @@ step, this is a flipping step.</p>
 
 <h2 id="affine-flip">7. A flip the program finds by itself, over an affine base</h2>
 
-<p>Example 6 is handed the flipping contraction; this one is given only a ring.
-Giving an ambient variable degree zero puts its coordinate in $R_0$, so
-$X = \Proj R$ becomes projective over the affine $\Spec R_0$ &mdash; where the
-three-fold flips are, a flipping contraction contracting a curve to a point of
-an affine variety.</p>
+<p>Example 6 is handed the flipping contraction.  Here the program is given a
+ring and nothing else, four times over.  Giving an ambient variable degree zero
+puts its coordinate in $R_0$, so $X = \Proj R$ is projective over the affine
+$\Spec R_0$ &mdash; where the three-fold flips are, a flipping contraction
+contracting a curve to a point of an affine variety.  Two of the four inputs are
+toric, on Example 6's rays $v_1, \dots, v_4$ and on four rays with the circuit
+$v_1 + v_2 = v_3 + 3v_4$.</p>
 
-<p>The first input is Example 6's circuit $v_1 + v_2 = 2v_3 + v_4$, read through
-its Cox ring: $\mathrm{Cl}(X) = \ZZ$ with
-$\deg(z_1,z_2,z_3,z_4) = (1,1,-2,-1)$, and the two triangulations are the two
-geometric invariant theory quotients, $Y$ from the monomials of nonpositive
-weight and $Z$ from the nonnegative ones.  Each has one wall curve $C$, with
-$K_Y \cdot C = -1$ and $K_Z \cdot C = +1$, and $H \cdot C = 1$.  $Y$ has one
-$\tfrac12(1,1,1)$ point, so its canonical index is $2$ and the threshold is
-$\tfrac12$.  At that threshold $C$ &mdash; a curve, not a divisor &mdash;
-contracts to the singular point of $\Spec R_0$.  A small contraction, so the
-step is a flip, and the model becomes $Z$, where $K$ is nef.  A
-degree-preserving relabelling carries the ring the program returns onto $Z$.</p>
+<table class="runs">
+  <tr><th>Input, one ring each</th><th>What contracts, and $(K \cdot C, H \cdot C)$</th><th>Result</th></tr>
+  <tr>
+    <td>$Y$: the triangulation $\langle v_1v_2v_3\rangle, \langle v_1v_2v_4\rangle$ of $v_1+v_2 = 2v_3+v_4$.  One $\tfrac12(1,1,1)$ point, canonical index $2$</td>
+    <td>the wall curve $\langle v_1,v_2\rangle$, to the singular point of $\Spec R_0$.  $(-1,1)$, so $t = \tfrac12$; a curve, so small</td>
+    <td>$Z$: the other triangulation $\langle v_1v_3v_4\rangle, \langle v_2v_3v_4\rangle$, smooth, $K$ nef.  A <b>flip</b></td>
+  </tr>
+  <tr>
+    <td>$\mathrm{Bl}_0(\AA^3)$, as $\Proj$ of the Rees algebra of $(a,b,c)$</td>
+    <td>the exceptional surface $E$, to the origin of $\AA^3$.  $K = 2E$ and $\OO(1) = -E$, so $t = 2$</td>
+    <td>$\AA^3$, where $K$ is nef.  A <b>divisorial</b> step</td>
+  </tr>
+  <tr>
+    <td>the $K$-negative triangulation of $v_1+v_2 = v_3+3v_4$.  Canonical index $3$</td>
+    <td>its wall curve, to the singular point of the base, at $t = \tfrac23$; small</td>
+    <td>the other triangulation, canonical index $1$, $K$ nef.  A <b>flip</b></td>
+  </tr>
+  <tr>
+    <td>$\mathrm{Bl}_0(\AA^2) \times \PP^1$ over $\AA^2$, polarized by $\OO(1,3)$</td>
+    <td>$E \times \mathrm{pt}$ has $(-1,1)$ and $\mathrm{pt} \times \PP^1$ has $(-2,3)$, so $t = 1$ and $\tfrac23$: first the surface $E \times \PP^1$, to the curve $\{0\} \times \PP^1$, then the fibres</td>
+    <td>$\AA^2 \times \PP^1$, then $\AA^2$: a <b>divisorial</b> step and then a $K$-negative <b>fibration</b></td>
+  </tr>
+</table>
 
 <p>$Y$ is presented by the second Veronese of its section ring, because the ring
-itself needs a generator of degree two, and under a weighted grading the Cartier
-test over-reports &mdash; a divisor can be locally free on the punctured cone
-without being invertible on $Y$, as $\OO(1)$ is on $\PP(1,1,2)$ &mdash; which
-returns the index as $1$ where it is $2$.</p>
-
-<p>The session then runs the program again, from scratch, on three more rings,
-each contracting something different.  $\mathrm{Bl}_0(\AA^3)$, as $\Proj$ of the Rees algebra of $(a,b,c)$, has
-$K = 2E$ and $\OO(1) = -E$, so the threshold is $2$; there the exceptional
-surface $E$ contracts to the origin of $\AA^3$, and the step is divisorial.  The
-weights $(1,1,-1,-3)$ give another flip, of canonical index three and threshold
-$\tfrac23$.  And on $\mathrm{Bl}_0(\AA^2) \times \PP^1$ over $\AA^2$ with
-$\OO(1,3)$ the thresholds are $1$ on $E \times \mathrm{pt}$ and $\tfrac23$ on
-the fibre, so at $t = 1$ the surface $E \times \PP^1$ contracts to a curve,
-leaving $\AA^2 \times \PP^1$, and the second step contracts its fibres to
-$\AA^2$: a $K$-negative fibration.  That middle target is $\Proj$ over
-$\Spec R_0$ of the algebra the sections generate, and its Stein factorization is
-certified trivial rather than computed: birational onto a normal image, so
-Zariski's main theorem applies.  <code>Polyhedra</code> appears in the session
-only to write the four rings down; nothing after that uses the fan.</p>
-
-
+itself needs a generator of degree two and the Cartier test over-reports on a
+weighted grading, returning the index as $1$ where it is $2$.  The middle target
+$\AA^2 \times \PP^1$ is built as $\Proj$ over $\Spec R_0$ of the algebra the
+sections generate, and its Stein factorization is certified trivial rather than
+computed.  The session also checks that the ring returned for $Y$ really is $Z$,
+by a degree-preserving relabelling of the variables.  <code>Polyhedra</code>
+appears only to write the two toric rings down; nothing after that uses the
+fan.</p>
 
 @@session 07-affine-base-flip | indexData#"index" ; nefData#"nef" ; contraction#"contractionType" ; contraction#"steinFactorizationType" ; smallness#"isSmall" ; smallness#"exceptionalCodimension" ; mmp#"terminationType" ; sameRing(Z, groundTruthZ) ; blowupSmallness#"isSmall" ; blowupMMP#"terminationType" ; mmp3#"terminationType" ; twoStepContraction#"contractionType" ; twoStepMMP#"terminationType" ; twoStepMMP#"numberOfSteps"@@
 
