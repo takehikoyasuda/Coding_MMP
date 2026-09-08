@@ -79,6 +79,7 @@ test-core:
 	M2 --no-readline --stop -q tests/negative-curve-witness-multigraded.m2
 	M2 --no-readline --stop -q tests/relative-affine-flip-mmp.m2
 	M2 --no-readline --stop -q tests/three-step-relative-mmp.m2
+	M2 --no-readline --stop -q tests/three-step-flip-mmp.m2
 
 # Not part of test-core: dominated by mmpStepRecordData's
 # contractionSmallnessData call, which takes on the order of 15 minutes of

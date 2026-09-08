@@ -14,6 +14,7 @@ Macaulay2 sessions and published at
 | `06-toric-flip.m2` | toric circuit target: relative canonical model is a flip, with a certified inverse rational map |
 | `07-affine-base-flip.m2` | over an affine base: `threefoldMMPData` finds the flipping contraction itself and returns the flip; also a divisorial step, an index-three flip, and a two-step program through an intermediate target |
 | `08-three-step-program.m2` | `S3 x A^1` over `A^3`: a program three steps long, three divisorial contractions in a row, with both intermediate models checked against ground truth |
+| `09-three-step-flip.m2` | over example 7's non-Q-Gorenstein affine base: three steps ending in a flip -- two divisorial contractions, then the flip that was K-trivial until they happened |
 
 ## Scope
 
@@ -24,9 +25,10 @@ are graphs of morphisms.  Example 7 keeps the single grading and drops
 `R_0 = k`, so `X` is projective over the affine `Spec R_0`; that is the
 relative setting, audited in `references/AlgoMMP/RELATIVE-SETTING-AUDIT.md`,
 and it is where the standard three-fold flips live without being compactified
-first.  Example 8 stays there and makes the program longer: three steps, so
-that one of them starts from a ring an earlier step built and hands another
-on.  The package's multigraded entry points, which take a multigraded
+first.  Examples 8 and 9 stay there and make the program longer: three steps,
+so that one of them starts from a ring an earlier step built and hands another
+on, and in Example 9 the last of the three is a flip.  The package's
+multigraded entry points, which take a multigraded
 variety directly, are a separate extension beyond the paper (see
 `docs/PAPER-SYNC.md`), and this page does not use them.
 
@@ -40,7 +42,7 @@ the published page is transcribed by hand, so it cannot quote output Macaulay2
 no longer produces.
 
 ```sh
-make examples        # re-run all eight and rewrite every .out and .time
+make examples        # re-run all nine and rewrite every .out and .time
 make examples-page   # build ./preview/examples.html and look at it
 make site            # the whole published site, manual included, into ./site
 ```

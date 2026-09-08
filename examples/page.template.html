@@ -157,6 +157,7 @@ beyond the paper too, but this page does not use them.</p>
   <li><a href="#flip">6. A toric flip</a></li>
   <li><a href="#affine-flip">7. A flip the program finds by itself, over an affine base</a></li>
   <li><a href="#three-step">8. A program three steps long</a></li>
+  <li><a href="#flip-program">9. Three steps ending in a flip</a></li>
   <li><a href="#cost">Cost</a> &middot; <a href="#reproducing">How to repeat these runs</a> &middot; <a href="#scope">What is not here</a></li>
 </ul>
 
@@ -449,6 +450,63 @@ nef there on a base-point-free pluricanonical certificate.</p>
 
 @@session 08-three-step-program | (canonicalIndexData X)#"index" ; (canonicalNefData(X, 1))#"nef" ; canonicalNefThreshold(X, 1) ; contraction#"contractionType" ; contraction#"steinFactorizationType" ; smallness#"isSmall" ; smallness#"exceptionalDimension" ; mmp#"terminationType" ; mmp#"numberOfSteps" ; (mmp#"finalNefData")#"witnessType" ; sameRing(mmp#"steps"#0#"nextRing", groundTruthY) ; sameRing(mmp#"steps"#1#"nextRing", groundTruthZ)@@
 
+<h2 id="flip-program">9. Three steps ending in a flip</h2>
+
+<p>Example 8 gets its three steps from three divisorial contractions, and there
+Algorithm 4 is never asked for anything: a $\QQ$-Gorenstein target is its own
+relative canonical model, so every step's model is the identity.  This program
+ends with a <i>flip</i> &mdash; a small contraction whose relative canonical
+model is a new variety, constructed rather than recognised.  It is the first
+program here longer than one step with a flip in it.</p>
+
+<p>The flip has to come last, and that is a property of the setting rather than
+of this input.  Over an affine base the flipping contraction the program can
+carry out is the structure morphism $X \to \Spec R_0$, and that is the
+contraction at the threshold only when the relative Picard rank is one.  A flip
+onto an intermediate target would ask for the relative canonical model of a base
+that is itself a $\Proj$ over $\Spec R_0$, whose Rees construction has
+degree-zero fibre variables and for which no heft vector exists.  So a program
+with a flip in it has to spend its Picard rank on divisorial steps first.</p>
+
+<p>The base is Example 7's.  In $N = \ZZ^3$ the circuit
+$v_1 + v_2 = 2v_3 + v_4$ with $v_1 = (1,0,0)$, $v_2 = (0,1,0)$, $v_3 = (0,0,1)$,
+$v_4 = (1,1,-2)$ spans $\sigma$, and $\Spec R_0 = \Spec k[\sigma^\vee \cap M]$
+is not $\QQ$-Gorenstein.  Its flipping side $Y$ carries a $\tfrac12(1,1,1)$
+point, the cone $\langle v_1,v_2,v_4\rangle$ of multiplicity two.  Two rays go
+in above it:</p>
+
+<p>$$w = (1,1,-1) \quad\text{interior to that cone},\qquad
+w_2 = v_2 + v_4 = (1,2,-2) \quad\text{on a facet of } \sigma.$$</p>
+
+<p>The star subdivision at $w$ resolves the $\tfrac12(1,1,1)$ point, so the
+threefold $X$ that results is smooth, projective over $\Spec R_0$ of relative
+Picard rank three.  Polarized by $H = 4D_{v_4} + D_w + 3D_{w_2}$ its wall curves
+have $(K \cdot C, H \cdot C) = (-1,1)$ on $\langle w,w_2\rangle$, $(-1,2)$ on
+$\langle v_1,w\rangle$ and $(0,1)$ on the rest, so the threshold is $1$, one
+wall alone attains it, and $D_{w_2}$ is what contracts.  Nothing is tuned; the
+program is forced at every step.</p>
+
+<p>What the configuration is <i>for</i> is what the circuit wall
+$\langle v_1,v_2\rangle$ does.  On $X$, and on the model below it, that wall is
+$K$-trivial &mdash; the resolution's exceptional divisor absorbs the discrepancy
+&mdash; and it turns $K$-negative only on $Y$, once both divisorial steps have
+happened.  The flip is invisible from the start and appears when the two
+divisors are gone.  The fibre curves record it: $(K \cdot C, H \cdot C)$ runs
+$\{(-1,1),(0,1),(0,1)\}$ on $X$, then $\{(-1,1),(0,1)\}$, then
+$\{(-1,1)\}$ on $Y$, and $\{(+1,1)\}$ on the flip &mdash; the sign change
+that makes it a flip rather than a flop.</p>
+
+<p>All four models are subrings of $k[a,b,c,t]$ over the same degree-zero part
+$R_0 = k[b,\, b^2c,\, a,\, abc,\, a^2c]$, each generated over it by the
+sections of the divisor the previous step hands on.  The session checks all
+three models the program produces against ground truth built independently from
+their own polarizations, by a relabelling of the variables that preserves
+degrees.  The last two are Example 7's $Y$ and $Z$: this program arrives at that
+flip from a ring three steps upstream of it, and $Z$ comes out as the Rees
+algebra of $(a,b)$ over $R_0$.</p>
+
+@@session 09-three-step-flip | (canonicalIndexData X)#"index" ; (canonicalNefData(X, 1))#"nef" ; mmp#"terminationType" ; mmp#"numberOfSteps" ; contraction#"threshold" ; contraction#"contractionType" ; contraction#"steinFactorizationType" ; flipContraction#"steinFactorizationType" ; (canonicalIndexData flippingSource)#"index" ; (canonicalIndexData finalRing)#"index" ; (canonicalNefData(finalRing, 1))#"nef" ; (mmp#"finalNefData")#"witnessType" ; sameRing(mmp#"steps"#0#"nextRing", groundTruthX1) ; sameRing(mmp#"steps"#1#"nextRing", groundTruthY) ; sameRing(finalRing, groundTruthZ)@@
+
 <h2 id="cost">Cost</h2>
 
 <p>Wall time of each session, from start to end.  This includes the time
@@ -465,11 +523,14 @@ run that built this page.</p>
   <tr><td>6. Toric flip</td><td><code>06-toric-flip.m2</code></td><td class="n">@@seconds 06-toric-flip@@ s</td></tr>
   <tr><td>7. Flip over an affine base</td><td><code>07-affine-base-flip.m2</code></td><td class="n">@@seconds 07-affine-base-flip@@ s</td></tr>
   <tr><td>8. A three-step program</td><td><code>08-three-step-program.m2</code></td><td class="n">@@seconds 08-three-step-program@@ s</td></tr>
+  <tr><td>9. Three steps ending in a flip</td><td><code>09-three-step-flip.m2</code></td><td class="n">@@seconds 09-three-step-flip@@ s</td></tr>
 </table>
 
-<p>All eight run in seconds, and they cover the same ground as
-<code>make test-core</code>.  Every push re-runs them and rebuilds this page,
-so a session that stops working stops the page from being published.</p>
+<p>Eight of the nine run in seconds; the ninth takes under two minutes, nearly
+all of it the first step's nef-threshold search and the contraction after it.
+They cover the same ground as <code>make test-core</code>.  Every push re-runs them
+and rebuilds this page, so a session that stops working stops the page from
+being published.</p>
 
 <h2 id="reproducing">How to repeat these runs</h2>
 
@@ -477,7 +538,7 @@ so a session that stops working stops the page from being published.</p>
 
 <pre class="m2">git clone --recurse-submodules https://github.com/takehikoyasuda/Coding_MMP
 cd Coding_MMP
-examples/run.sh                                   # all eight
+examples/run.sh                                   # all nine
 examples/run.sh examples/01-projective-space.m2   # or one of them</pre>
 
 <p>Each run rewrites the <code>.out</code> transcript and the <code>.time</code>
@@ -486,7 +547,7 @@ quote output that Macaulay2 no longer prints.</p>
 
 <h2 id="scope">What is not here</h2>
 
-<p>These eight examples finish.  Some other inputs do not.  Those cases were
+<p>These nine examples finish.  Some other inputs do not.  Those cases were
 measured rather than guessed, and the measurements are in
 <a href="https://github.com/takehikoyasuda/Coding_MMP/blob/main/research-log/README.md"><code>research-log/</code></a>.
 What the implementation is tested and trusted to do is listed in

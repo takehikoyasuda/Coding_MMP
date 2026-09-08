@@ -41,7 +41,7 @@ The source repositories had the following local state at import time:
 | Weighted relative-model graph | `b2mDiagonalData`, `b2mToGraphMorphism` | skew Rees degrees use an interior positive diagonal; weighted toric flip passes end to end |
 | Contraction smallness | `contractionGraphSmallnessData`, `contractionSmallnessData` | exterior-power criterion audited; blow-up divisor, ODP small resolution, and identity regressions pass |
 | MMP step records | `mmpStepRecordData` | graph-preserving divisorial/flipping/mixed records with automatic smallness |
-| Top-level threefold MMP loop | `threefoldMMPData` | P3 K-negative-fibration, quintic minimal-model, and certified Bl_L(P3) birational-continuation regressions pass; over an affine base it finds and carries out a flip from the ring alone, and runs a three-step program of divisorial contractions through two intermediate targets it builds itself |
+| Top-level threefold MMP loop | `threefoldMMPData` | P3 K-negative-fibration, quintic minimal-model, and certified Bl_L(P3) birational-continuation regressions pass; over an affine base it finds and carries out a flip from the ring alone, runs a three-step program of divisorial contractions through two intermediate targets it builds itself, and runs a three-step program whose last step is a flip |
 | Affine base, `R_0` not a field | `affineBaseRingInternal`, `affineBaseIrrelevantIdealInternal`, `dropIrrelevantComponentsInternal`, `mmpIsCartierInternal`, `affineContractionSmallnessInternal`, `affineExceptionalIdealInternal`, `affineFibreCurvesInternal`, `affineNegativeCurveShortcutInternal`, `affineTargetPresentationInternal`, `affineRelativeModelRingInternal` | see below |
 
 ## The relative setting: `X = Proj R` over the affine `Spec R_0`
@@ -127,6 +127,29 @@ when `R_0 = k`.
   `H.F >= 5`, hence eighteen degree-one generators instead of four, and that
   input was not carried through -- its canonical index alone had not returned
   after eight minutes and ten gigabytes.
+- **A program with a flip in it.**  The three divisorial steps above never ask
+  Algorithm 4 for anything: a Q-Gorenstein target is its own relative canonical
+  model, so each step's model is the identity.  A program that flips has to be
+  built differently.  The flipping contraction the code can carry out over an
+  affine base is the structure morphism `X -> Spec R_0`, and that is the
+  contraction at the threshold only at relative Picard rank one; a flip onto an
+  intermediate target would ask for the relative canonical model of a base that
+  is itself a `Proj` over `Spec R_0`, where -- as the note on
+  `relativeCanonicalModelFromBaseData` records -- FlipComputation's Rees
+  construction has degree-zero fibre variables and no heft vector exists.  So
+  the flip has to be the last step and the Picard rank has to be spent on
+  divisorial contractions first.
+  Over the base of example 7 -- the circuit `v1 + v2 = 2v3 + v4`, whose flipping
+  side `Y` carries a `1/2(1,1,1)` point -- add two rays above `Y`: `w = (1,1,-1)`
+  interior to that cone, which resolves it, and `w2 = v2 + v4` on a facet of
+  `sigma`.  The result is smooth of relative Picard rank three, and the program
+  contracts `D_{w2}`, then `D_w`, then flips, reaching `Z` as a minimal model.
+  What makes it work is that the circuit wall is K-trivial on both upper models
+  and turns K-negative only on `Y`: the flip is invisible until the two divisors
+  are gone.  Measured: the regression runs in two and a half minutes.  The first
+  step's nef-threshold search and the contraction after it are 69 s and 129 s of
+  cpu time when timed on their own; everything after that first step is under
+  twenty seconds together.
 - **Variable order in the target presentation.**  The base coordinates go ahead
   of the section variables in `affineRelativeTargetRingInternal`.  Nothing
   downstream reads a variable by position, but the order is the tie-break of the
@@ -165,8 +188,10 @@ Veronese presentation, where every positive-degree generator has degree one,
 avoids it.
 
 Regressions: `tests/relative-affine-flip-mmp.m2`,
-`tests/three-step-relative-mmp.m2`.  Worked examples:
-`examples/07-affine-base-flip.m2`, `examples/08-three-step-program.m2`.
+`tests/three-step-relative-mmp.m2`, `tests/three-step-flip-mmp.m2`.  Worked
+examples:
+`examples/07-affine-base-flip.m2`, `examples/08-three-step-program.m2`,
+`examples/09-three-step-flip.m2`.
 
 ## WeilDivisors' graded canonical divisor, where its degree read fails
 
