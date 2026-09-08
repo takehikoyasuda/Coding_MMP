@@ -1,6 +1,5 @@
 needsPackage("MMPComputation", FileName => "MMPComputation.m2")
 needsPackage "Polyhedra"
-rayList = {{1,0,0}, {0,1,0}, {0,0,1}, {1,1,-2}}
 coxWeights = {1,1,-2,-1}
 veroneseSide = (w, side, d) -> (
     degvec := apply(w, c -> side*c);
