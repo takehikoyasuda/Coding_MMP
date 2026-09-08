@@ -4156,6 +4156,8 @@ Node
     :Start here: run the program
     threefoldMMPData
     canonicalIndexData
+    :X over an affine base
+    "the relative setting over an affine base"
     :Short answers
     isCanonicalNef
     canonicalNefThreshold
@@ -5720,6 +5722,179 @@ Node
       @TO canonicalNefThresholdData@ on a multigraded presentation.  The option is
       declared here only because the option list is inherited with
       {\tt options canonicalNefThresholdData}.
+
+Node
+  Key
+    "the relative setting over an affine base"
+  Headline
+    X = Proj R projective over the affine Spec R_0, where R_0 need not be a field
+  Description
+    Text
+      Section 3 of the paper takes $X = \operatorname{Proj} R$ with $R_0 = k$,
+      so that $X$ is projective over a point.  Giving an ambient variable
+      degree zero puts its coordinate into $R_0$ instead, and
+      $X = \operatorname{Proj} R$ becomes projective over the affine
+      $\operatorname{Spec} R_0$.  There is no option to set: every entry point
+      reads the case off the presentation, by looking for an ambient variable
+      all of whose degrees are zero, and every part of the relative reading is
+      inert when $R_0 = k$.  So a presentation with degree-zero variables is
+      the whole interface.
+
+      This is where the standard three-fold flips are.  A flipping contraction
+      contracts a curve to a point of an affine variety, so it is not a
+      morphism of projective varieties and does not appear in the absolute
+      setting unless it is compactified first.
+
+      How long a relative program can be turns on which target the contraction
+      at the threshold has.  If it is $\operatorname{Spec} R_0$ itself then
+      Algorithm 4 returns the whole relative canonical model at once and the
+      program is over; contracting to an intermediate variety over
+      $\operatorname{Spec} R_0$ instead is what lets one step hand a ring on to
+      the next, and that is what makes a relative program more than one
+      birational step long.
+
+      The smallest input is the blow-up of the origin in $\mathbb{A}^3$, as
+      $\operatorname{Proj}$ of the Rees algebra of $(a,b,c)$.  There
+      $K = 2E$ and $\mathcal{O}_X(1) = -E$, so $K + tH = (2-t)E$ is nef exactly
+      for $t \geq 2$.  The contraction at the threshold is the structure
+      morphism $X \to \operatorname{Spec} R_0$, its exceptional locus is a
+      surface in a threefold, so the step is divisorial and the program stops
+      at $\mathbb{A}^3$.  Load the package as in @TO MMPComputation@ first; the
+      examples below carry on from one another.
+    Example
+      reesRing = QQ[a,b,c,x,y,z, Degrees => {0,0,0,1,1,1}];
+      blowup = reesRing/minors(2,matrix{{a,b,c},{x,y,z}});
+      canonicalNefThreshold(blowup,1)
+      blowupProgram = threefoldMMPData(blowup,1);
+      blowupProgram#"terminationType"
+      apply(blowupProgram#"steps", record -> record#"stepType")
+      flatten degrees blowupProgram#"finalRing"
+    Text
+      The final ring has three variables of degree zero and one of degree one.
+      A contraction to the affine base has $\operatorname{Spec} R_0$ for its
+      target, which is not a $\operatorname{Proj}$ and so not something the next
+      iteration could read; it is handed back as $\operatorname{Proj}$ of
+      $R_0[t]$, whose $\operatorname{Proj}$ is $\operatorname{Spec} R_0$ again.
+
+      A contraction result says which kind of target it found.  The structure
+      morphism to the base records @TT "contractionIsStructureMorphism"@,
+      @TT "affineBaseDimension"@, and a @TT "steinFactorizationType"@ of
+      {\tt "structure morphism to the affine base"}.  A target that is neither
+      the base nor a point records @TT "relativeTargetRing"@ -- again a graded
+      ring whose degree-zero part is $R_0$, so the next step starts from it
+      directly -- and a @TT "steinFactorizationType"@ of
+      {\tt "trivial: birational onto a normal image over the affine base"}.
+      That second one is a certificate rather than a computation: the morphism
+      is certified birational onto its image by an explicit ratio of sections
+      for each coordinate, the image is checked normal, and Zariski's main
+      theorem then gives $\Phi_* \mathcal{O}_X = \mathcal{O}$ of the image, so
+      the Stein factorization is trivial and is skipped rather than assumed.
+
+      Here is a flip, found from the ring alone.  Take the toric circuit
+      $v_1 + v_2 = 2v_3 + v_4$ in $N = \mathbb{Z}^3$ with $v_1 = (1,0,0)$,
+      $v_2 = (0,1,0)$, $v_3 = (0,0,1)$ and $v_4 = (1,1,-2)$, and let
+      $\operatorname{Spec} R_0 = \operatorname{Spec} k[\sigma^\vee \cap M]$ for
+      $\sigma = \operatorname{cone}(v_1,v_2,v_3,v_4)$, an affine threefold that
+      is not $\mathbb{Q}$-Gorenstein.  The two triangulations of the circuit
+      are its two small modifications; on the one below, $Y$, the wall curve has
+      $K \cdot C = -1$, so $Y \to \operatorname{Spec} R_0$ is a flipping
+      contraction.  $Y$ has one $\tfrac12(1,1,1)$ point, so its canonical index
+      is 2, and the program finds the threshold, checks that the contraction is
+      small -- exceptional locus of dimension one in a threefold -- and then
+      flips.
+    Example
+      monomialRing = QQ[ea,eb,ec,et];
+      circuitBase = {eb, eb^2*ec, ea, ea*eb*ec, ea^2*ec};
+      flippingSide = QQ[p_1 .. p_5, q_1, q_2, Degrees => {0,0,0,0,0,1,1}];
+      Y = flippingSide/ker map(monomialRing, flippingSide,
+          circuitBase | {ea^2*eb^2*ec^2*et, ea^2*eb^2*ec^3*et});
+      (canonicalIndexData Y)#"index"
+      canonicalNefThreshold(Y,2)
+      flipProgram = threefoldMMPData(Y,2);
+      flipProgram#"terminationType"
+      apply(flipProgram#"steps", record -> record#"stepType")
+      apply(flipProgram#"steps", record -> record#"contractionIsSmall")
+    Text
+      A flipping step is the one place where Algorithm 4 constructs rather than
+      recognizes: read @TT "isIdentity"@ off the step's
+      @TT "relativeModelData"@, which is false here and true for a divisorial
+      step onto a $\mathbb{Q}$-Gorenstein target.
+
+      Programs over an affine base can be longer.  Take the toric surface
+      $S_3$ obtained from $\mathbb{A}^2$ by blowing up the origin and then a
+      torus-fixed point of each successive exceptional curve, and let
+      $X = S_3 \times \mathbb{A}^1$ over $\mathbb{A}^3$.  Its three exceptional
+      curves have $K \cdot E = 0, 0, -1$, and the same holds again after each
+      contraction, so the program is forced to contract them one at a time and
+      takes three divisorial steps to reach $\mathbb{A}^3$.
+    Example
+      threeStepAmbient = QQ[a3,b3,c3,w_0,w_1,w_2,w_3,
+          Degrees => {0,0,0,1,1,1,1}];
+      threeStep = threeStepAmbient/ker map(monomialRing, threeStepAmbient,
+          {ea,eb,ec, ea^3*et, ea^2*eb*et, ea*eb^3*et, eb^6*et});
+      threeStepProgram = threefoldMMPData(threeStep,1);
+      threeStepProgram#"numberOfSteps"
+      apply(threeStepProgram#"steps", record -> record#"stepType")
+      apply(threeStepProgram#"steps", record -> flatten degrees record#"nextRing")
+    Text
+      A program can also be three steps long and end in a flip; that one is
+      {\tt examples/09-three-step-flip.m2} in the repository, and it takes a
+      couple of minutes rather than seconds.  The flip has to be its last step,
+      and that is a property of the setting rather than of the input.  The
+      flipping contraction this package can carry out is the structure
+      morphism, which is the contraction at the threshold only when the
+      relative Picard rank is one; a flip onto an intermediate target would ask
+      @TO relativeCanonicalModelFromBaseData@ for the relative canonical model
+      of a base that is itself a $\operatorname{Proj}$ over
+      $\operatorname{Spec} R_0$, whose Rees construction has degree-zero fibre
+      variables and no heft vector.  So the relative Picard rank has to be
+      spent on divisorial steps first.
+
+      Four things are worth knowing before presenting an input this way.
+
+      {\em Give every positive-degree generator degree one.}  On a weighted
+      presentation $\operatorname{Spec} R \setminus V(B)$ is not a torsor over
+      $X$, so a divisor can be locally free on the punctured cone without being
+      invertible on $X$ -- the same thing that happens to $\mathcal{O}(1)$ on
+      $\mathbb{P}(1,1,2)$ -- and the Cartier test over-reports: on a
+      presentation of the $Y$ above that needs a degree-two generator, the
+      canonical index comes back as 1 where it is 2.  A Veronese presentation
+      avoids it, and is what the example above uses.
+
+      {\em Fibre-type contractions onto an intermediate target are refused.}
+      Certifying that their fibres are connected needs the $A$-module version
+      of the section-ring lemma, which is not implemented; the refusal names it
+      rather than assuming the Stein factorization is trivial.
+
+      {\em Section counts have to be taken with the basis command.}  A
+      degree-zero variable cannot be given a positive weight, so $R$ has no
+      heft vector, and @TO rank@, @TO prune@ and @TO hilbertFunction@ all fail
+      on modules over it where @TO basis@ still works.  This matters if you
+      compute alongside the package rather than only through it.
+
+      {\em A Weil divisor of $\operatorname{Spec} R$ can have components that
+      are not on $X$.}  Over an affine base the irrelevant ideal $B$ has height
+      one exactly when $X \to \operatorname{Spec} R_0$ is birational, and then a
+      divisor can have prime components inside $V(B)$, which
+      $\operatorname{Proj}$ removes.  They change every section count taken from
+      the graded module, and the package drops them from the canonical divisor
+      at the source.
+
+      What the implementation needed, item by item, is in
+      {\tt docs/IMPLEMENTATION-STATUS.md} under "The relative setting"; what
+      the paper's statements need is audited in
+      {\tt references/AlgoMMP/RELATIVE-SETTING-AUDIT.md}.  The worked examples
+      are {\tt examples/07-affine-base-flip.m2},
+      {\tt examples/08-three-step-program.m2} and
+      {\tt examples/09-three-step-flip.m2}, and the regressions are
+      {\tt tests/relative-affine-flip-mmp.m2},
+      {\tt tests/three-step-relative-mmp.m2} and
+      {\tt tests/three-step-flip-mmp.m2}.
+  SeeAlso
+    threefoldMMPData
+    canonicalContractionData
+    relativeCanonicalModelData
+    contractionSmallnessData
 
 ///
 

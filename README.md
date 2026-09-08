@@ -180,8 +180,13 @@ certifies a connected-fibre morphism to a lower-dimensional target for which
 
 `MMPComputation.m2` carries a standard Macaulay2 package manual (`doc ///...///`
 blocks after `beginDocumentation()`) describing each public function's usage,
-inputs, and outputs, with runnable examples for the top-level API. Build and
-browse it with
+inputs, and outputs, with runnable examples for the top-level API. It also has
+one topic page rather than a function page, *the relative setting over an
+affine base*, which explains how to present `X = Proj R` as projective over the
+affine `Spec R_0` — the setting where the standard three-fold flips live and
+where a program can run for several birational steps — what the contraction
+results then report, and the four things worth knowing before presenting an
+input that way. Build and browse it with
 
 ```sh
 make install
