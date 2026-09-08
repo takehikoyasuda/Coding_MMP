@@ -109,6 +109,7 @@
       .note { background: #fbf7e8; border: 1px solid #e0d8b8; padding: .6em .9em; font-size: 94%; }
       ul.toc { list-style: none; padding-left: 0; }
       ul.toc li { margin: .25em 0; }
+      ul.toc ul.toc { padding-left: 1.5em; margin: .2em 0; font-size: 95%; }
     </style>
   </head>
   <body>
@@ -155,7 +156,13 @@ beyond the paper too, but this page does not use them.</p>
   <li><a href="#disconnected">4. A map with disconnected fibres</a></li>
   <li><a href="#blowup-line">5. Blowing up a line, and a two-step program</a></li>
   <li><a href="#flip">6. A toric flip</a></li>
-  <li><a href="#affine-flip">7. Four programs over an affine base</a></li>
+  <li><a href="#affine-flip">7. Four programs over an affine base</a>
+    <ul class="toc">
+      <li><a href="#affine-flip-1">7.1 A flip the program finds by itself</a></li>
+      <li><a href="#affine-flip-2">7.2 A divisorial step</a></li>
+      <li><a href="#affine-flip-3">7.3 A flip of canonical index three</a></li>
+      <li><a href="#affine-flip-4">7.4 Two steps: divisorial, then a fibration</a></li>
+    </ul></li>
   <li><a href="#three-step">8. A program three steps long</a></li>
   <li><a href="#flip-program">9. Three steps ending in a flip</a></li>
   <li><a href="#cost">Cost</a> &middot; <a href="#reproducing">How to repeat these runs</a> &middot; <a href="#scope">What is not here</a></li>
@@ -324,53 +331,77 @@ step, this is a flipping step.</p>
 
 <h2 id="affine-flip">7. Four programs over an affine base</h2>
 
-<p>This session runs the program on four threefolds, one after another and
-independently, and the table has one row per run.  The first row is what the
-section is here for: Example 6 is handed its flipping contraction, while this
-one is given the variety and nothing else and finds the flip itself.</p>
-
-<p>Each of the four is projective over an affine base rather than over a point.
-Giving an ambient variable degree zero puts its coordinate in $R_0$, so
+<p>This session runs the program four times, on four unrelated threefolds, one
+per subsection below.  Each is projective over an affine base rather than over a
+point: giving an ambient variable degree zero puts its coordinate in $R_0$, so
 $X = \Proj R$ is projective over the affine $\Spec R_0$ &mdash; where the
 three-fold flips are, a flipping contraction contracting a curve to a point of
 an affine variety.  What the program is handed each time is the homogeneous
-coordinate ring of the threefold in the left column, graded that way.  Two of
-the four are toric, on Example 6's rays $v_1, \dots, v_4$ and on four rays with
-the circuit $v_1 + v_2 = v_3 + 3v_4$.</p>
+coordinate ring of the variety, graded that way, and nothing else;
+<code>Polyhedra</code> appears in the session only to write the toric rings
+down.</p>
 
-<table class="runs">
-  <tr><th>The threefold</th><th>What contracts, and $(K \cdot C, H \cdot C)$</th><th>The program</th></tr>
-  <tr>
-    <td>$Y$: the triangulation $\langle v_1v_2v_3\rangle, \langle v_1v_2v_4\rangle$ of $v_1+v_2 = 2v_3+v_4$.  One $\tfrac12(1,1,1)$ point, canonical index $2$</td>
-    <td>the wall curve $\langle v_1,v_2\rangle$, to the singular point of $\Spec R_0$.  $(-1,1)$, so $t = \tfrac12$; a curve, so small</td>
-    <td>$Y \dashrightarrow Z$ over $\Spec R_0$, a <b>flip</b>.  $Z$ is the other triangulation $\langle v_1v_3v_4\rangle, \langle v_2v_3v_4\rangle$: smooth, $K$ nef</td>
-  </tr>
-  <tr>
-    <td>$\mathrm{Bl}_0(\AA^3)$, as $\Proj$ of the Rees algebra of $(a,b,c)$</td>
-    <td>the exceptional surface $E$, to the origin of $\AA^3$.  $K = 2E$ and $\OO(1) = -E$, so $t = 2$</td>
-    <td>$\mathrm{Bl}_0(\AA^3) \to \AA^3$, a <b>divisorial</b> step.  $K$ is nef on $\AA^3$</td>
-  </tr>
-  <tr>
-    <td>the $K$-negative triangulation $Y'$ of the circuit $v_1+v_2 = v_3+3v_4$.  Canonical index $3$</td>
-    <td>its wall curve, to the singular point of the base, at $t = \tfrac23$; small</td>
-    <td>$Y' \dashrightarrow Z'$, a <b>flip</b>.  $Z'$ has canonical index $1$ and $K$ nef</td>
-  </tr>
-  <tr>
-    <td>$\mathrm{Bl}_0(\AA^2) \times \PP^1$ over $\AA^2$, polarized by $\OO(1,3)$</td>
-    <td>$E \times \mathrm{pt}$ has $(-1,1)$ and $\mathrm{pt} \times \PP^1$ has $(-2,3)$, so $t = 1$ and $\tfrac23$: first the surface $E \times \PP^1$, to the curve $\{0\} \times \PP^1$, then the fibres</td>
-    <td>$\mathrm{Bl}_0(\AA^2) \times \PP^1 \to \AA^2 \times \PP^1 \to \AA^2$: a <b>divisorial</b> step and then a $K$-negative <b>fibration</b></td>
-  </tr>
-</table>
+<h3 id="affine-flip-1">7.1 A flip the program finds by itself</h3>
 
-<p>$Y$ is presented by the second Veronese of its section ring, because the ring
-itself needs a generator of degree two and the Cartier test over-reports on a
-weighted grading, returning the index as $1$ where it is $2$.  The middle target
-$\AA^2 \times \PP^1$ is built as $\Proj$ over $\Spec R_0$ of the algebra the
-sections generate, and its Stein factorization is certified trivial rather than
-computed.  The session also checks that $Z$ is what the program returned, by a
-degree-preserving relabelling of the variables.  <code>Polyhedra</code> appears
-only to write the two toric coordinate rings down; nothing after that uses the
-fan.</p>
+<p>$Y$ is one of the two triangulations of Example 6's circuit
+$v_1 + v_2 = 2v_3 + v_4$, the cones $\langle v_1v_2v_3\rangle$ and
+$\langle v_1v_2v_4\rangle$.  The second has multiplicity two, so $Y$ carries one
+$\tfrac12(1,1,1)$ point and its canonical index is $2$.  Its wall curve has
+$(K \cdot C, H \cdot C) = (-1,1)$, so the threshold is $\tfrac12$, and there the
+wall curve &mdash; a curve, not a divisor, so the contraction is small &mdash;
+goes to the singular point of $\Spec R_0$.  The step is a flip:</p>
+
+<p>$$Y \;\dashrightarrow\; Z, \qquad
+Y \;\longrightarrow\; \Spec R_0 \;\longleftarrow\; Z .$$</p>
+
+<p>$Z$ is the other triangulation, $\langle v_1v_3v_4\rangle$ and
+$\langle v_2v_3v_4\rangle$: smooth, with $K$ nef, so the program stops.
+Example 6 is handed this contraction; here it is found from $Y$ alone, and the
+session checks that the variety returned really is $Z$ by a degree-preserving
+relabelling of the variables.  $Y$ is presented by the second Veronese of its
+section ring, because the ring itself needs a generator of degree two and the
+Cartier test over-reports on a weighted grading, returning the index as $1$
+where it is $2$.</p>
+
+<h3 id="affine-flip-2">7.2 A divisorial step</h3>
+
+<p>$\mathrm{Bl}_0(\AA^3)$, as $\Proj$ of the Rees algebra of $(a,b,c)$.  Here
+$K = 2E$ and $\OO(1) = -E$, so $K + tH = (2-t)E$ and the threshold is $2$; at
+the threshold the exceptional surface $E$ contracts to the origin.</p>
+
+<p>$$\mathrm{Bl}_0(\AA^3) \;\longrightarrow\; \AA^3 .$$</p>
+
+<p>A surface and not a curve, so the step is divisorial rather than a flip, and
+$K$ is nef on $\AA^3$.</p>
+
+<h3 id="affine-flip-3">7.3 A flip of canonical index three</h3>
+
+<p>The same construction on four rays with the circuit
+$v_1 + v_2 = v_3 + 3v_4$.  Of its two triangulations, $Y'$ is the one on which
+$K$ is negative; its canonical index is $3$ and its threshold $\tfrac23$, and
+again the wall curve goes to the singular point of the base.</p>
+
+<p>$$Y' \;\dashrightarrow\; Z' .$$</p>
+
+<p>$Z'$ has canonical index $1$ and $K$ nef.</p>
+
+<h3 id="affine-flip-4">7.4 Two steps: divisorial, then a fibration</h3>
+
+<p>$\mathrm{Bl}_0(\AA^2) \times \PP^1$ over the affine base $\AA^2$, polarized
+by $\OO(1,3)$.  Its two extremal curves are $E \times \mathrm{pt}$, with
+$(K \cdot C, H \cdot C) = (-1,1)$, and the fibre $\mathrm{pt} \times \PP^1$,
+with $(-2,3)$, so the thresholds are $1$ and $\tfrac23$ and the larger belongs
+to $E$ alone.</p>
+
+<p>$$\mathrm{Bl}_0(\AA^2) \times \PP^1 \;\longrightarrow\;
+\AA^2 \times \PP^1 \;\longrightarrow\; \AA^2 .$$</p>
+
+<p>The first arrow contracts the surface $E \times \PP^1$ to the curve
+$\{0\} \times \PP^1$: divisorial.  The second contracts the fibres of
+$\AA^2 \times \PP^1$, a $K$-negative fibration, and the program stops.  The
+middle variety is neither the base nor a point, so it is built as $\Proj$ over
+$\Spec R_0$ of the algebra the sections generate, and its Stein factorization is
+certified trivial rather than computed.</p>
 
 @@session 07-affine-base-flip | indexData#"index" ; nefData#"nef" ; contraction#"contractionType" ; contraction#"steinFactorizationType" ; smallness#"isSmall" ; smallness#"exceptionalCodimension" ; mmp#"terminationType" ; sameRing(Z, groundTruthZ) ; blowupSmallness#"isSmall" ; blowupMMP#"terminationType" ; mmp3#"terminationType" ; twoStepContraction#"contractionType" ; twoStepMMP#"terminationType" ; twoStepMMP#"numberOfSteps"@@
 
