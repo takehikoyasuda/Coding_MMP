@@ -324,37 +324,41 @@ step, this is a flipping step.</p>
 
 <h2 id="affine-flip">7. Four programs over an affine base</h2>
 
-<p>This session runs the program four times, on four unrelated rings, and the
-table below is one row per run.  The first row is what the section is here for:
-Example 6 is handed its flipping contraction, while this one is given a ring and
-nothing else and finds the flip itself.  Giving an ambient variable degree zero
-puts its coordinate in $R_0$, so $X = \Proj R$ is projective over the affine
-$\Spec R_0$ &mdash; where the three-fold flips are, a flipping contraction
-contracting a curve to a point of an affine variety.  Two of the four inputs are
-toric, on Example 6's rays $v_1, \dots, v_4$ and on four rays with the circuit
-$v_1 + v_2 = v_3 + 3v_4$.</p>
+<p>This session runs the program on four threefolds, one after another and
+independently, and the table has one row per run.  The first row is what the
+section is here for: Example 6 is handed its flipping contraction, while this
+one is given the variety and nothing else and finds the flip itself.</p>
+
+<p>Each of the four is projective over an affine base rather than over a point.
+Giving an ambient variable degree zero puts its coordinate in $R_0$, so
+$X = \Proj R$ is projective over the affine $\Spec R_0$ &mdash; where the
+three-fold flips are, a flipping contraction contracting a curve to a point of
+an affine variety.  What the program is handed each time is the homogeneous
+coordinate ring of the threefold in the left column, graded that way.  Two of
+the four are toric, on Example 6's rays $v_1, \dots, v_4$ and on four rays with
+the circuit $v_1 + v_2 = v_3 + 3v_4$.</p>
 
 <table class="runs">
-  <tr><th>Input, one ring each</th><th>What contracts, and $(K \cdot C, H \cdot C)$</th><th>Result</th></tr>
+  <tr><th>The threefold</th><th>What contracts, and $(K \cdot C, H \cdot C)$</th><th>The program</th></tr>
   <tr>
     <td>$Y$: the triangulation $\langle v_1v_2v_3\rangle, \langle v_1v_2v_4\rangle$ of $v_1+v_2 = 2v_3+v_4$.  One $\tfrac12(1,1,1)$ point, canonical index $2$</td>
     <td>the wall curve $\langle v_1,v_2\rangle$, to the singular point of $\Spec R_0$.  $(-1,1)$, so $t = \tfrac12$; a curve, so small</td>
-    <td>$Z$: the other triangulation $\langle v_1v_3v_4\rangle, \langle v_2v_3v_4\rangle$, smooth, $K$ nef.  A <b>flip</b></td>
+    <td>$Y \dashrightarrow Z$ over $\Spec R_0$, a <b>flip</b>.  $Z$ is the other triangulation $\langle v_1v_3v_4\rangle, \langle v_2v_3v_4\rangle$: smooth, $K$ nef</td>
   </tr>
   <tr>
     <td>$\mathrm{Bl}_0(\AA^3)$, as $\Proj$ of the Rees algebra of $(a,b,c)$</td>
     <td>the exceptional surface $E$, to the origin of $\AA^3$.  $K = 2E$ and $\OO(1) = -E$, so $t = 2$</td>
-    <td>$\AA^3$, where $K$ is nef.  A <b>divisorial</b> step</td>
+    <td>$\mathrm{Bl}_0(\AA^3) \to \AA^3$, a <b>divisorial</b> step.  $K$ is nef on $\AA^3$</td>
   </tr>
   <tr>
-    <td>the $K$-negative triangulation of $v_1+v_2 = v_3+3v_4$.  Canonical index $3$</td>
+    <td>the $K$-negative triangulation $Y'$ of the circuit $v_1+v_2 = v_3+3v_4$.  Canonical index $3$</td>
     <td>its wall curve, to the singular point of the base, at $t = \tfrac23$; small</td>
-    <td>the other triangulation, canonical index $1$, $K$ nef.  A <b>flip</b></td>
+    <td>$Y' \dashrightarrow Z'$, a <b>flip</b>.  $Z'$ has canonical index $1$ and $K$ nef</td>
   </tr>
   <tr>
     <td>$\mathrm{Bl}_0(\AA^2) \times \PP^1$ over $\AA^2$, polarized by $\OO(1,3)$</td>
     <td>$E \times \mathrm{pt}$ has $(-1,1)$ and $\mathrm{pt} \times \PP^1$ has $(-2,3)$, so $t = 1$ and $\tfrac23$: first the surface $E \times \PP^1$, to the curve $\{0\} \times \PP^1$, then the fibres</td>
-    <td>$\AA^2 \times \PP^1$, then $\AA^2$: a <b>divisorial</b> step and then a $K$-negative <b>fibration</b></td>
+    <td>$\mathrm{Bl}_0(\AA^2) \times \PP^1 \to \AA^2 \times \PP^1 \to \AA^2$: a <b>divisorial</b> step and then a $K$-negative <b>fibration</b></td>
   </tr>
 </table>
 
@@ -363,99 +367,89 @@ itself needs a generator of degree two and the Cartier test over-reports on a
 weighted grading, returning the index as $1$ where it is $2$.  The middle target
 $\AA^2 \times \PP^1$ is built as $\Proj$ over $\Spec R_0$ of the algebra the
 sections generate, and its Stein factorization is certified trivial rather than
-computed.  The session also checks that the ring returned for $Y$ really is $Z$,
-by a degree-preserving relabelling of the variables.  <code>Polyhedra</code>
-appears only to write the two toric rings down; nothing after that uses the
+computed.  The session also checks that $Z$ is what the program returned, by a
+degree-preserving relabelling of the variables.  <code>Polyhedra</code> appears
+only to write the two toric coordinate rings down; nothing after that uses the
 fan.</p>
 
 @@session 07-affine-base-flip | indexData#"index" ; nefData#"nef" ; contraction#"contractionType" ; contraction#"steinFactorizationType" ; smallness#"isSmall" ; smallness#"exceptionalCodimension" ; mmp#"terminationType" ; sameRing(Z, groundTruthZ) ; blowupSmallness#"isSmall" ; blowupMMP#"terminationType" ; mmp3#"terminationType" ; twoStepContraction#"contractionType" ; twoStepMMP#"terminationType" ; twoStepMMP#"numberOfSteps"@@
 
 <h2 id="three-step">8. A program three steps long</h2>
 
-<p>One ring in, one program out, three steps long.  To build the ring: in
-$N = \ZZ^2$ subdivide the fan of $\AA^2 = \mathrm{cone}(u_1,u_2)$, with
-$u_1 = (1,0)$ and $u_2 = (0,1)$, by</p>
+<p>The threefold is $X = S_3 \times \AA^1$, projective over the affine base
+$\AA^3 = \AA^2 \times \AA^1$, where $S_3$ is $\AA^2$ blown up three times, each
+time at a point of the last exceptional curve.  In $N = \ZZ^2$ that is the fan
+of $\AA^2 = \mathrm{cone}(u_1,u_2)$, with $u_1 = (1,0)$ and $u_2 = (0,1)$,
+subdivided by</p>
 
-<p>$$u_3 = (1,1), \qquad u_4 = u_1 + u_3 = (2,1), \qquad u_5 = u_1 + u_4 = (3,1),$$</p>
+<p>$$u_3 = (1,1), \qquad u_4 = u_1 + u_3 = (2,1), \qquad u_5 = u_1 + u_4 = (3,1).$$</p>
 
-<p>each a star subdivision at a torus-fixed point of the exceptional curve
-before it, so $S_3$ is $\AA^2$ blown up three times, each time at a point of the
-last exceptional curve.  Write $E_1, E_2, E_3$ for the divisors of $u_3, u_4, u_5$.  The
-neighbours in the fan give $E_1^2 = E_2^2 = -2$ and $E_3^2 = -1$, and adjunction
-turns that into</p>
+<p>Write $E_1, E_2, E_3$ for the divisors of $u_3, u_4, u_5$.  The neighbours in
+the fan give $E_1^2 = E_2^2 = -2$ and $E_3^2 = -1$, and adjunction turns that
+into $K \cdot E_1 = K \cdot E_2 = 0$ and $K \cdot E_3 = -1$.  Only $E_3$ is
+$K$-negative, and the same is true again after each contraction, so the program
+is forced.  Polarizing by the $A$ with
+$A \cdot E_1 = A \cdot E_2 = A \cdot E_3 = 1$ makes every threshold $1$, and the
+program is</p>
 
-<p>$$K \cdot E_1 = K \cdot E_2 = 0, \qquad K \cdot E_3 = -1.$$</p>
+<p>$$X = S_3 \times \AA^1 \;\longrightarrow\; S_2 \times \AA^1
+\;\longrightarrow\; \mathrm{Bl}_0(\AA^2) \times \AA^1 \;\longrightarrow\; \AA^3 .$$</p>
 
-<p>The input is $X = S_3 \times \AA^1$, projective over the affine base
-$\AA^3 = \AA^2 \times \AA^1$, polarized by the class $A$ with
-$A \cdot E_1 = A \cdot E_2 = A \cdot E_3 = 1$.  Only $E_3$ is $K$-negative, and
-the same is true again after each contraction, so the program is forced, and
-every curve has $A \cdot C = 1$, so every threshold is $1$:</p>
+<p>Every arrow is a divisorial contraction over $\AA^3$: the surface
+$E_3 \times \AA^1$ contracts to a line, then $E_2 \times \AA^1$ to a line, then
+$E_1 \times \AA^1$ to the axis $\{0\} \times \AA^1$.  $K$ is nef on $\AA^3$, so
+the program stops there, three steps in.  Both middle models are checked against
+ground truth built from their own polarizations, by a degree-preserving
+relabelling, and $\AA^3$ is handed back as $\Proj$ of $\AA^3[t]$ so that the
+final nefness test has a $\Proj$ to read.</p>
 
-<ol>
-  <li>the surface $E_3 \times \AA^1$ contracts to a line; the model becomes
-      $S_2 \times \AA^1$;</li>
-  <li>the surface $E_2 \times \AA^1$ contracts to a line; the model becomes
-      $S_1 \times \AA^1 = \mathrm{Bl}_0(\AA^2) \times \AA^1$;</li>
-  <li>the surface $E_1 \times \AA^1$ contracts to the axis
-      $\{0\} \times \AA^1$; the model becomes $\AA^3$, where $K$ is nef.</li>
-</ol>
-
-<p>Three divisorial steps.  Both middle models are checked against ground truth
-built from their own polarizations, by a degree-preserving relabelling, and the
-last target is $\AA^3$, handed back as $\Proj$ of $\AA^3[t]$ so that the final
-nefness test has a $\Proj$ to read.</p>
-
-<p>The fan is only how the input is written down: the session builds a subring
-of $k[a,b,c,t]$ and computes everything after that from the ring.  The factor
-$\AA^1$ rather than $\PP^1$ keeps the structure morphism birational, which is
-what makes each threshold one intersection number on a fibre curve.</p>
+<p>The fan is only how the coordinate ring gets written down &mdash; a subring
+of $k[a,b,c,t]$ &mdash; and everything after that is computed from the ring.  The
+factor $\AA^1$ rather than $\PP^1$ keeps the structure morphism birational,
+which is what makes each threshold one intersection number on a fibre curve.</p>
 
 @@session 08-three-step-program | (canonicalIndexData X)#"index" ; (canonicalNefData(X, 1))#"nef" ; canonicalNefThreshold(X, 1) ; contraction#"contractionType" ; contraction#"steinFactorizationType" ; smallness#"isSmall" ; smallness#"exceptionalDimension" ; mmp#"terminationType" ; mmp#"numberOfSteps" ; (mmp#"finalNefData")#"witnessType" ; sameRing(mmp#"steps"#0#"nextRing", groundTruthY) ; sameRing(mmp#"steps"#1#"nextRing", groundTruthZ)@@
 
 <h2 id="flip-program">9. Three steps ending in a flip</h2>
 
-<p>Again one ring in and one program out, three steps long, and the last of the
-three is a flip.  The base is Example 7's first row: $\Spec R_0$ is not
-$\QQ$-Gorenstein, and the flipping side $Y$ of the circuit has one
-$\tfrac12(1,1,1)$ point, the cone $\langle v_1,v_2,v_4\rangle$ of multiplicity
-two.  Two rays go in above $Y$:</p>
+<p>The base is Example 7's first row: $\Spec R_0$ is not $\QQ$-Gorenstein, and
+the flipping side $Y$ of the circuit has one $\tfrac12(1,1,1)$ point, the cone
+$\langle v_1,v_2,v_4\rangle$ of multiplicity two.  The threefold here sits two
+divisors above $Y$, from</p>
 
 <p>$$w = (1,1,-1) \quad\text{interior to that cone},\qquad
 w_2 = v_2 + v_4 = (1,2,-2) \quad\text{on a facet of } \sigma.$$</p>
 
-<p>The star subdivision at $w$ resolves the $\tfrac12(1,1,1)$ point, and $w_2$
-adds one divisor over the facet.  The input $X$ is the result: smooth,
+<p>The star subdivision at $w$ resolves the $\tfrac12(1,1,1)$ point, giving a
+smooth $X_1$, and $w_2$ adds one divisor over the facet, giving $X$: smooth,
 projective over $\Spec R_0$, of relative Picard rank three, polarized by
 $H = 4D_{v_4} + D_w + 3D_{w_2}$.  Its wall curves have
 $(K \cdot C, H \cdot C) = (-1,1)$ on $\langle w,w_2\rangle$, $(-1,2)$ on
 $\langle v_1,w\rangle$ and $(0,1)$ on the rest, so the threshold is $1$ and one
-wall alone attains it:</p>
+wall alone attains it.  The program is</p>
 
-<ol>
-  <li>$t = 1$: the surface $D_{w_2}$ contracts to a curve; the model becomes the
-      resolution of $Y$;</li>
-  <li>$t = 1$: the surface $D_w$ contracts to the $\tfrac12(1,1,1)$ point; the
-      model becomes $Y$;</li>
-  <li>$t = \tfrac12$: the wall curve of the circuit contracts to the singular
-      point of $\Spec R_0$.  A curve, not a divisor, so the contraction is small
-      and the step is a flip; the model becomes $Z$, where $K$ is nef.</li>
-</ol>
+<p>$$X \;\longrightarrow\; X_1 \;\longrightarrow\; Y \;\dashrightarrow\; Z ,
+\qquad\text{with}\qquad Y \;\longrightarrow\; \Spec R_0 \;\longleftarrow\; Z .$$</p>
+
+<p>The first two arrows are divisorial contractions at $t = 1$: the surface
+$D_{w_2}$ contracts to a curve, then $D_w$ to the $\tfrac12(1,1,1)$ point.  The
+third is a flip at $t = \tfrac12$: the wall curve of the circuit &mdash; a curve
+and not a divisor, so the contraction is small &mdash; goes to the singular point
+of $\Spec R_0$, and $Z$ is the other triangulation, where $K$ is nef.</p>
 
 <p>What lets a flip come third is the circuit wall $\langle v_1,v_2\rangle$: it
-is $K$-trivial on $X$ and on the resolution and turns $K$-negative only on $Y$,
-so it cannot be contracted until the two divisors are gone.  The fibre curves
-record that: $(K \cdot C, H \cdot C)$ runs $\{(-1,1),(0,1),(0,1)\}$, then
-$\{(-1,1),(0,1)\}$, then $\{(-1,1)\}$, and $\{(+1,1)\}$ after the flip &mdash;
-the sign change that makes it a flip and not a flop.  It is also the only step
-whose relative canonical model is not the identity.</p>
+is $K$-trivial on $X$ and on $X_1$, and turns $K$-negative only on $Y$, so it
+cannot be contracted until the two divisors are gone.  The fibre curves record
+that &mdash; $(K \cdot C, H \cdot C)$ runs $\{(-1,1),(0,1),(0,1)\}$, then
+$\{(-1,1),(0,1)\}$, then $\{(-1,1)\}$, and $\{(+1,1)\}$ on $Z$, the sign change
+that makes it a flip and not a flop &mdash; and the flip is the only step whose
+relative canonical model is not the identity.</p>
 
-<p>All four models are subrings of $k[a,b,c,t]$ over
-$R_0 = k[b,\, b^2c,\, a,\, abc,\, a^2c]$, written down as lists of monomials:
-the fan is in this account, not in the session.  All three the program produces
-are checked against ground truth by a degree-preserving relabelling, and the
-last two are Example 7's $Y$ and $Z$, so this program reaches that flip from a
-ring three steps upstream.</p>
+<p>The four coordinate rings are subrings of $k[a,b,c,t]$ over
+$R_0 = k[b,\, b^2c,\, a,\, abc,\, a^2c]$, given as lists of monomials rather
+than as fan data.  All three models the program produces are checked against
+ground truth by a degree-preserving relabelling, and the last two are Example
+7's $Y$ and $Z$.</p>
 
 @@session 09-three-step-flip | (canonicalIndexData X)#"index" ; (canonicalNefData(X, 1))#"nef" ; mmp#"terminationType" ; mmp#"numberOfSteps" ; contraction#"threshold" ; contraction#"contractionType" ; contraction#"steinFactorizationType" ; flipContraction#"steinFactorizationType" ; (canonicalIndexData flippingSource)#"index" ; (canonicalIndexData finalRing)#"index" ; (canonicalNefData(finalRing, 1))#"nef" ; (mmp#"finalNefData")#"witnessType" ; sameRing(mmp#"steps"#0#"nextRing", groundTruthX1) ; sameRing(mmp#"steps"#1#"nextRing", groundTruthY) ; sameRing(finalRing, groundTruthZ)@@
 
