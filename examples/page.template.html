@@ -115,7 +115,7 @@
   <body>
 <h1>Worked examples</h1>
 
-<p class="lead">Seven worked examples that these packages compute, each with
+<p class="lead">Nine worked examples that these packages compute, each with
 the Macaulay2 session that computes it.</p>
 
 <p>Every example has two parts.  First a short explanation of the mathematics.
@@ -129,11 +129,11 @@ their proofs are in the paper
 <p><button type="button" id="foldall" data-open="no">Expand every Macaulay2 session</button></p>
 
 <p>In Examples 1 to 6, $X$ is a normal projective threefold and $R$ is its
-homogeneous coordinate ring.  Example 7 relaxes that: some of the variables are
-given degree zero, their coordinates land in $R_0$, and $X = \Proj R$ is then
-projective over the affine $\Spec R_0$ rather than over a point.  In all of
-them $K_X$ is the canonical divisor and $H$ is an ample Cartier divisor, ample
-over the base where there is one.  The nef threshold is</p>
+homogeneous coordinate ring.  Examples 7 to 9 relax that: some of the variables
+are given degree zero, their coordinates land in $R_0$, and $X = \Proj R$ is
+then projective over the affine $\Spec R_0$ rather than over a point.  In all
+of them $K_X$ is the canonical divisor and $H$ is an ample Cartier divisor,
+ample over the base where there is one.  The nef threshold is</p>
 
 $$\lambda = \min\{\,t \ge 0 \;:\; K_X + tH \text{ is nef}\,\}.$$
 
@@ -142,10 +142,21 @@ not check it.</p>
 
 <p>In the paper, $X = \Proj R$ is monograded with $R_0 = k$.  A bigraded ring
 appears only as the graph of a morphism, which is how the Stein factorization
-is computed.  Examples 1 to 6 stay inside that setting.  Example 7 keeps the
-single grading but drops $R_0 = k$, which is the relative setting; the package
-also has entry points that take a multigraded variety directly, and those go
-beyond the paper too, but this page does not use them.</p>
+is computed.  Examples 1 to 6 stay inside that setting.  Examples 7 to 9 keep
+the single grading but drop $R_0 = k$, which is the relative setting; the
+package also has entry points that take a multigraded variety directly, and
+those go beyond the paper too, but this page does not use them.</p>
+
+<p><b>Which examples run the whole program, and which run one stage of it.</b>
+This matters because they are given different things.  Examples 1, 2, 7, 8 and
+9 run the program: the input is the homogeneous coordinate ring of $X$ and
+nothing else, and the driver finds every step itself.  The others exercise a
+single stage, and each stage takes what that stage takes &mdash; the nef
+threshold and the contraction again take a ring (Example 3), the Stein
+factorization takes a <i>morphism</i>, presented as the parametrized graph the
+paper writes it with (Examples 4 and 5), and the relative canonical model takes
+the base of a contraction (Example 6).  Example 5 does both, in that order, and
+says where the join is.</p>
 
 <h2 id="contents">Contents</h2>
 
@@ -256,11 +267,18 @@ means $g$ is not an isomorphism.</p>
 
 <h2 id="blowup-line">5. Blowing up a line, and a two-step program</h2>
 
+<p>This section does two things in succession, and they are given different
+inputs.  The first is the Stein factorization and the smallness test, which
+take a <i>morphism</i>; the second is the program, which takes a ring.  The
+join between them is marked below.</p>
+
 <p>$Y$ is the blow up of $\PP^3$ along a line, and $f : Y \to \PP^3$ is the
-map.  The package is given one thing only: a parametrization of the graph of
-$f$.  Nothing about $f$ is stated.  The graph lives in a bigraded ring, where
-the first block of variables is the source and the second block is the target.
-This is how the paper writes a morphism.</p>
+map.  For the first part the package is given one thing only: a parametrization
+of the graph of $f$.  Nothing about $f$ is stated.  The graph lives in a
+bigraded ring, where the first block of variables is the source and the second
+block is the target.  This is how the paper writes a morphism &mdash; and it is
+not what the MMP driver takes, which is why this half is not a run of the
+program.</p>
 
 <p><b>Stein factorization.</b>  Write $f = g \circ h$, where $h$ has connected
 fibres and $g$ is finite.  The package computes the coordinate ring of the
@@ -284,16 +302,23 @@ This is the standard small resolution.  Its exceptional locus is a curve, of
 dimension $1$ and codimension $2$, so that contraction is small.  Example&nbsp;6
 computes a flip for a case like this one.</p>
 
-<p><b>The program.</b>  The relative canonical model over $Z$ is the identity,
-so no flip is needed and the step is divisorial.  The driver then continues
-from $Z$.  It repeats example&nbsp;1: $\lambda = 4$, and the contraction to a
-point.  The whole program is</p>
+<p><b>The program.</b>  Here the input changes.  The relative canonical model
+over $Z$ is the identity, so no flip is needed and the step is divisorial; that
+step is recorded, and the driver is then started on the coordinate ring of $Z$
+with the step handed to it as the program's history.  So the contraction above
+is supplied rather than found &mdash; it was assembled from the graph, not
+returned by the contraction stage &mdash; and what the driver computes is what
+comes after it, which repeats Example&nbsp;1: $\lambda = 4$, and the
+contraction to a point.  The program on record is</p>
 
 $$\mathrm{Bl}_L\PP^3 \;\xrightarrow{\ \text{divisorial}\ }\; \PP^3
 \;\xrightarrow{\ \text{fibration}\ }\; \text{point},$$
 
-<p>two steps, ending at a $K$-negative fibration.  Every ring in the chain is
-monograded, and the only bigraded ring is the graph of $f$.</p>
+<p>two steps, ending at a $K$-negative fibration: the first supplied from the
+first half of this section, the second found by the driver.  Every ring in the
+chain is monograded, and the only bigraded ring is the graph of $f$.  Examples
+7 to 9 are the other way round &mdash; there the driver is given a ring and
+finds every step, contractions included.</p>
 
 @@session 05-blowup-of-a-line | steinData#"certifiedBound" ; dim(steinAlgebra#"ring") - 1 ; degreeLength(steinAlgebra#"ring") ; smallness#"exceptionalCodimension" ; odpSmallness#"exceptionalCodimension" ; blowupStep#"stepType" ; mmp#"numberOfSteps"@@
 
