@@ -5791,13 +5791,13 @@ Node
       theorem then gives $\Phi_* \mathcal{O}_X = \mathcal{O}$ of the image, so
       the Stein factorization is trivial and is skipped rather than assumed.
 
-      Here is a flip, found from the ring alone.  Take the toric circuit
-      $v_1 + v_2 = 2v_3 + v_4$ in $N = \mathbb{Z}^3$ with $v_1 = (1,0,0)$,
+      Here is a flip, found from the ring alone.  Take the four toric rays with
+      the relation $v_1 + v_2 = 2v_3 + v_4$ in $N = \mathbb{Z}^3$ with $v_1 = (1,0,0)$,
       $v_2 = (0,1,0)$, $v_3 = (0,0,1)$ and $v_4 = (1,1,-2)$, and let
       $\operatorname{Spec} R_0 = \operatorname{Spec} k[\sigma^\vee \cap M]$ for
       $\sigma = \operatorname{cone}(v_1,v_2,v_3,v_4)$, an affine threefold that
-      is not $\mathbb{Q}$-Gorenstein.  The two triangulations of the circuit
-      are its two small modifications; on the one below, $Y$, the wall curve has
+      is not $\mathbb{Q}$-Gorenstein.  The two triangulations of those rays are its two small
+      modifications; on the one below, $Y$, the wall curve has
       $K \cdot C = -1$, so $Y \to \operatorname{Spec} R_0$ is a flipping
       contraction.  $Y$ has one $\tfrac12(1,1,1)$ point, so its canonical index
       is 2, and the package finds the threshold, checks that the contraction
@@ -5805,10 +5805,10 @@ Node
       flips.
     Example
       monomialRing = QQ[ea,eb,ec,et];
-      circuitBase = {eb, eb^2*ec, ea, ea*eb*ec, ea^2*ec};
+      baseGenerators = {eb, eb^2*ec, ea, ea*eb*ec, ea^2*ec};
       flippingSide = QQ[p_1 .. p_5, q_1, q_2, Degrees => {0,0,0,0,0,1,1}];
       Y = flippingSide/ker map(monomialRing, flippingSide,
-          circuitBase | {ea^2*eb^2*ec^2*et, ea^2*eb^2*ec^3*et});
+          baseGenerators | {ea^2*eb^2*ec^2*et, ea^2*eb^2*ec^3*et});
       (canonicalIndexData Y)#"index"
       canonicalNefThreshold(Y,2)
       flipProgram = threefoldMMPData(Y,2);

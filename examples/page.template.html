@@ -337,12 +337,11 @@ $$v_1 = e_1,\quad v_2 = e_2,\quad v_3 = e_3,\quad v_4 = (1,1,-2).$$
 <p>$$v_1 + v_2 = 2v_3 + v_4 ,$$</p>
 
 <p>and no three of them satisfy any: each of the four $3 \times 3$ determinants
-is nonzero.  A set that is linearly dependent but has no dependent proper subset
-is called a <i>circuit</i>, and its relation, unique up to scale, splits it into
-the two sides of the equation &mdash; here $\{v_1,v_2\}$ and $\{v_3,v_4\}$.</p>
+is nonzero.  The relation, unique up to scale, splits the four rays into the two
+sides of its equation, $\{v_1,v_2\}$ and $\{v_3,v_4\}$.</p>
 
-<p>That is the configuration whose cone has exactly two triangulations, one
-leaving out a ray of each side.  Here they are
+<p>Four rays that are dependent while no three of them are span a cone with
+exactly two triangulations and no more, one leaving out a ray of each side.  Here they are
 $\langle v_1v_2v_3\rangle, \langle v_1v_2v_4\rangle$, meeting along the wall
 $\langle v_1,v_2\rangle$, and
 $\langle v_1v_3v_4\rangle, \langle v_2v_3v_4\rangle$, meeting along
@@ -389,7 +388,7 @@ down.</p>
 
 <h3 id="affine-flip-1">7.1 A flip the package finds by itself</h3>
 
-<p>$Y$ is one of the two triangulations of Example 6's circuit
+<p>$Y$ is one of the two triangulations of Example 6's relation
 $v_1 + v_2 = 2v_3 + v_4$, the cones $\langle v_1v_2v_3\rangle$ and
 $\langle v_1v_2v_4\rangle$.  The second has multiplicity two, so $Y$ carries one
 $\tfrac12(1,1,1)$ point and its canonical index is $2$.  Its wall curve has
@@ -423,7 +422,7 @@ $K$ is nef on $\AA^3$.</p>
 
 <h3 id="affine-flip-3">7.3 A flip of canonical index three</h3>
 
-<p>The same construction on four rays with the circuit
+<p>The same construction on four rays with the relation
 $v_1 + v_2 = v_3 + 3v_4$.  Of its two triangulations, $Y'$ is the one on which
 $K$ is negative; its canonical index is $3$ and its threshold $\tfrac23$, and
 again the wall curve goes to the singular point of the base.</p>
@@ -490,8 +489,8 @@ which is what makes each threshold one intersection number on a fibre curve.</p>
 
 <h2 id="flip-program">9. Three steps ending in a flip</h2>
 
-<p>The base is Example 7's first row: $\Spec R_0$ is not $\QQ$-Gorenstein, and
-the flipping side $Y$ of the circuit has one $\tfrac12(1,1,1)$ point, the cone
+<p>The base is Example 7's first row: $\Spec R_0$ is not $\QQ$-Gorenstein, and the flipping side $Y$ of Example 6's four rays has one
+$\tfrac12(1,1,1)$ point, the cone
 $\langle v_1,v_2,v_4\rangle$ of multiplicity two.  The threefold here sits two
 divisors above $Y$, from</p>
 
@@ -511,11 +510,10 @@ wall alone attains it.  The MMP is</p>
 
 <p>The first two arrows are divisorial contractions at $t = 1$: the surface
 $D_{w_2}$ contracts to a curve, then $D_w$ to the $\tfrac12(1,1,1)$ point.  The
-third is a flip at $t = \tfrac12$: the wall curve of the circuit &mdash; a curve
-and not a divisor, so the contraction is small &mdash; goes to the singular point
+third is a flip at $t = \tfrac12$: the wall curve $\langle v_1,v_2\rangle$ &mdash; a curve and not a divisor, so the contraction is small &mdash; goes to the singular point
 of $\Spec R_0$, and $Z$ is the other triangulation, where $K$ is nef.</p>
 
-<p>What lets a flip come third is the circuit wall $\langle v_1,v_2\rangle$: it
+<p>What lets a flip come third is the wall $\langle v_1,v_2\rangle$: it
 is $K$-trivial on $X$ and on $X_1$, and turns $K$-negative only on $Y$, so it
 cannot be contracted until the two divisors are gone.  The fibre curves record
 that &mdash; $(K \cdot C, H \cdot C)$ runs $\{(-1,1),(0,1),(0,1)\}$, then
