@@ -5745,12 +5745,13 @@ Node
       morphism of projective varieties and does not appear in the absolute
       setting unless it is compactified first.
 
-      How long a relative program can be turns on which target the contraction
+      How long a relative minimal model program can be turns on which target the
+      contraction
       at the threshold has.  If it is $\operatorname{Spec} R_0$ itself then
-      Algorithm 4 returns the whole relative canonical model at once and the
-      program is over; contracting to an intermediate variety over
+      Algorithm 4 returns the whole relative canonical model at once and the MMP
+      is over; contracting to an intermediate variety over
       $\operatorname{Spec} R_0$ instead is what lets one step hand a ring on to
-      the next, and that is what makes a relative program more than one
+      the next, and that is what makes a relative MMP more than one
       birational step long.
 
       The smallest input is the blow-up of the origin in $\mathbb{A}^3$, as
@@ -5758,7 +5759,7 @@ Node
       $K = 2E$ and $\mathcal{O}_X(1) = -E$, so $K + tH = (2-t)E$ is nef exactly
       for $t \geq 2$.  The contraction at the threshold is the structure
       morphism $X \to \operatorname{Spec} R_0$, its exceptional locus is a
-      surface in a threefold, so the step is divisorial and the program stops
+      surface in a threefold, so the step is divisorial and the MMP stops
       at $\mathbb{A}^3$.  Load the package as in @TO MMPComputation@ first; the
       examples below carry on from one another.
     Example
@@ -5799,8 +5800,8 @@ Node
       are its two small modifications; on the one below, $Y$, the wall curve has
       $K \cdot C = -1$, so $Y \to \operatorname{Spec} R_0$ is a flipping
       contraction.  $Y$ has one $\tfrac12(1,1,1)$ point, so its canonical index
-      is 2, and the program finds the threshold, checks that the contraction is
-      small -- exceptional locus of dimension one in a threefold -- and then
+      is 2, and the package finds the threshold, checks that the contraction
+      is small -- exceptional locus of dimension one in a threefold -- and then
       flips.
     Example
       monomialRing = QQ[ea,eb,ec,et];
@@ -5824,8 +5825,8 @@ Node
       $S_3$ obtained from $\mathbb{A}^2$ by blowing up the origin and then a
       torus-fixed point of each successive exceptional curve, and let
       $X = S_3 \times \mathbb{A}^1$ over $\mathbb{A}^3$.  Its three exceptional
-      curves have $K \cdot E = 0, 0, -1$, and the same holds again after each
-      contraction, so the program is forced to contract them one at a time and
+      curves have $K \cdot E = 0, 0, -1$, and the same holds again after each contraction, so the MMP is
+      forced to contract them one at a time and
       takes three divisorial steps to reach $\mathbb{A}^3$.
     Example
       threeStepAmbient = QQ[a3,b3,c3,w_0,w_1,w_2,w_3,
@@ -5837,7 +5838,7 @@ Node
       apply(threeStepProgram#"steps", record -> record#"stepType")
       apply(threeStepProgram#"steps", record -> flatten degrees record#"nextRing")
     Text
-      A program can also be three steps long and end in a flip; that one is
+      An MMP can also be three steps long and end in a flip; that one is
       {\tt examples/09-three-step-flip.m2} in the repository, and it takes a
       couple of minutes rather than seconds.  The flip has to be its last step,
       and that is a property of the setting rather than of the input.  The

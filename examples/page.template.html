@@ -147,9 +147,10 @@ the single grading but drop $R_0 = k$, which is the relative setting; the
 package also has entry points that take a multigraded variety directly, and
 those go beyond the paper too, but this page does not use them.</p>
 
-<p><b>Which examples run the whole program, and which run one stage of it.</b>
+<p><b>Which examples run the whole minimal model program, and which run one stage
+of it.</b>
 This matters because they are given different things.  Examples 1, 2, 7, 8 and
-9 run the program: the input is the homogeneous coordinate ring of $X$ and
+9 run the minimal model program (MMP) itself: the input is the homogeneous coordinate ring of $X$ and
 nothing else, and the driver finds every step itself.  The others exercise a
 single stage, and each stage takes what that stage takes &mdash; the nef
 threshold and the contraction again take a ring (Example 3), the Stein
@@ -165,16 +166,16 @@ says where the join is.</p>
   <li><a href="#quintic">2. A quintic threefold</a></li>
   <li><a href="#segre">3. The Segre threefold</a></li>
   <li><a href="#disconnected">4. A map with disconnected fibres</a></li>
-  <li><a href="#blowup-line">5. Blowing up a line, and a two-step program</a></li>
+  <li><a href="#blowup-line">5. Blowing up a line, and a two-step MMP</a></li>
   <li><a href="#flip">6. A toric flip</a></li>
-  <li><a href="#affine-flip">7. Four programs over an affine base</a>
+  <li><a href="#affine-flip">7. Four MMPs over an affine base</a>
     <ul class="toc">
-      <li><a href="#affine-flip-1">7.1 A flip the program finds by itself</a></li>
+      <li><a href="#affine-flip-1">7.1 A flip the package finds by itself</a></li>
       <li><a href="#affine-flip-2">7.2 A divisorial step</a></li>
       <li><a href="#affine-flip-3">7.3 A flip of canonical index three</a></li>
       <li><a href="#affine-flip-4">7.4 Two steps: divisorial, then a fibration</a></li>
     </ul></li>
-  <li><a href="#three-step">8. A program three steps long</a></li>
+  <li><a href="#three-step">8. An MMP three steps long</a></li>
   <li><a href="#flip-program">9. Three steps ending in a flip</a></li>
   <li><a href="#cost">Cost</a> &middot; <a href="#reproducing">How to repeat these runs</a> &middot; <a href="#scope">What is not here</a></li>
 </ul>
@@ -265,11 +266,12 @@ means $g$ is not an isomorphism.</p>
 
 @@session 04-disconnected-fibres | #decompose generalFibre ; #decompose branchFibre ; steinData#"certifiedBound" ; dim(steinAlgebra#"ring") - 1 ; typeData#"dimensionDrop" ; rank(steinAlgebra#"strandAsAModule")@@
 
-<h2 id="blowup-line">5. Blowing up a line, and a two-step program</h2>
+<h2 id="blowup-line">5. Blowing up a line, and a two-step MMP</h2>
 
 <p>This section does two things in succession, and they are given different
 inputs.  The first is the Stein factorization and the smallness test, which
-take a <i>morphism</i>; the second is the program, which takes a ring.  The
+take a <i>morphism</i>; the second is the
+MMP, which takes a ring.  The
 join between them is marked below.</p>
 
 <p>$Y$ is the blow up of $\PP^3$ along a line, and $f : Y \to \PP^3$ is the
@@ -278,14 +280,14 @@ of the graph of $f$.  Nothing about $f$ is stated.  The graph lives in a
 bigraded ring, where the first block of variables is the source and the second
 block is the target.  This is how the paper writes a morphism &mdash; and it is
 not what the MMP driver takes, which is why this half is not a run of the
-program.</p>
+MMP.</p>
 
 <p><b>Stein factorization.</b>  Write $f = g \circ h$, where $h$ has connected
 fibres and $g$ is finite.  The package computes the coordinate ring of the
 middle variety $Z$.  Two things come out of it.  First, $\dim Z = 3$.  Since
 $\dim Y = 3$ as well, the dimension does not drop, so $f$ is birational.
-Second, the ring of $Z$ is monograded, so the program can go on from $Z$
-without any further work.</p>
+Second, the ring of $Z$ is monograded, so the
+driver can go on from $Z$ without any further work.</p>
 
 <p><b>Is the contraction small?</b>  A birational contraction is called small
 when its exceptional locus has codimension $2$ or more.  A small contraction
@@ -302,14 +304,16 @@ This is the standard small resolution.  Its exceptional locus is a curve, of
 dimension $1$ and codimension $2$, so that contraction is small.  Example&nbsp;6
 computes a flip for a case like this one.</p>
 
-<p><b>The program.</b>  Here the input changes.  The relative canonical model
+<p><b>The MMP.</b>  Here the input changes.  The relative canonical model
 over $Z$ is the identity, so no flip is needed and the step is divisorial; that
 step is recorded, and the driver is then started on the coordinate ring of $Z$
-with the step handed to it as the program's history.  So the contraction above
+with the step handed to it as the
+history of the MMP so far.  So the contraction above
 is supplied rather than found &mdash; it was assembled from the graph, not
 returned by the contraction stage &mdash; and what the driver computes is what
 comes after it, which repeats Example&nbsp;1: $\lambda = 4$, and the
-contraction to a point.  The program on record is</p>
+contraction to a point.  The
+MMP on record is</p>
 
 $$\mathrm{Bl}_L\PP^3 \;\xrightarrow{\ \text{divisorial}\ }\; \PP^3
 \;\xrightarrow{\ \text{fibration}\ }\; \text{point},$$
@@ -354,19 +358,20 @@ step, this is a flipping step.</p>
 
 @@session 06-toric-flip | flipModel#"relativeModelType" ; flipModel#"isIdentity" ; inverseModel#"baseLocusCertified" ; flippingStep#"stepType"@@
 
-<h2 id="affine-flip">7. Four programs over an affine base</h2>
+<h2 id="affine-flip">7. Four MMPs over an affine base</h2>
 
-<p>This session runs the program four times, on four unrelated threefolds, one
+<p>This session runs the MMP four times, on four unrelated threefolds, one
 per subsection below.  Each is projective over an affine base rather than over a
 point: giving an ambient variable degree zero puts its coordinate in $R_0$, so
 $X = \Proj R$ is projective over the affine $\Spec R_0$ &mdash; where the
 three-fold flips are, a flipping contraction contracting a curve to a point of
-an affine variety.  What the program is handed each time is the homogeneous
+an affine variety.  What the
+package is handed each time is the homogeneous
 coordinate ring of the variety, graded that way, and nothing else;
 <code>Polyhedra</code> appears in the session only to write the toric rings
 down.</p>
 
-<h3 id="affine-flip-1">7.1 A flip the program finds by itself</h3>
+<h3 id="affine-flip-1">7.1 A flip the package finds by itself</h3>
 
 <p>$Y$ is one of the two triangulations of Example 6's circuit
 $v_1 + v_2 = 2v_3 + v_4$, the cones $\langle v_1v_2v_3\rangle$ and
@@ -380,7 +385,8 @@ goes to the singular point of $\Spec R_0$.  The step is a flip:</p>
 Y \;\longrightarrow\; \Spec R_0 \;\longleftarrow\; Z .$$</p>
 
 <p>$Z$ is the other triangulation, $\langle v_1v_3v_4\rangle$ and
-$\langle v_2v_3v_4\rangle$: smooth, with $K$ nef, so the program stops.
+$\langle v_2v_3v_4\rangle$: smooth, with $K$ nef, so the
+MMP stops.
 Example 6 is handed this contraction; here it is found from $Y$ alone, and the
 session checks that the variety returned really is $Z$ by a degree-preserving
 relabelling of the variables.  $Y$ is presented by the second Veronese of its
@@ -423,14 +429,14 @@ to $E$ alone.</p>
 
 <p>The first arrow contracts the surface $E \times \PP^1$ to the curve
 $\{0\} \times \PP^1$: divisorial.  The second contracts the fibres of
-$\AA^2 \times \PP^1$, a $K$-negative fibration, and the program stops.  The
+$\AA^2 \times \PP^1$, a $K$-negative fibration, and the MMP stops.  The
 middle variety is neither the base nor a point, so it is built as $\Proj$ over
 $\Spec R_0$ of the algebra the sections generate, and its Stein factorization is
 certified trivial rather than computed.</p>
 
 @@session 07-affine-base-flip | indexData#"index" ; nefData#"nef" ; contraction#"contractionType" ; contraction#"steinFactorizationType" ; smallness#"isSmall" ; smallness#"exceptionalCodimension" ; mmp#"terminationType" ; sameRing(Z, groundTruthZ) ; blowupSmallness#"isSmall" ; blowupMMP#"terminationType" ; mmp3#"terminationType" ; twoStepContraction#"contractionType" ; twoStepMMP#"terminationType" ; twoStepMMP#"numberOfSteps"@@
 
-<h2 id="three-step">8. A program three steps long</h2>
+<h2 id="three-step">8. An MMP three steps long</h2>
 
 <p>The threefold is $X = S_3 \times \AA^1$, projective over the affine base
 $\AA^3 = \AA^2 \times \AA^1$, where $S_3$ is $\AA^2$ blown up three times, each
@@ -443,10 +449,10 @@ subdivided by</p>
 <p>Write $E_1, E_2, E_3$ for the divisors of $u_3, u_4, u_5$.  The neighbours in
 the fan give $E_1^2 = E_2^2 = -2$ and $E_3^2 = -1$, and adjunction turns that
 into $K \cdot E_1 = K \cdot E_2 = 0$ and $K \cdot E_3 = -1$.  Only $E_3$ is
-$K$-negative, and the same is true again after each contraction, so the program
+$K$-negative, and the same is true again after each contraction, so the MMP
 is forced.  Polarizing by the $A$ with
 $A \cdot E_1 = A \cdot E_2 = A \cdot E_3 = 1$ makes every threshold $1$, and the
-program is</p>
+MMP is</p>
 
 <p>$$X = S_3 \times \AA^1 \;\longrightarrow\; S_2 \times \AA^1
 \;\longrightarrow\; \mathrm{Bl}_0(\AA^2) \times \AA^1 \;\longrightarrow\; \AA^3 .$$</p>
@@ -454,7 +460,7 @@ program is</p>
 <p>Every arrow is a divisorial contraction over $\AA^3$: the surface
 $E_3 \times \AA^1$ contracts to a line, then $E_2 \times \AA^1$ to a line, then
 $E_1 \times \AA^1$ to the axis $\{0\} \times \AA^1$.  $K$ is nef on $\AA^3$, so
-the program stops there, three steps in.  Both middle models are checked against
+the MMP stops there, three steps in.  Both middle models are checked against
 ground truth built from their own polarizations, by a degree-preserving
 relabelling, and $\AA^3$ is handed back as $\Proj$ of $\AA^3[t]$ so that the
 final nefness test has a $\Proj$ to read.</p>
@@ -482,7 +488,7 @@ projective over $\Spec R_0$, of relative Picard rank three, polarized by
 $H = 4D_{v_4} + D_w + 3D_{w_2}$.  Its wall curves have
 $(K \cdot C, H \cdot C) = (-1,1)$ on $\langle w,w_2\rangle$, $(-1,2)$ on
 $\langle v_1,w\rangle$ and $(0,1)$ on the rest, so the threshold is $1$ and one
-wall alone attains it.  The program is</p>
+wall alone attains it.  The MMP is</p>
 
 <p>$$X \;\longrightarrow\; X_1 \;\longrightarrow\; Y \;\dashrightarrow\; Z ,
 \qquad\text{with}\qquad Y \;\longrightarrow\; \Spec R_0 \;\longleftarrow\; Z .$$</p>
@@ -503,7 +509,7 @@ relative canonical model is not the identity.</p>
 
 <p>The four coordinate rings are subrings of $k[a,b,c,t]$ over
 $R_0 = k[b,\, b^2c,\, a,\, abc,\, a^2c]$, given as lists of monomials rather
-than as fan data.  All three models the program produces are checked against
+than as fan data.  All three models the MMP produces are checked against
 ground truth by a degree-preserving relabelling, and the last two are Example
 7's $Y$ and $Z$.</p>
 
@@ -523,8 +529,8 @@ run that built this page.</p>
   <tr><td>4. Disconnected fibres</td><td><code>04-disconnected-fibres.m2</code></td><td class="n">@@seconds 04-disconnected-fibres@@ s</td></tr>
   <tr><td>5. Blow up of a line</td><td><code>05-blowup-of-a-line.m2</code></td><td class="n">@@seconds 05-blowup-of-a-line@@ s</td></tr>
   <tr><td>6. Toric flip</td><td><code>06-toric-flip.m2</code></td><td class="n">@@seconds 06-toric-flip@@ s</td></tr>
-  <tr><td>7. Four programs over an affine base</td><td><code>07-affine-base-flip.m2</code></td><td class="n">@@seconds 07-affine-base-flip@@ s</td></tr>
-  <tr><td>8. A three-step program</td><td><code>08-three-step-program.m2</code></td><td class="n">@@seconds 08-three-step-program@@ s</td></tr>
+  <tr><td>7. Four MMPs over an affine base</td><td><code>07-affine-base-flip.m2</code></td><td class="n">@@seconds 07-affine-base-flip@@ s</td></tr>
+  <tr><td>8. A three-step MMP</td><td><code>08-three-step-program.m2</code></td><td class="n">@@seconds 08-three-step-program@@ s</td></tr>
   <tr><td>9. Three steps ending in a flip</td><td><code>09-three-step-flip.m2</code></td><td class="n">@@seconds 09-three-step-flip@@ s</td></tr>
 </table>
 
