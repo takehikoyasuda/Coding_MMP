@@ -332,16 +332,32 @@ finds every step, contractions included.</p>
 
 $$v_1 = e_1,\quad v_2 = e_2,\quad v_3 = e_3,\quad v_4 = (1,1,-2).$$
 
-<p>They satisfy one relation, $v_1 + v_2 = 2v_3 + v_4$.  Four rays with a
-single relation of this shape form a <i>circuit</i>.  The cone $\sigma$ they
-span can be triangulated in two ways, and the two results differ by a flip.
-The cone itself, with no triangulation, is the target of the flipping
-contraction.</p>
+<p>They satisfy one linear relation,</p>
 
-<p>$\sigma$ is not $\QQ$-Gorenstein.  To see this, look for an $m$ with
-$\langle m, v_i \rangle = 1$ for all four rays.  The first three rays force
-$m = (1,1,1)$, but $\langle (1,1,1), v_4 \rangle = 0$.  So there is no such
-$m$.</p>
+<p>$$v_1 + v_2 = 2v_3 + v_4 ,$$</p>
+
+<p>and no three of them satisfy any: each of the four $3 \times 3$ determinants
+is nonzero.  A set that is linearly dependent but has no dependent proper subset
+is called a <i>circuit</i>, and its relation, unique up to scale, splits it into
+the two sides of the equation &mdash; here $\{v_1,v_2\}$ and $\{v_3,v_4\}$.</p>
+
+<p>That is the configuration whose cone has exactly two triangulations, one
+leaving out a ray of each side.  Here they are
+$\langle v_1v_2v_3\rangle, \langle v_1v_2v_4\rangle$, meeting along the wall
+$\langle v_1,v_2\rangle$, and
+$\langle v_1v_3v_4\rangle, \langle v_2v_3v_4\rangle$, meeting along
+$\langle v_3,v_4\rangle$.  The two toric threefolds are small modifications of
+each other over the untriangulated cone $\sigma$, and $\sigma$ is the target of
+the flipping contraction.</p>
+
+<p>The two sides of the relation have coefficient sums $1 + 1 = 2$ and
+$2 + 1 = 3$, and that one inequality carries both of the facts that make this a
+flip.  It says $\sigma$ is not $\QQ$-Gorenstein: an $m$ with
+$\langle m, v_i \rangle = 1$ for all four rays would turn the relation into
+$2 = 3$.  And it says the move is a flip and not a flop: on the wall curve
+$K \cdot C$ is the difference of the two sums, with the sign depending on which
+side the wall is, so $K \cdot C = -1$ on the first triangulation and $+1$ on the
+second.</p>
 
 <p>The example builds this variety in Macaulay2.  The dual cone has a Hilbert
 basis of five elements with three relations, and one more variable $w$ makes a
