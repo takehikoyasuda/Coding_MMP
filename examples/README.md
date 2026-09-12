@@ -12,14 +12,24 @@ Macaulay2 sessions and published at
 | `04-disconnected-fibres.m2` | `P1xP2 -> P1` through the squaring map: a Stein factorization whose finite part has degree 2 |
 | `05-blowup-of-a-line.m2` | `Bl_L(P3)`: Stein factorization, divisorial (codimension 1) against the ODP small resolution (codimension 2), then `Bl_L(P3) -> P3 -> point` |
 | `06-toric-flip.m2` | toric circuit target: relative canonical model is a flip, with a certified inverse rational map |
+| `07-affine-base-flip.m2` | over an affine base: `threefoldMMPData` finds the flipping contraction itself and returns the flip; also a divisorial step, an index-three flip, and a two-step program through an intermediate target |
+| `08-three-step-program.m2` | `S3 x A^1` over `A^3`: a program three steps long, three divisorial contractions in a row, with both intermediate models checked against ground truth |
+| `09-three-step-flip.m2` | over example 7's non-Q-Gorenstein affine base: three steps ending in a flip -- two divisorial contractions, then the flip that was K-trivial until they happened |
 
 ## Scope
 
-Section 3 of the paper opens with a monograded `X = Proj R`, and a bigraded
-ring appears in it only as the graph of a morphism.  Every example here stays
-inside that setting: the varieties are monograded, and the bigraded rings are
-graphs of morphisms.  The package's multigraded entry points, which take a
-multigraded variety directly, are an extension beyond the paper (see
+Section 3 of the paper opens with a monograded `X = Proj R` with `R_0 = k`, and
+a bigraded ring appears in it only as the graph of a morphism.  Examples 1 to 6
+stay inside that setting: the varieties are monograded, and the bigraded rings
+are graphs of morphisms.  Example 7 keeps the single grading and drops
+`R_0 = k`, so `X` is projective over the affine `Spec R_0`; that is the
+relative setting, audited in `references/AlgoMMP/RELATIVE-SETTING-AUDIT.md`,
+and it is where the standard three-fold flips live without being compactified
+first.  Examples 8 and 9 stay there and make the program longer: three steps,
+so that one of them starts from a ring an earlier step built and hands another
+on, and in Example 9 the last of the three is a flip.  The package's
+multigraded entry points, which take a multigraded
+variety directly, are a separate extension beyond the paper (see
 `docs/PAPER-SYNC.md`), and this page does not use them.
 
 ## How the page is produced
@@ -32,7 +42,7 @@ the published page is transcribed by hand, so it cannot quote output Macaulay2
 no longer produces.
 
 ```sh
-make examples        # re-run all six and rewrite every .out and .time
+make examples        # re-run all nine and rewrite every .out and .time
 make examples-page   # build ./preview/examples.html and look at it
 make site            # the whole published site, manual included, into ./site
 ```

@@ -96,3 +96,15 @@ above; none are meant to be run as regression tests, and several
 (`toric-hypersurface-*`, `cyclic-cover-multigraded-*`) take from tens of
 seconds to tens of minutes depending on the input size used at investigation
 time.
+
+One script is a tool rather than a measurement.
+`toric-relative-mmp-search.py` simulates the toric relative MMP with scaling
+combinatorially -- wall relations, thresholds, and the fibre/divisorial/flip
+trichotomy read off the negative support of the relation -- and searches fans
+and polarizations for a program of a prescribed shape. It is what found the
+input of `tests/three-step-flip-mmp.m2`, whose program is two divisorial
+contractions and then a flip; its predicted thresholds `1, 1, 1/2` are the ones
+`threefoldMMPData` goes on to compute. Searching rather than hand-building was
+not a convenience: the first hand-built candidate for that shape needed
+fourteen minutes and 5.4 GB to decide its canonical index, and the one the
+search returned needs 0.9 seconds.

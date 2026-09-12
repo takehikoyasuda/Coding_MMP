@@ -41,7 +41,183 @@ The source repositories had the following local state at import time:
 | Weighted relative-model graph | `b2mDiagonalData`, `b2mToGraphMorphism` | skew Rees degrees use an interior positive diagonal; weighted toric flip passes end to end |
 | Contraction smallness | `contractionGraphSmallnessData`, `contractionSmallnessData` | exterior-power criterion audited; blow-up divisor, ODP small resolution, and identity regressions pass |
 | MMP step records | `mmpStepRecordData` | graph-preserving divisorial/flipping/mixed records with automatic smallness |
-| Top-level threefold MMP loop | `threefoldMMPData` | P3 K-negative-fibration, quintic minimal-model, and certified Bl_L(P3) birational-continuation regressions pass |
+| Top-level threefold MMP loop | `threefoldMMPData` | P3 K-negative-fibration, quintic minimal-model, and certified Bl_L(P3) birational-continuation regressions pass; over an affine base it finds and carries out a flip from the ring alone, runs a three-step program of divisorial contractions through two intermediate targets it builds itself, and runs a three-step program whose last step is a flip |
+| Affine base, `R_0` not a field | `affineBaseRingInternal`, `affineBaseIrrelevantIdealInternal`, `dropIrrelevantComponentsInternal`, `mmpIsCartierInternal`, `affineContractionSmallnessInternal`, `affineExceptionalIdealInternal`, `affineFibreCurvesInternal`, `affineNegativeCurveShortcutInternal`, `affineTargetPresentationInternal`, `affineRelativeModelRingInternal` | see below |
+
+## The relative setting: `X = Proj R` over the affine `Spec R_0`
+
+Giving an ambient variable degree zero puts its coordinate in `R_0`, and
+`X = Proj R` becomes projective over the affine `Spec R_0` rather than over a
+point.  The standard three-fold flips live there without being compactified
+first.  `references/AlgoMMP/RELATIVE-SETTING-AUDIT.md` audits what the paper's
+statements need; what follows is what the code needed.  Every item is inert
+when `R_0 = k`.
+
+- **Ghost components.**  Classically the irrelevant ideal `B` is the
+  homogeneous maximal ideal, of height `dim R >= 2`, so `V(B)` carries no
+  divisor.  Over an affine base `ht(B)` is one exactly when `X -> Spec R_0` is
+  birational, and then a Weil divisor of `Spec R` can have prime components
+  inside `V(B)`.  Those are not on `X`, but they change the graded module and
+  every section count taken from it.  In degree zero dropping them is exact:
+  `ht(B) = 1` makes `K(X) = Frac(R_0)`, so `ord_P` vanishes on `K(X)` for a
+  ghost prime `P` and the condition the component imposes reads `c_P >= 0`.
+  Measured on `Bl_0(A^3)`: the degree-zero sections of `K + 2H` are 4 with the
+  ghost and 1 without, and `K + 2H` is trivial there.
+- **Cartier tests.**  `isCartier(D, IsGraded => true)` saturates the
+  non-Cartier locus against `getIrrelevantIdeal(R)`, the homogeneous maximal
+  ideal.  Over an affine base that ideal contains the base coordinates, so the
+  saturation discards the point of `X` over the origin of `Spec R_0` -- where a
+  relative contraction's singularity sits.  `mmpIsCartierInternal` saturates
+  only against `B`, which is the identical answer classically (`B` is generated
+  by variables, so `B` is contained in `m` and
+  `saturate(saturate(J,m),B) = saturate(J,B)`).
+- **The canonical-ideal seed is refused.**  It embeds `omega_R`, which is
+  `O_{Spec R}(K)` for the unnormalized divisor, so its degree bookkeeping
+  answers about the wrong module.
+- **Contraction and smallness.**  In the one-section case the contraction is
+  the structure morphism `X -> Spec R_0`; its target ring and an affine-base
+  flag are recorded on the result.  Smallness cannot be read off the linear
+  system's graph there, since that graph is the absolute morphism to `P^0`;
+  `affineContractionSmallnessInternal` applies the same exterior-power
+  criterion to `Spec R` over `Spec R_0`.  Its rank assertion is
+  `dim R - dim R_0 = 1` rather than a module rank, because over an affine base
+  no heft vector exists and `rank`, `prune` and `hilbertFunction` all fail.
+- **Negative curves.**  Every curve proper over `k` lies in a fibre, and for a
+  birational structure morphism the positive-dimensional fibres are the
+  exceptional locus, so the search range is narrower than in the absolute
+  setting.  `(a*K).C` and `H.C` are computed once and every threshold candidate
+  `p/q` is decided by `q*(a*K).C + a*p*(H.C)`.  Without this the threshold
+  search does not finish: on the flip's source the bracket is `(1/4, 1/2]`,
+  whose candidates have denominators up to 31, and a base-point-free test at
+  denominator 8 runs for more than fifteen minutes.  The `t = 1/4` test drops
+  from 51 seconds to 0.48.  The degrees are read with `basis` rather than
+  `hilbertFunction`, since `R/Q` keeps `R`'s degree-zero variables and so has
+  no heft vector either.
+
+- **Targets that are neither the base nor a point.**  The relative target is
+  `Proj` over `Spec R_0` of the `R_0`-algebra the section representatives
+  generate -- again a presentation of the shape the driver reads, so the next
+  step starts from it directly.  Building it costs 0.19 s on the toric input
+  measured.  Stein factorization is skipped only on a certificate: the morphism
+  is certified birational onto its image (0.33 s; with `R` generated in degree
+  one over `R_0`, `K(X)` is generated over `Frac(R_0)` by the ratios of the
+  degree-one variables, and a degree-zero syzygy exhibiting `u_1 A = u B` puts
+  `u/u_1 = A/B` in `Frac(T)`), and the image is checked normal, so Zariski's
+  main theorem gives `Phi_* O_X = O` of the image.  Smallness there uses
+  `Omega_{X/T}` rather than the graph, and needs no exterior power: the cone map
+  is a `mu_e` quotient whose fixed locus lies in `V(B)` and is saturated away,
+  and the extension is algebraic, so `Omega` is generically zero and its
+  annihilator cuts out the support.  This is what makes a relative program more
+  than one birational step long.
+
+- **Programs three steps long.**  Two steps is the shortest length at which a
+  sequence exists at all, and in the two-step input each step is also an end:
+  the first contracts to an intermediate target, the second is the fibration
+  that stops it.  `S3 x A^1` over `A^3` -- the toric surface obtained from `A^2`
+  by three successive point blow-ups, times a line -- gives a program with a
+  middle.  Its three exceptional curves have `K.E = 0, 0, -1`, and the same
+  holds again after each contraction, so the program is forced to contract them
+  one at a time and reaches `A^3` in three divisorial steps, the second of which
+  both starts from a ring the first step built and hands one on to the third.
+  Multiplying by `A^1` rather than by `P^1` keeps the structure morphism
+  birational, so `dim R - dim R_0 = 1` and the negative-curve certificate
+  applies.  The `P^1` version has the same program on paper, but there the
+  fibre has a threshold of its own and it must stay under both surface ones or
+  the fibration comes first and the program is over in one step; that forces
+  `H.F >= 5`, hence eighteen degree-one generators instead of four, and that
+  input was not carried through -- its canonical index alone had not returned
+  after eight minutes and ten gigabytes.
+- **A program with a flip in it.**  The three divisorial steps above never ask
+  Algorithm 4 for anything: a Q-Gorenstein target is its own relative canonical
+  model, so each step's model is the identity.  A program that flips has to be
+  built differently.  The flipping contraction the code can carry out over an
+  affine base is the structure morphism `X -> Spec R_0`, and that is the
+  contraction at the threshold only at relative Picard rank one; a flip onto an
+  intermediate target would ask for the relative canonical model of a base that
+  is itself a `Proj` over `Spec R_0`, where -- as the note on
+  `relativeCanonicalModelFromBaseData` records -- FlipComputation's Rees
+  construction has degree-zero fibre variables and no heft vector exists.  So
+  the flip has to be the last step and the Picard rank has to be spent on
+  divisorial contractions first.
+  Over the base of example 7 -- the circuit `v1 + v2 = 2v3 + v4`, whose flipping
+  side `Y` carries a `1/2(1,1,1)` point -- add two rays above `Y`: `w = (1,1,-1)`
+  interior to that cone, which resolves it, and `w2 = v2 + v4` on a facet of
+  `sigma`.  The result is smooth of relative Picard rank three, and the program
+  contracts `D_{w2}`, then `D_w`, then flips, reaching `Z` as a minimal model.
+  What makes it work is that the circuit wall is K-trivial on both upper models
+  and turns K-negative only on `Y`: the flip is invisible until the two divisors
+  are gone.  Measured: the regression runs in two and a half minutes.  The first
+  step's nef-threshold search and the contraction after it are 69 s and 129 s of
+  cpu time when timed on their own; everything after that first step is under
+  twenty seconds together.
+- **Variable order in the target presentation.**  The base coordinates go ahead
+  of the section variables in `affineRelativeTargetRingInternal`.  Nothing
+  downstream reads a variable by position, but the order is the tie-break of the
+  monomial order, and over an affine base the degree-zero variables make whole
+  strata of monomials equal in degree, so graded reverse lexicographic falls
+  through to position on all of them.  Measured on the second model of the
+  three-step program, the same ring presented both ways:
+  `canonicalNefThreshold` takes 0.68 s with the base coordinates first and
+  203.5 s with the section variables first, and the whole three-step program
+  goes from about 230 s to about 8.  Only a presentation the driver builds for
+  its own next iteration was ever the slow one -- every presentation written by
+  hand in this repository is the fast one -- which is why the cost appeared only
+  once a step had to start from a ring an earlier step had built.
+
+Three things are not done.  The fibre-type case of the above is refused:
+certifying connected fibres there needs the `A`-module version of
+`lem:section-ring-over-k`, and the refusal names it.  The cost of the
+birational case has no bound in advance: the normality check on the image is a
+normality check on whatever ring the sections happen to generate, and that is
+cheap when the ring is small.  The two intermediate targets of the three-step
+program above are a six- and a five-variable ring, the contraction that builds
+the first of them costs 2.5 s with its certificate inside it, and the whole
+three-step program through both of them is about eight seconds.  On the
+thirteen-variable target of one toric two-step input, the same `isNormal` ran
+for four hours and seventeen minutes at 6 GB without finishing.  That cost is
+intrinsic there, not a redundant presentation
+-- none of the eight fibre variables is removable, so the presentation is
+already minimal, and `R1` needs size-nine minors of a 13 by 49 Jacobian.  `R1`
+cannot simply be dropped -- birationality only makes the codimension-one points of the
+image have finite fibres, which does not stop the image from being singular
+there.  And the Cartier test is not exact for weighted gradings: on a weighted
+presentation `Spec R - V(B)` is not a torsor over `X`, so a divisor can be
+locally free on the punctured cone without being invertible on `X` -- the same
+thing that happens to `O(1)` on `P(1,1,2)` -- and the test over-reports.  A
+Veronese presentation, where every positive-degree generator has degree one,
+avoids it.
+
+Regressions: `tests/relative-affine-flip-mmp.m2`,
+`tests/three-step-relative-mmp.m2`, `tests/three-step-flip-mmp.m2`.  Worked
+examples:
+`examples/07-affine-base-flip.m2`, `examples/08-three-step-program.m2`,
+`examples/09-three-step-flip.m2`.
+
+## WeilDivisors' graded canonical divisor, where its degree read fails
+
+`canonicalDivisor(R,IsGraded=>true)` stops with
+
+```text
+error: no method for binary operator - applied to objects:
+    -infinity (of class InfiniteNumber) - {0} (of class List)
+```
+
+on some ordinary rings.  `internalModuleToIdeal` embeds `omega` as an ideal by
+walking the columns of `syz transpose presentation omega`, each a homogeneous
+map `omega -> R`, until one is injective, and then reads the degree of the
+embedding as `degree(t#0) - (degrees omega)#0` (WeilDivisors.m2:1808).  That
+difference is the right one only when the section's *first* component is
+nonzero.  The map is homogeneous, so every index `j` with `t#j != 0` gives the
+same answer and any one of them will do -- but with `t#0 = 0` the degree of the
+zero element is `-infinity` and the subtraction is meaningless.
+
+It is not a corner case.  On `S3 x A^1` over `A^3`, `omega` has four generators
+and all three candidate sections start with a zero, so the first candidate
+crashes it.  `gradedCanonicalDivisorRetryInternal` is the same construction with
+the shift read off the first nonzero component, and `mmpCanonicalDivisorInternal`
+uses it only where WeilDivisors' own function fails, so nothing that works today
+changes answer.  Checked against `canonicalDivisor` on rings where that one does
+return: the identical divisor, not merely a linearly equivalent one.
 
 ## Canonical ideal past codimension 12
 

@@ -27,14 +27,19 @@ build fails if any example stops working.
 
 **[Worked examples](https://takehikoyasuda.github.io/Coding_MMP/examples.html)**
 is the page to start from if the question is what has actually been computed
-rather than what each function does.  It walks through six examples: the nef
+rather than what each function does.  It walks through nine examples: the nef
 threshold and contraction of `P3`, a quintic threefold as a minimal model, the
 Segre threefold's fibre-type contraction, a Stein factorization whose finite
 part has degree two, the blow-up of a line and the two-step program
-`Bl_L(P3) -> P3 -> point`, and a toric flip.  Each has a brief mathematical account and the Macaulay2 session that
-produces it.  All of them stay inside the paper's setting, with monograded
-varieties and bigraded rings only as graphs of morphisms.  The sources are in
-[`examples/`](examples/README.md).
+`Bl_L(P3) -> P3 -> point`, a toric flip, a minimal model program that finds a
+flipping contraction by itself and flips it, a program three steps long, and a
+program three steps long that ends in a flip.  Each has a brief mathematical
+account and the Macaulay2 session that produces it.  The first six stay inside
+the paper's setting, with monograded varieties and bigraded rings only as
+graphs of morphisms; the last three keep the single grading and drop
+`R_0 = k`, so that `X` is projective over an affine base, which is where the
+standard three-fold flips live and where a program can run for more than one
+birational step.  The sources are in [`examples/`](examples/README.md).
 
 ## Checkout
 
@@ -175,8 +180,13 @@ certifies a connected-fibre morphism to a lower-dimensional target for which
 
 `MMPComputation.m2` carries a standard Macaulay2 package manual (`doc ///...///`
 blocks after `beginDocumentation()`) describing each public function's usage,
-inputs, and outputs, with runnable examples for the top-level API. Build and
-browse it with
+inputs, and outputs, with runnable examples for the top-level API. It also has
+one topic page rather than a function page, *the relative setting over an
+affine base*, which explains how to present `X = Proj R` as projective over the
+affine `Spec R_0` — the setting where the standard three-fold flips live and
+where a program can run for several birational steps — what the contraction
+results then report, and the four things worth knowing before presenting an
+input that way. Build and browse it with
 
 ```sh
 make install

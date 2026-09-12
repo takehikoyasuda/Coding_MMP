@@ -1,0 +1,318 @@
+i1 : needsPackage("MMPComputation", FileName => "MMPComputation.m2")
+
+o1 = MMPComputation
+
+o1 : Package
+
+i2 : needsPackage "Polyhedra"
+
+o2 = Polyhedra
+
+o2 : Package
+
+i3 : coxWeights = {1,1,-2,-1}
+
+o3 = {1, 1, -2, -1}
+
+o3 : List
+
+i4 : veroneseSide = (w, side, d) -> (
+         degvec := apply(w, c -> side*c);
+         lam := if d == 1 then id_(ZZ^4)
+             else mingens ker map(coker matrix{{d}}, ZZ^4, matrix{degvec});
+         exponents := apply(
+             hilbertBasis coneFromHData((lam || matrix{degvec}*lam)),
+             v -> flatten entries (lam * v));
+         L := QQ[za,zb,zc,zd];
+         S := QQ[u_1 .. u_(#exponents),
+             Degrees => apply(exponents,
+                 a -> (sum apply(4, i -> degvec#i * a#i)) // d)];
+         S/ker map(L, S, apply(exponents,
+             h -> za^(h#0)*zb^(h#1)*zc^(h#2)*zd^(h#3))))
+
+o4 = veroneseSide
+
+o4 : FunctionClosure
+
+i5 : Y = veroneseSide(coxWeights, -1, 2);
+
+i6 : numgens Y
+
+o6 = 7
+
+i7 : flatten degrees Y
+
+o7 = {1, 0, 0, 0, 1, 0, 0}
+
+o7 : List
+
+i8 : dim Y - 1
+
+o8 = 3
+
+i9 : isNormal Y
+
+o9 = true
+
+i10 : indexData = canonicalIndexData Y;
+
+i11 : indexData#"index"
+
+o11 = 2
+
+i12 : nefData = canonicalNefData(Y, 2);
+
+i13 : nefData#"nef"
+
+o13 = false
+
+i14 : nefData#"witnessType"
+
+o14 = non-nef positive perturbation
+
+i15 : canonicalNefThreshold(Y, 2)
+
+      1
+o15 = -
+      2
+
+o15 : QQ
+
+i16 : contraction = canonicalContractionData(Y, 2);
+
+i17 : contraction#"contractionType"
+
+o17 = birational
+
+i18 : contraction#"steinFactorizationType"
+
+o18 = structure morphism to the affine base
+
+i19 : contraction#"affineBaseDimension"
+
+o19 = 3
+
+i20 : dim(contraction#"steinAlgebraData"#"ring")
+
+o20 = 3
+
+i21 : smallness = contractionSmallnessData contraction;
+
+i22 : smallness#"isSmall"
+
+o22 = true
+
+i23 : smallness#"exceptionalDimension"
+
+o23 = 1
+
+i24 : smallness#"exceptionalCodimension"
+
+o24 = 2
+
+i25 : mmp = threefoldMMPData(Y, 2);
+
+i26 : mmp#"terminationType"
+
+o26 = minimal model
+
+i27 : mmp#"numberOfSteps"
+
+o27 = 1
+
+i28 : apply(mmp#"steps", r -> r#"stepType")
+
+o28 = {flipping}
+
+o28 : List
+
+i29 : Z = mmp#"finalRing";
+
+i30 : flatten degrees Z
+
+o30 = {1, 1, 0, 0, 0, 0, 0}
+
+o30 : List
+
+i31 : (canonicalIndexData Z)#"index"
+
+o31 = 1
+
+i32 : (canonicalNefData(Z, 1))#"nef"
+
+o32 = true
+
+i33 : groundTruthZ = veroneseSide(coxWeights, 1, 1);
+
+i34 : flatten degrees groundTruthZ
+
+o34 = {1, 0, 0, 1, 0, 0, 0}
+
+o34 : List
+
+i35 : sameRing = (A, B) -> (
+          ambA := ambient A; ambB := ambient B;
+          byDegree := amb -> (
+              vs := flatten entries vars amb;
+              {select(vs, v -> (degree v)#0 == 1), select(vs, v -> (degree v)#0 == 0)});
+          src := byDegree ambA; tgt := byDegree ambB;
+          found := false;
+          scan(permutations tgt#0, p1 -> if not found then
+              scan(permutations tgt#1, p0 -> if not found then (
+                  images := new MutableList from toList(numgens ambA : null);
+                  scan(#(src#0), i -> images#(index (src#0)#i) = p1#i);
+                  scan(#(src#1), i -> images#(index (src#1)#i) = p0#i);
+                  if (map(ambB, ambA, toList images))(ideal A) == ideal B then
+                      found = true)));
+          found)
+
+o35 = sameRing
+
+o35 : FunctionClosure
+
+i36 : sameRing(Z, groundTruthZ)
+
+o36 = true
+
+i37 : blowup = (QQ[a,b,c,x,y,z, Degrees => {0,0,0,1,1,1}])/minors(2,
+          matrix{{a,b,c},{x,y,z}});
+
+i38 : (canonicalIndexData blowup)#"index"
+
+o38 = 1
+
+i39 : canonicalNefThreshold(blowup, 1)
+
+o39 = 2
+
+o39 : QQ
+
+i40 : blowupSmallness = contractionSmallnessData canonicalContractionData(blowup, 1);
+
+i41 : blowupSmallness#"isSmall"
+
+o41 = false
+
+i42 : blowupSmallness#"exceptionalDimension"
+
+o42 = 2
+
+i43 : blowupMMP = threefoldMMPData(blowup, 1);
+
+i44 : blowupMMP#"terminationType"
+
+o44 = minimal model
+
+i45 : apply(blowupMMP#"steps", r -> r#"stepType")
+
+o45 = {divisorial}
+
+o45 : List
+
+i46 : flatten degrees blowupMMP#"finalRing"
+
+o46 = {0, 0, 0, 1}
+
+o46 : List
+
+i47 : Y3 = veroneseSide({1,1,-1,-3}, -1, 3);
+
+i48 : flatten degrees Y3
+
+o48 = {1, 1, 0, 0, 0, 0, 0, 0}
+
+o48 : List
+
+i49 : (canonicalIndexData Y3)#"index"
+
+o49 = 3
+
+i50 : canonicalNefThreshold(Y3, 3)
+
+      2
+o50 = -
+      3
+
+o50 : QQ
+
+i51 : mmp3 = threefoldMMPData(Y3, 3);
+
+i52 : mmp3#"terminationType"
+
+o52 = minimal model
+
+i53 : apply(mmp3#"steps", r -> r#"stepType")
+
+o53 = {flipping}
+
+o53 : List
+
+i54 : (canonicalIndexData mmp3#"finalRing")#"index"
+
+o54 = 1
+
+i55 : segre = QQ[a,b,x,y,z0,z1]/ideal(a*y-b*x);
+
+i56 : twoStepAmbient = QQ[w_1 .. w_8, wa, wb, Degrees => {1,1,1,1,1,1,1,1,0,0}];
+
+i57 : twoStep = twoStepAmbient/ker map(segre, twoStepAmbient,
+          flatten apply({x,y}, f -> apply({z0^3,z0^2*z1,z0*z1^2,z1^3}, g -> f*g))
+          | {a,b});
+
+i58 : dim twoStep - 1
+
+o58 = 3
+
+i59 : canonicalNefThreshold(twoStep, 1)
+
+o59 = 1
+
+o59 : QQ
+
+i60 : twoStepContraction = canonicalContractionData(twoStep, 1);
+
+i61 : twoStepContraction#"contractionType"
+
+o61 = birational
+
+i62 : twoStepContraction#"targetDimension"
+
+o62 = 3
+
+i63 : twoStepContraction#"steinFactorizationType"
+
+o63 = trivial: birational onto a normal image over the affine base
+
+i64 : flatten degrees twoStepContraction#"relativeTargetRing"
+
+o64 = {0, 0, 1, 1}
+
+o64 : List
+
+i65 : ideal twoStepContraction#"relativeTargetRing"
+
+o65 = ideal ()
+
+o65 : Ideal of QQ[wa, wb, mmpRelativeTargetVariable ..mmpRelativeTargetVariable ]
+                                                   1                           2
+
+i66 : (contractionSmallnessData twoStepContraction)#"exceptionalDimension"
+
+o66 = 2
+
+i67 : twoStepMMP = threefoldMMPData(twoStep, 1);
+
+i68 : twoStepMMP#"terminationType"
+
+o68 = K-negative fibration
+
+i69 : twoStepMMP#"numberOfSteps"
+
+o69 = 2
+
+i70 : apply(twoStepMMP#"steps", r -> r#"stepType")
+
+o70 = {divisorial, fibration}
+
+o70 : List
+

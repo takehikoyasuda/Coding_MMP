@@ -32,6 +32,11 @@ newPackage(
 
 protect mmpCanonicalIdealSeedData;
 protect mmpNoetherCanonicalDivisor;
+protect mmpAffineBaseIrrelevantIdeal;
+protect mmpAffineBaseRing;
+protect mmpAffineExceptionalIdeal;
+protect mmpAffineFibreCurves;
+protect mmpAffineCurveDegrees;
 
 export {
     "weightedAmpleDivisorData",
@@ -180,17 +185,32 @@ multigradedBlockData Ring := R -> (
     -- each variable by the last nonzero entry of its reordered degree
     -- vector, and require that entry to be positive.  Returns a list of
     -- 1-indexed block numbers, or null if the order fails some variable.
+    -- A variable whose degree vector is entirely zero is not a badly
+    -- classified block variable: it is a coordinate on the base.  Its
+    -- coordinate lies in R_0, so R_0 is not k and X = Proj R is a projective
+    -- scheme over the affine Spec R_0 rather than over a point.  The
+    -- irrelevant ideal is then the product of the block ideals of the
+    -- *positively graded* variables and nothing else -- a base variable
+    -- generates no relevant ideal and is not excluded from Proj -- so such
+    -- variables are assigned block 0 here and dropped before B is formed.
+    -- Rejecting them, as this did before, made the whole relative setting
+    -- unreachable; nothing changes when every variable carries a nonzero
+    -- degree, where no variable is ever assigned block 0.
+    baseIndices := select(n, j -> all(degree avars#j, c -> c == 0));
     tryOrder := perm -> (
         assignment := new MutableList from toList(n:null);
         ok := true;
         scan(n, j -> if ok then (
-            dg := degree avars#j;
-            reordered := apply(perm, i -> dg#i);
-            lastNonzero := 0;
-            scan(#reordered, k -> if reordered#k != 0 then lastNonzero = k+1);
-            if lastNonzero == 0 or reordered#(lastNonzero-1) <= 0 then
-                ok = false
-            else assignment#j = lastNonzero;
+            if member(j,baseIndices) then assignment#j = 0
+            else (
+                dg := degree avars#j;
+                reordered := apply(perm, i -> dg#i);
+                lastNonzero := 0;
+                scan(#reordered, k -> if reordered#k != 0 then lastNonzero = k+1);
+                if reordered#(lastNonzero-1) <= 0 then
+                    ok = false
+                else assignment#j = lastNonzero;
+                );
             ));
         if ok then toList assignment else null
         );
@@ -232,7 +252,12 @@ multigradedBlockData Ring := R -> (
     -- disagree about.  Callers that cannot supply their own known-correct
     -- irrelevant ideal should treat "irrelevantIdeal" as trustworthy only
     -- when this flag is true; see verifiedIrrelevantIdeal below.
-    reorderedDegrees := apply(n, j -> apply(usedPermutation, i -> (degree avars#j)#i));
+    -- Base variables are excluded from the block-diagonality check: they are
+    -- unambiguous (they belong to no block at all), so they cannot be the
+    -- source of the misclassification this flag guards against.
+    nonBaseIndices := select(n, j -> not member(j,baseIndices));
+    reorderedDegrees := apply(nonBaseIndices,
+        j -> apply(usedPermutation, i -> (degree avars#j)#i));
     verifiedBlockDiagonal := all(reorderedDegrees, dg -> #select(dg, x -> x != 0) == 1);
     new HashTable from {
         "ring" => R,
@@ -243,6 +268,7 @@ multigradedBlockData Ring := R -> (
         "blockVariables" => blockVariables,
         "blockIdeals" => blockIdeals,
         "irrelevantIdeal" => B,
+        "baseVariables" => apply(baseIndices, j -> Rvars#j),
         "geometricDimension" => dim R - r,
         "verifiedBlockDiagonal" => verifiedBlockDiagonal,
         "blocksSupplied" => false
@@ -444,10 +470,88 @@ irrelevantIdealResultKeysInternal = idealData -> (
         "irrelevantIdealSource" => src}
     )
 
+-- The irrelevant ideal of a presentation that has an affine base, or null.
+--
+-- "Has an affine base" is read syntactically, from the presence of a variable
+-- whose degree vector is entirely zero -- the same reading multigradedBlockData
+-- and affineBaseDimensionInternal use.  With no such variable R_0 = k, X lies
+-- over a point, and this returns null so that every caller keeps the exact
+-- classical behaviour without computing anything at all.
+--
+-- The ideal itself is multigradedBlockData's, which already excludes the base
+-- variables from every block.  Failure to derive it is reported as null rather
+-- than raised: the callers below all have a classical fallback, and turning a
+-- ring this package can otherwise handle into an error would be a regression.
+affineBaseIrrelevantIdealInternal = R -> (
+    if R.cache#?mmpAffineBaseIrrelevantIdeal then
+        return R.cache#mmpAffineBaseIrrelevantIdeal;
+    S := ambient R;
+    answer := null;
+    if any(flatten entries vars S, q -> all(degree q, c -> c == 0)) then
+        try answer = (multigradedBlockData R)#"irrelevantIdeal";
+    R.cache#mmpAffineBaseIrrelevantIdeal = answer;
+    answer
+    )
+
+-- Section 9.1 of references/AlgoMMP/RELATIVE-SETTING-AUDIT.md.  Classically
+-- B = R_+ is the homogeneous maximal ideal, so ht(B) = dim R >= 2 and V(B)
+-- carries no divisor: every height-one prime of R is a divisor on X = Proj R
+-- and there is nothing to normalize.  Over an affine base
+--
+--     ht(B) = (generic fibre dimension of X -> Spec R_0) + 1,
+--
+-- so a generically finite -- that is, birational -- structure morphism gives
+-- ht(B) = 1, and then a Weil divisor on Spec R may have prime components
+-- supported inside V(B).  Those components are invisible on X, since V(B) is
+-- exactly what Proj removes, but they still change the graded module
+-- divisorToModule builds from the divisor, and with it every section count and
+-- base-point-free verdict taken from that module.  Drop them.
+--
+-- In degree zero this is not an approximation but the exact answer.  When
+-- ht(B) = 1 the map X -> Spec R_0 is birational, R_0 injects into R/B, and
+-- K(X) = Frac(R_0), so every nonzero degree-zero element of Frac(R) is a ratio
+-- of elements of R_0 and has order zero along a ghost prime P.  The condition
+-- ord_P(f) + c_P >= 0 that the component imposes therefore reads c_P >= 0: it
+-- is vacuous when c_P >= 0 and satisfied by nothing when c_P < 0.  Removing it
+-- makes the degree-zero part of the module equal to H^0(X, O_X(D)) in both
+-- cases, where leaving it in gives that group only when the sign happens to be
+-- favourable.  Measured on Bl_0(A^3), where the code's own canonical divisor
+-- carries the component -1*[B]: the degree-zero sections of K + 2H are 4 with
+-- it and 1 without, and 1 is the right answer, K + 2H being trivial there.
+--
+-- Inert in the classical setting, and cheaply so.  A divisor's primes have
+-- height one and cannot contain a B of height two or more, so the height test
+-- alone settles it and no prime is ever examined.
+dropIrrelevantComponentsInternal = (D,B) -> (
+    if B === null or D === null then return D;
+    if codim B > 1 then return D;
+    ghosts := select(getPrimeCount D, i -> isSubset(B,(primes D)#i));
+    if #ghosts == 0 then return D;
+    P := primes D;
+    C := coefficients D;
+    D - divisor(apply(ghosts, i -> C#i), apply(ghosts, i -> P#i))
+    )
+
 -- Lemma 3.6 of the paper: if X is presented in a weighted projective space
 -- with coordinate weights c_i and l=lcm(c_i), then O_X(l) is ample and
 -- invertible.  A nonzero coordinate power of weighted degree l supplies an
 -- effective Cartier representative H.
+--
+-- Weight zero is allowed, and means something specific: the paper's
+-- Definition 2.1 has R_0 = k, but a variable of degree zero puts its
+-- coordinate in R_0 instead, presenting X = Proj R as a projective scheme
+-- over the affine base Spec R_0 rather than over a point.  The lemma still
+-- holds there, over that base: l is the lcm of the *positive* weights, the
+-- degree-zero variables contribute nothing to it, and O_X(l) is invertible
+-- and f-ample by the same Veronese argument applied to the positively graded
+-- part.  The Cartier representative must then be built from a coordinate of
+-- positive weight -- a degree-zero coordinate is a unit in the relevant
+-- sense and its divisor is not a fibre-direction divisor at all -- so the
+-- candidate search is restricted accordingly.  Negative weights remain an
+-- error: there Proj is not the object the paper's algorithms address.
+--
+-- This changes nothing for a caller whose weights are all positive, where
+-- the lcm and the candidate list are exactly what they were.
 weightedAmpleDivisorData = method()
 weightedAmpleDivisorData Ring := R -> (
     S := ambient R;
@@ -455,17 +559,27 @@ weightedAmpleDivisorData Ring := R -> (
         error "weightedAmpleDivisorData: expected a singly graded ring";
     ambientVars := flatten entries vars S;
     weights := apply(ambientVars,q -> (degree q)#0);
-    if any(weights,c -> c <= 0) then
-        error "weightedAmpleDivisorData: all coordinate weights must be positive";
+    if any(weights,c -> c < 0) then
+        error "weightedAmpleDivisorData: coordinate weights must be nonnegative";
+    positiveIndices := select(#ambientVars,i -> weights#i > 0);
+    if #positiveIndices == 0 then
+        error("weightedAmpleDivisorData: no coordinate has positive weight, "
+            | "so Proj R is empty");
     ell := 1;
-    scan(weights,c -> ell = lcm(ell,c));
-    candidates := select(#ambientVars,i -> sub(ambientVars#i,R) != 0);
+    scan(positiveIndices,i -> ell = lcm(ell,weights#i));
+    candidates := select(positiveIndices,i -> sub(ambientVars#i,R) != 0);
     if #candidates == 0 then
         error "weightedAmpleDivisorData: every coordinate vanishes on X";
     coordinateIndex := first candidates;
     coordinate := sub(ambientVars#coordinateIndex,R);
     section := coordinate^(ell // weights#coordinateIndex);
-    H := divisor section;
+    -- div(section) is a divisor of Spec R.  Over an affine base with an
+    -- irrelevant ideal of height one it acquires a component supported inside
+    -- V(B) -- on Bl_0(A^3) the code's own H is 1*[B] + 1*[(x,a)] -- which is
+    -- not a divisor on X.  Drop it here so that every combination m*K + n*H a
+    -- caller later forms is normalized too; inert when R_0 = k.
+    H := dropIrrelevantComponentsInternal(
+        divisor section,affineBaseIrrelevantIdealInternal R);
     new HashTable from {
         "ring" => R,
         "weights" => weights,
@@ -474,6 +588,51 @@ weightedAmpleDivisorData Ring := R -> (
         "section" => section,
         "divisor" => H
         }
+    )
+
+-- The dimension of the affine base.  The paper's Definition 2.1 has R_0 = k,
+-- so X = Proj R sits over a point and this is 0; a presentation with
+-- degree-zero ambient variables puts their coordinates in R_0 instead and
+-- X = Proj R is projective over the affine Spec R_0.
+--
+-- R_0 = S_0/(I cap S_0) where S_0 is the polynomial ring on the degree-zero
+-- ambient variables, and for a homogeneous I in a ring with no negative
+-- degrees the intersection is generated by I's own degree-zero generators:
+-- writing an element of I cap S_0 as sum h_i g_i forces deg h_i = -deg g_i,
+-- which is only available when deg g_i = 0.  So no elimination is needed.
+--
+-- With no degree-zero variables S_0 = k and this returns 0, which is what
+-- every caller written for the R_0 = k case already assumes.
+-- Written for any degree length, not only 1: a base variable is one whose
+-- degree vector is entirely zero, the same reading multigradedBlockData uses
+-- to keep such a variable out of every block.  The multigraded entry points
+-- share canonicalContractionAtThresholdDataCore with the monograded ones, so
+-- this has to answer for them too, and it answers 0, since a presentation
+-- with no all-zero degree vector has R_0 = k.
+-- The base ring R_0 itself, or null when R_0 = k.  This is the target of the
+-- structure morphism X -> Spec R_0, so a relative contraction needs the ring
+-- and not only its dimension.  Cached on R: the driver asks for it once per
+-- entry point and the quotient is not free to form.
+affineBaseRingInternal = R -> (
+    if R.cache#?mmpAffineBaseRing then return R.cache#mmpAffineBaseRing;
+    S := ambient R;
+    baseVars := select(flatten entries vars S, q -> all(degree q, c -> c == 0));
+    answer := null;
+    if #baseVars > 0 then (
+        kk := coefficientRing S;
+        S0 := kk(monoid [baseVars]);
+        degreeZeroGenerators := select(flatten entries gens ideal R,
+            g -> g != 0 and all(degree g, c -> c == 0));
+        answer = if #degreeZeroGenerators == 0 then S0
+            else S0/sub(ideal degreeZeroGenerators,S0);
+        );
+    R.cache#mmpAffineBaseRing = answer;
+    answer
+    )
+
+affineBaseDimensionInternal = R -> (
+    R0 := affineBaseRingInternal R;
+    if R0 === null then 0 else dim R0
     )
 
 -- Proposition 3.1: the effective base-point-free multiplier for
@@ -786,9 +945,23 @@ noetherCanonicalIdealSeedInternal = R -> (
 -- most six, so nothing already working changes route.
 mmpNoetherCodimThreshold = 12;
 
+-- The seed is an embedding of the canonical *module* of the graded ring R,
+-- omega_R = Ext^c(R,omega_S), which is O_{Spec R}(K) for the divisor
+-- canonicalDivisor returns -- ghost component and all.  Over an affine base
+-- with an irrelevant ideal of height one that divisor and the divisor on X
+-- differ by a multiple of a prime supported inside V(B), so the seed's degree
+-- bookkeeping answers about the wrong module and its fastpaths give wrong
+-- verdicts, not merely conservative ones.  Measured on the toric flip's target
+-- Z: omega_R embeds as (u_7,u_6,u_3) at degree -1, so its degree-zero part is
+-- empty and canonicalIdealSeedBPFInternal reports K_Z not base-point-free,
+-- where H^0(Z,O(K_Z)) in fact has two generators over R_0 and K_Z is
+-- base-point-free.  Refuse the seed there and let every caller fall back to
+-- the divisorToModule path, which normalizes the divisor first.
 canonicalIdealSeedDataInternal = (R,K) -> (
     if instance(K,WeilDivisor) and K#cache#?mmpCanonicalIdealSeedData then
         return K#cache#mmpCanonicalIdealSeedData;
+    affineB := affineBaseIrrelevantIdealInternal R;
+    if affineB =!= null and codim affineB <= 1 then return null;
     S := ambient R;
     -- Only in the regime where the Ext is hopeless, and only as an attempt:
     -- the Noether route returns null on any ring it cannot handle (multigraded,
@@ -844,6 +1017,79 @@ canonicalIdealSeedDataInternal = (R,K) -> (
     result
     )
 
+-- canonicalDivisor(R,IsGraded=>true) stops with
+--
+--     error: no method for binary operator - applied to objects:
+--         -infinity (of class InfiniteNumber) - {0} (of class List)
+--
+-- on some perfectly ordinary rings.  WeilDivisors' internalModuleToIdeal
+-- embeds omega as an ideal by walking the columns of
+-- syz transpose presentation omega -- each one a homogeneous map omega -> R --
+-- until it finds an injective one, and then reads the degree of the embedding
+-- as
+--
+--     degree(t#0) - (degrees omega)#0
+--
+-- (WeilDivisors.m2:1808).  That is the right difference only when the section's
+-- *first* component is nonzero.  The map is homogeneous, so every index j with
+-- t#j != 0 gives the same difference and any one of them will do -- but when
+-- t#0 = 0 the degree of the zero element is -infinity and the subtraction has
+-- no meaning.  It is not an exotic situation: on the toric threefold
+-- S3 x A^1 over A^3 of tests/three-step-relative-mmp.m2, omega has four
+-- generators and all three candidate sections start with a zero,
+--
+--     {0, u_5, -u_6, -u_7},  {0, -u_3, u_2*u_5, u_4*u_5},
+--     {0, u_2^3, -u_2*u_4, -u_4^2},
+--
+-- so the very first candidate crashes it.
+--
+-- This is the same construction with the shift read off the first nonzero
+-- component instead, and is used only where WeilDivisors' own function fails,
+-- so nothing that works today changes answer.  The rest of the function body
+-- is WeilDivisors' canonicalDivisor and divisor(Module,IsGraded=>true) in
+-- sequence, with their Ext and their findElementOfDegree.  Checked against
+-- canonicalDivisor on the rings where that one does return: identical divisor,
+-- not merely a linearly equivalent one.
+gradedCanonicalDivisorRetryInternal = R -> (
+    S := ambient R;
+    ambientVariables := flatten entries vars S;
+    if #ambientVariables == 0 then return null;
+    degreeList := if #(degree first ambientVariables) == 1
+        then apply(ambientVariables, q -> (degree q)#0)
+        else apply(ambientVariables, q -> degree q);
+    omega := (Ext^(dim S - dim R)(
+        S^1/(ideal R), S^{-(sum degreeList)})) ** R;
+    if omega == 0 then return null;
+    omegaDegrees := degrees omega;
+    section := null;
+    shift := null;
+    scan(entries transpose syz transpose presentation omega,
+        candidate -> if section === null then (
+            j := position(candidate, entry -> entry != 0);
+            if j =!= null and isInjective map(R^1,omega,{candidate}) then (
+                section = candidate;
+                shift = degree(candidate#j) - omegaDegrees#j;
+                );
+            ));
+    if section === null then return null;
+    correction := findElementOfDegree((-1)*shift,R);
+    -divisor(trim ideal section) - divisor(correction#0)
+        + divisor(correction#1)
+    )
+
+-- WeilDivisors' graded canonical divisor, with the retry above standing in
+-- where it stops on the degree bug the retry documents.
+mmpGradedCanonicalDivisorInternal = R -> (
+    answer := try canonicalDivisor(R,IsGraded=>true) else null;
+    if answer =!= null then return answer;
+    answer = gradedCanonicalDivisorRetryInternal R;
+    if answer === null then
+        error("mmpCanonicalDivisorInternal: WeilDivisors' canonicalDivisor "
+            | "failed on this ring and the graded embedding retry found no "
+            | "homogeneous section of the canonical module");
+    answer
+    )
+
 -- canonicalDivisor(R,IsGraded=>true) is WeilDivisors' own function, and it runs
 -- the same Ext over the ambient that the seed above exists to avoid.  So on a
 -- ring where that Ext is out of reach the seed never gets its chance, because
@@ -867,9 +1113,27 @@ canonicalIdealSeedDataInternal = (R,K) -> (
 -- this the Noether construction would be paid again at each step -- about
 -- thirteen minutes apiece on the cyclic cover's flip target.  Any divisor with
 -- O_X(K) = omega will do, so reusing one across calls is sound.
+-- Over an affine base whose irrelevant ideal has height one the divisor
+-- canonicalDivisor returns is a divisor of Spec R and may carry a component
+-- supported inside V(B), which is not on X (section 9.1 of
+-- references/AlgoMMP/RELATIVE-SETTING-AUDIT.md).  Normalize once here, at the
+-- source, rather than at each of the many places K is later combined with H:
+-- dropping ghost components is additive, so a normalized K and a normalized H
+-- make every m*K + n*H the caller forms normalized too.
+--
+-- The Noether branch is skipped in that case, not normalized after the fact.
+-- It caches a canonical-ideal seed on the divisor it returns, and that seed is
+-- built from the unnormalized ideal, so it would have to be discarded anyway;
+-- and the branch cannot fire over an affine base regardless, since
+-- noetherCanonicalIdealSeedInternal requires every ambient variable to have
+-- degree one and a base variable has degree zero.
 mmpCanonicalDivisorInternal = R -> (
     if R.cache#?mmpNoetherCanonicalDivisor then
         return R.cache#mmpNoetherCanonicalDivisor;
+    affineB := affineBaseIrrelevantIdealInternal R;
+    if affineB =!= null then
+        return dropIrrelevantComponentsInternal(
+            mmpGradedCanonicalDivisorInternal R,affineB);
     S := ambient R;
     if dim S - dim R >= mmpNoetherCodimThreshold then (
         seed := noetherCanonicalIdealSeedInternal R;
@@ -888,7 +1152,7 @@ mmpCanonicalDivisorInternal = R -> (
                 );
             );
         );
-    canonicalDivisor(R,IsGraded=>true)
+    mmpGradedCanonicalDivisorInternal R
     )
 
 -- Return null when the chart/principal hypotheses needed for this shortcut
@@ -1007,7 +1271,11 @@ basePointFreeModuleInternal = (M,B) -> (
 -- weighted P(1,1,1,2) degree-2 ample class), so this is behaviour-preserving
 -- for every existing (monograded) caller, and additionally correct on the
 -- h^0 = 0 case above where the plan's literal fix is not.
-isBasePointFreeDivisorInternal = (D,B) -> (
+isBasePointFreeDivisorInternal = (D0,B) -> (
+    -- Components supported inside V(B) change the graded module without
+    -- changing the sheaf on X; drop them first.  Inert unless ht(B) = 1, so
+    -- every classical caller reaches the identical code below with D = D0.
+    D := dropIrrelevantComponentsInternal(D0,B);
     R := ring D;
     -- A sum of homogeneous principal prime divisors has a certified Cox
     -- degree.  In that case O(D) is the corresponding free graded shift and
@@ -1051,10 +1319,25 @@ isBasePointFreeDivisor (BasicDivisor,GraphMorphism) := (D,G) ->
 -- BasicDivisor/RWeilDivisor argument is converted first.
 isCartierSaturatedInternal = (D,B) -> (
     R := ring D;
-    WD := if instance(D,WeilDivisor) then D else toWeilDivisor D;
+    -- Components supported inside V(B) are not on X and must not be allowed
+    -- to decide where O_X(D) is invertible; inert unless ht(B) = 1.
+    WD := dropIrrelevantComponentsInternal(D,B);
+    WD = if instance(WD,WeilDivisor) then WD else toWeilDivisor WD;
     if not isHomogeneous WD then
         error "isCartierSaturatedInternal: expected a homogeneous divisor";
-    J := nonCartierLocus(WD,IsGraded=>true);
+    -- IsGraded=>true would first saturate the locus by getIrrelevantIdeal(R),
+    -- the homogeneous maximal ideal.  Classically that is harmless -- it is
+    -- absorbed by the saturation against B below, since B is generated by
+    -- variables and so B is contained in m, whence
+    -- saturate(saturate(J,m),B) = saturate(J,B) exactly.  Over an affine base
+    -- it is not harmless but wrong: m contains the base coordinates, so
+    -- saturating by it discards the point of X lying over the origin of
+    -- Spec R_0, which is precisely where a relative contraction's singularity
+    -- sits.  Measured on the toric flip's source Y, whose canonical index is 2:
+    -- with the m-saturation K_Y is reported Cartier and the index comes back 1.
+    -- Doing the saturation only against B gives the identical answer for every
+    -- classical caller and the right one here.
+    J := nonCartierLocus WD;
     trim saturate(J,B) == ideal 1_R
     )
 
@@ -1072,6 +1355,19 @@ isCartierMultigraded (BasicDivisor,B2MProjection) := (D,P) ->
     isCartierSaturatedInternal(D,sub(P#irrelevantIdeal,ring D))
 isCartierMultigraded (BasicDivisor,GraphMorphism) := (D,G) ->
     isCartierSaturatedInternal(D,sub(G#irrelevantIdeal,ring D))
+
+-- The Cartier test the monograded entry points want.  isCartier(D,IsGraded=>
+-- true) is hard-wired, inside nonCartierLocus's own IsGraded branch, to
+-- WeilDivisors' getIrrelevantIdeal(R), the homogeneous maximal ideal.  Over an
+-- affine base that ideal contains the base coordinates and so is not the
+-- irrelevant ideal of X at all: it excludes points of X that are genuinely
+-- there.  Fall through to the historical call verbatim whenever there is no
+-- affine base, which is every classical caller.
+mmpIsCartierInternal = D -> (
+    B := affineBaseIrrelevantIdealInternal ring D;
+    if B === null then isCartier(D,IsGraded=>true)
+    else isCartierSaturatedInternal(D,B)
+    )
 
 -- Search the projective components of a base locus for a curve on which D
 -- has negative degree.  Components of dimension greater than one are cut by
@@ -1247,6 +1543,202 @@ negativeCurveWitnessData (BasicDivisor,Ideal,Ideal,List) := o -> (D,candidateBas
     witness
     )
 
+-- The exceptional locus of the structure morphism X = Proj R -> Spec R_0, or
+-- null when the presentation has no affine base or the morphism is not
+-- generically finite.
+--
+-- Omega_{Spec R / R_0} is the cokernel of the Jacobian of I taken only with
+-- respect to the positively graded variables; the degree-zero variables are the
+-- coordinates of R_0 and are exactly the ones held fixed.  Its generic rank is
+-- the relative dimension dim R - dim R_0, which is 1 for a birational structure
+-- morphism: the cone direction and nothing else.  Where that rank jumps, the
+-- morphism is not etale, and for a birational morphism of normal varieties in
+-- characteristic zero that locus -- once V(B), which Proj removes, is saturated
+-- away -- is the exceptional locus.
+--
+-- Cached on R: both the smallness test and the negative-curve shortcut want it,
+-- and the driver runs each of them more than once per ring.
+affineExceptionalIdealInternal = R -> (
+    if R.cache#?mmpAffineExceptionalIdeal then
+        return R.cache#mmpAffineExceptionalIdeal;
+    answer := null;
+    R0 := affineBaseRingInternal R;
+    if R0 =!= null and dim R - dim R0 == 1 then (
+        S := ambient R;
+        svars := flatten entries vars S;
+        fibreIndices := select(#svars, j -> not all(degree svars#j, c -> c == 0));
+        if #fibreIndices > 0 then (
+            B := ideal apply(fibreIndices, j -> sub(svars#j,R));
+            relativeJacobian := sub(submatrix(jacobian ideal R,fibreIndices,),R);
+            -- No prune and no module rank here: over an affine base there is no
+            -- heft vector -- a degree-zero variable cannot be given positive
+            -- weight -- so prune, rank and hilbertFunction all fail on such a
+            -- module (section 10 of the relative-setting audit).  The rank is
+            -- dim R - dim R_0 by the paragraph above and needs neither.
+            answer = saturate(
+                ann exteriorPower(2,coker relativeJacobian),B);
+            );
+        );
+    R.cache#mmpAffineExceptionalIdeal = answer;
+    answer
+    )
+
+-- Complete curves in the fibres of X = Proj R -> Spec R_0.
+--
+-- Over an affine base every curve of X that is proper over k lies in a fibre of
+-- the structure morphism (section 9(1) of the relative-setting audit), and when
+-- that morphism is birational the positive-dimensional fibres are exactly its
+-- exceptional locus.  So the search range for a negative curve is the
+-- exceptional locus and nothing else -- strictly narrower than in the absolute
+-- setting, where it is the whole of X.
+--
+-- Components of dimension greater than one are cut by deterministic coordinate
+-- hyperplanes until curves remain, the same way negativeBaseLocusCurveData
+-- narrows a base locus, and a cut that collapses the piece to the unit ideal is
+-- skipped rather than committed to.
+affineFibreCurvesInternal = R -> (
+    if R.cache#?mmpAffineFibreCurves then return R.cache#mmpAffineFibreCurves;
+    curves := {};
+    E := affineExceptionalIdealInternal R;
+    if E =!= null and E != ideal 1_R then (
+        S := ambient R;
+        svars := flatten entries vars S;
+        fibreIndices := select(#svars, j -> not all(degree svars#j, c -> c == 0));
+        B := ideal apply(fibreIndices, j -> sub(svars#j,R));
+        coordinates := flatten entries vars R;
+        pieces := minimalPrimes E;
+        depth := 0;
+        while #pieces > 0 and depth <= numgens R do (
+            curves = join(curves,select(pieces,Q -> dim(R/Q) == 2));
+            nextPieces := {};
+            scan(select(pieces,Q -> dim(R/Q) > 2),Q -> (
+                candidates := select(coordinates,x -> x % Q != 0);
+                cutIdeal := null;
+                scan(candidates,x -> if cutIdeal === null then (
+                    candidate := trim saturate(Q+ideal x,B);
+                    if candidate != ideal 1_R then cutIdeal = candidate;
+                    ));
+                if cutIdeal =!= null then
+                    nextPieces = join(nextPieces,minimalPrimes cutIdeal);
+                ));
+            pieces = unique nextPieces;
+            depth = depth+1;
+            );
+        );
+    curves = unique curves;
+    R.cache#mmpAffineFibreCurves = curves;
+    curves
+    )
+
+-- The degree of a Cartier divisor on one such curve, or null if it cannot be
+-- read off.
+--
+-- The curve C is proper over k, so its own homogeneous coordinate ring R/Q has
+-- a finite-dimensional degree-zero part and a heft vector, even though R does
+-- not: contracted by a birational structure morphism means C maps to a point of
+-- Spec R_0, so R_0 meets Q in a maximal ideal.  Computing on R/Q rather than on
+-- R is what restores the Hilbert functions that section 10 of the audit
+-- observes are unavailable over an affine base.
+--
+-- For a Cartier divisor the difference of Hilbert polynomials
+-- HP(O(D)|_C) - HP(O_C) is the constant deg(D|_C), by Riemann-Roch on C; the
+-- loop twists by O(n*h) until that difference stabilizes, exactly as
+-- negativeBaseLocusCurveData does in the absolute setting.  h is the Cartier
+-- degree of the presentation, so O(h) is invertible.
+relativeCurveDegreeInternal = (D,Q,h,limit) -> (
+    R := ring D;
+    RC := R/Q;
+    DModule := null;
+    if (try (DModule = weilDivisorToModule D; true) else false) =!= true then
+        return null;
+    restriction := DModule ** RC;
+    -- hilbertFunction is not available here, and not for the reason section 10
+    -- of the audit gives about R: Macaulay2's R/Q keeps every variable of R,
+    -- degree-zero ones included, so R/Q has no heft vector either even when the
+    -- curve makes those variables zero.  Counting the degree-n strand with
+    -- basis avoids heft entirely, and on the curve it returns what is wanted: a
+    -- curve contracted to a point of Spec R_0 has R_0 mapping onto the residue
+    -- field there, so the degree-zero subring of R/Q is that field and basis
+    -- returns an honest basis over it rather than a generating set over R_0.
+    -- A field extension would scale both counts by its degree and so cannot
+    -- change the sign, which is all this certificate reads.
+    answer := null;
+    try (
+        n := 1;
+        current := numColumns basis({n*h},restriction)
+            - numColumns basis({n*h},RC^1);
+        stabilized := false;
+        while not stabilized and n < limit do (
+            previous := current;
+            n = n+1;
+            current = numColumns basis({n*h},restriction)
+                - numColumns basis({n*h},RC^1);
+            if current == previous then stabilized = true;
+            );
+        if stabilized then answer = current;
+        ) else answer = null;
+    answer
+    )
+
+-- Degrees of a*K and of H on every fibre curve, computed once per (R,a,H).
+--
+-- This is what makes the threshold search affordable over an affine base.  A
+-- candidate t = p/q is tested on the divisor L = q*a*K + a*p*H, whose
+-- coefficients grow with q, and the base-point-free test's cost is dominated by
+-- constructing O(L); measured on the toric flip's source, that is half a second
+-- at q = 2 and more than fifteen minutes at q = 8.  But
+--
+--     L.C = q*(a*K).C + a*p*(H.C)
+--
+-- is linear in (p,q), so the two degrees below are all that is ever needed, and
+-- every candidate is then decided by one multiplication.  A negative value is
+-- an unconditional non-nef certificate; a nonnegative one says nothing and the
+-- effective base-point-free test must still run.
+affineCurveDegreeDataInternal = (R,K,H,a) -> (
+    key := (a,H);
+    cache := if R.cache#?mmpAffineCurveDegrees then R.cache#mmpAffineCurveDegrees
+        else (R.cache#mmpAffineCurveDegrees = new MutableHashTable);
+    if cache#?key then return cache#key;
+    answer := {};
+    curves := affineFibreCurvesInternal R;
+    if #curves > 0 then (
+        weights := apply(flatten entries vars ambient R,q -> (degree q)#0);
+        positiveWeights := select(weights,c -> c > 0);
+        h := 1;
+        scan(positiveWeights,c -> h = lcm(h,c));
+        limit := 24;
+        answer = select(apply(curves,Q -> (
+            kDegree := relativeCurveDegreeInternal(a*K,Q,h,limit);
+            hDegree := relativeCurveDegreeInternal(H,Q,h,limit);
+            if kDegree === null or hDegree === null then null
+            else new HashTable from {
+                "curveIdeal" => Q,
+                "canonicalDegree" => kDegree,
+                "ampleDegree" => hDegree}
+            )),entry -> entry =!= null);
+        );
+    cache#key = answer;
+    answer
+    )
+
+-- A fibre curve on which q*a*K + a*p*H has negative degree, or null.
+affineNegativeCurveShortcutInternal = (R,K,H,a,p,q) -> (
+    if affineBaseIrrelevantIdealInternal R === null then return null;
+    data := affineCurveDegreeDataInternal(R,K,H,a);
+    witness := null;
+    scan(data,entry -> if witness === null then (
+        value := q*(entry#"canonicalDegree") + a*p*(entry#"ampleDegree");
+        if value < 0 then witness = new HashTable from {
+            "curveIdeal" => entry#"curveIdeal",
+            "intersection" => value,
+            "canonicalDegree" => entry#"canonicalDegree",
+            "ampleDegree" => entry#"ampleDegree",
+            "certificate" => "negative degree on a complete curve in a fibre "
+                | "of X -> Spec R_0"};
+        ));
+    witness
+    )
+
 -- Normalize integration-layer and Stein graph tables to the GraphMorphism
 -- representation used by FlipComputation.  Legacy tables remain accepted at
 -- package boundaries, but all newly returned MMP morphism graphs use this type.
@@ -1328,6 +1820,31 @@ canonicalScaledNefDataInternal = (R,K,H,a,t,B,classDegrees) -> (
     N := a*q;
     L := q*a*K + a*p*H;
     guaranteedMultiplier := effectiveNefMultiplier(d,N);
+    -- Over an affine base, try the complete curves in the fibres first.  Their
+    -- intersection numbers with a*K and with H are computed once per ring and
+    -- combine linearly, so this decides a candidate t in arithmetic where the
+    -- base-point-free test below would have to construct O(m*L) with
+    -- coefficients proportional to q.  It is a one-sided certificate: a
+    -- negative value proves non-nefness outright, and anything else falls
+    -- through to exactly the search that was here before.  Returns null at once
+    -- on any presentation with R_0 = k, which is every classical caller.
+    affineCurveWitness := affineNegativeCurveShortcutInternal(R,K,H,a,p,q);
+    if affineCurveWitness =!= null then
+        return new HashTable from {
+            "nef" => false,
+            "t" => t,
+            "dimension" => d,
+            "indexMultiple" => a,
+            "N" => N,
+            "multiplier" => null,
+            "guaranteedMultiplier" => guaranteedMultiplier,
+            "multipliersTested" => {},
+            "certificateType" => "negative curve intersection",
+            "negativeCurveWitness" => affineCurveWitness,
+            "cartierDivisor" => L,
+            "testDivisor" => null,
+            "basePointFree" => false
+            };
     -- A base-point-free positive multiple already proves that L is nef.  In
     -- the improved threefold case the guaranteed multiplier is at most 7, so
     -- simply test all multiples up to it.  For the older high-dimensional
@@ -1458,7 +1975,7 @@ canonicalScaledNefData (Ring,ZZ,QQ) := o -> (R,a,t) -> (
     if a <= 0 then
         error "canonicalScaledNefData: the index multiple must be positive";
     K := mmpCanonicalDivisorInternal R;
-    if not isCartier(a*K,IsGraded=>true) then
+    if not mmpIsCartierInternal(a*K) then
         error "canonicalScaledNefData: a*K_X is not Cartier";
     H := (weightedAmpleDivisorData R)#"divisor";
     classDegrees := normalizeDivisorClassDegrees(
@@ -1728,7 +2245,7 @@ canonicalNefThresholdData (Ring,ZZ) := o -> (R,a) -> (
     if limit =!= null and (not instance(limit,ZZ) or limit <= 0) then
         error "canonicalNefThresholdData: ThresholdSearchLimit must be null or positive";
     K := mmpCanonicalDivisorInternal R;
-    if not isCartier(a*K,IsGraded=>true) then
+    if not mmpIsCartierInternal(a*K) then
         error "canonicalNefThresholdData: a*K_X is not Cartier";
     ampleData := weightedAmpleDivisorData R;
     H := ampleData#"divisor";
@@ -1817,7 +2334,13 @@ canonicalNefThreshold (Ring,ZZ) := o -> (R,a) -> (
 -- into R[t] is the Rees graph closure and is insensitive to that choice of
 -- trivialization.
 completeLinearSystemGraphData = method()
-completeLinearSystemGraphData BasicDivisor := D -> (
+completeLinearSystemGraphData BasicDivisor := D0 -> (
+    -- The sections this builds the morphism from are the degree-zero part of
+    -- O(D), so the divisor has to be the one on X: a component supported
+    -- inside V(B) would change that section space.  Inert unless the
+    -- presentation has an affine base whose irrelevant ideal has height one.
+    D := dropIrrelevantComponentsInternal(
+        D0,affineBaseIrrelevantIdealInternal ring D0);
     if not isBasePointFreeDivisor D then
         error "completeLinearSystemGraphData: the divisor is not base-point-free";
     R := ring D;
@@ -2047,6 +2570,112 @@ canonicalContractionAtThresholdDataCore = (R,a,lambda,K,H,d,limit,buildLinearSys
             "warning" => "the optional contraction multiple limit was reached"
             };
     linearSystemGraph := buildLinearSystemGraph morphismDivisor;
+    -- Over an affine base the target of the contraction is not what this
+    -- construction computes.  Phi_{|MD|} is built as a morphism to P^{n-1}
+    -- with n the number of degree-zero sections, and that is the *absolute*
+    -- morphism: it forgets Spec R_0 entirely.  The relative contraction is
+    -- the one over the base, a Proj over Spec R_0, which the graph-morphism
+    -- representation here cannot express.
+    --
+    -- The single-section case is the exception, and it is exactly the case
+    -- that used to be reported wrongly.  n = 1 classically means the only
+    -- sections are the constants, so Phi maps to a point; over an affine base
+    -- it means the sections are generated by one element over R_0, so the
+    -- morphism is the structure morphism X -> Spec R_0.  The target is the
+    -- base, of dimension dim R_0, not a point.  Measured on P^2 x A^1 at its
+    -- threshold lambda = 3, where K + 3H is trivial: this returned
+    -- targetDimension 0 and "trivial point target", conclusively, where the
+    -- contraction is the projection to A^1 and the target has dimension 1.
+    -- affineBaseDimensionInternal returns 0 when R_0 = k, so the classical
+    -- reading is unchanged.
+    baseDimension := affineBaseDimensionInternal R;
+    -- More than one degree-zero generator over an affine base: the target is
+    -- neither the base nor a point but an intermediate variety, Proj over
+    -- Spec R_0 of the R_0-algebra the section representatives generate.  That
+    -- is built here rather than left to the graph representation, which cannot
+    -- express it.
+    --
+    -- Stein factorization is not run on it; it is certified unnecessary in the
+    -- one case that is accepted.  When the image has the same dimension as X
+    -- the morphism is birational, and if the image is normal then Zariski's
+    -- main theorem makes Phi_* O_X = O of the image, so the fibres are already
+    -- connected and Phi is its own Stein factorization.  A fibre-type image, or
+    -- an image that is not normal, needs the A-module version of the section
+    -- ring lemma and is refused instead of guessed at.
+    if linearSystemGraph#"targetVariableCount" != 1 and baseDimension > 0 then (
+        sections := linearSystemGraph#"sectionImages";
+        relativeTarget := affineRelativeTargetRingInternal(R,sections);
+        refuse := reason -> new HashTable from {
+            "conclusive" => false,
+            "threshold" => lambda,
+            "N" => N,
+            "cartierThresholdDivisor" => cartierThresholdDivisor,
+            "guaranteedMultiplier" => guaranteedMultiplier,
+            "multiplier" => multiplier,
+            "morphismDivisor" => morphismDivisor,
+            "linearSystemGraph" => linearSystemGraph,
+            "canonicalDivisor" => K,
+            "affineBaseDimension" => baseDimension,
+            "relativeTargetRing" => relativeTarget,
+            "phase" => "contraction target over an affine base",
+            "warning" => reason};
+        if relativeTarget === null then
+            return refuse("R_0 is not a field and the linear system has more "
+                | "than one degree-zero generator, so the contraction's target "
+                | "is an intermediate variety over Spec R_0; its coordinate "
+                | "algebra could not be built from the section "
+                | "representatives.");
+        relativeTargetDimension := dim relativeTarget - 1;
+        if relativeTargetDimension != d then
+            return refuse("the contraction over the affine base is of fibre "
+                | "type, its image having dimension "
+                | toString relativeTargetDimension | " where the source has "
+                | toString d | ".  Certifying that the fibres are connected "
+                | "then needs the A-module version of the section ring lemma "
+                | "(section 6 of the relative-setting audit), which is not "
+                | "implemented, so the Stein factorization is refused rather "
+                | "than assumed trivial.");
+        if not affineTargetBirationalInternal(R,sections) then
+            return refuse("the contraction over the affine base is generically "
+                | "finite onto its image, but this could not be certified "
+                | "birational.  Without that certificate the image need not be "
+                | "the contraction -- the morphism could be generically finite "
+                | "of higher degree -- and skipping the Stein factorization "
+                | "would be a guess.  The A-module version of the section ring "
+                | "lemma (section 6 of the relative-setting audit) is what "
+                | "would settle the general case.");
+        if not isNormal relativeTarget then
+            return refuse("the contraction over the affine base is birational "
+                | "onto its image but that image is not normal, so Zariski's "
+                | "main theorem does not certify that the fibres are connected "
+                | "and the Stein factorization cannot be skipped; the target "
+                | "would be the normalization of the image.");
+        return new HashTable from join({
+            "conclusive" => true,
+            "threshold" => lambda,
+            "N" => N,
+            "cartierThresholdDivisor" => cartierThresholdDivisor,
+            "multiplier" => multiplier,
+            "guaranteedMultiplier" => guaranteedMultiplier,
+            "morphismDivisor" => morphismDivisor,
+            "linearSystemGraph" => linearSystemGraph,
+            "canonicalDivisor" => K,
+            "affineBaseDimension" => baseDimension,
+            "sourceRing" => R,
+            "relativeTargetRing" => relativeTarget,
+            "relativeTargetSections" => sections,
+            "steinFactorizationType" => "trivial: birational onto a normal "
+                | "image over the affine base",
+            "steinAlgebraData" => new HashTable from {
+                "ring" => relativeTarget,
+                "baseIsProjective" => true,
+                "certificate" => "Proj over Spec R_0 of the R_0-algebra "
+                    | "generated by the sections; birational onto it by an "
+                    | "explicit ratio of sections for each coordinate, and "
+                    | "normal, so Zariski's main theorem makes Phi its own "
+                    | "Stein factorization"}
+            },pairs contractionTypeData(d,relativeTargetDimension));
+        );
     if linearSystemGraph#"targetVariableCount" == 1 then
         return new HashTable from join({
             "conclusive" => true,
@@ -2057,10 +2686,33 @@ canonicalContractionAtThresholdDataCore = (R,a,lambda,K,H,d,limit,buildLinearSys
             "guaranteedMultiplier" => guaranteedMultiplier,
             "morphismDivisor" => morphismDivisor,
             "linearSystemGraph" => linearSystemGraph,
-            "steinFactorizationType" => "trivial point target",
+            "steinFactorizationType" => if baseDimension == 0
+                then "trivial point target"
+                else "structure morphism to the affine base",
+            "affineBaseDimension" => baseDimension,
             "contractionGraph" => linearSystemGraph#"graph",
             "canonicalDivisor" => K
-            },pairs contractionTypeData(d,0));
+            },
+            -- Over an affine base the morphism this branch has identified is
+            -- X -> Spec R_0, and the pieces downstream of a contraction need
+            -- that target as a ring: the relative canonical model is computed
+            -- from it (with an affine base, so Proj_{Spec R_0} rather than the
+            -- projective Proj_X of Algorithm 4's usual reading), and the
+            -- smallness test needs the source, since the graph recorded above
+            -- is the absolute morphism to P^0 and contracts everything.  These
+            -- keys are absent when R_0 = k, where the branch means what it
+            -- always meant, a trivial point target.
+            if baseDimension == 0 then {} else {
+                "contractionIsStructureMorphism" => true,
+                "sourceRing" => R,
+                "affineBaseRing" => affineBaseRingInternal R,
+                "steinAlgebraData" => new HashTable from {
+                    "ring" => affineBaseRingInternal R,
+                    "baseIsProjective" => false,
+                    "certificate" => "the degree-zero subring R_0, reached as "
+                        | "the target of the structure morphism"}
+                },
+            pairs contractionTypeData(d,baseDimension));
     homData := steinHomData(
         linearSystemGraph#"productRing",linearSystemGraph#"graphIdeal");
     algebraData := steinCoordinateAlgebra homData;
@@ -2101,7 +2753,7 @@ canonicalContractionAtThresholdData (Ring,ZZ,QQ) := o -> (R,a,lambda) -> (
     if limit =!= null and (not instance(limit,ZZ) or limit <= 0) then
         error "canonicalContractionAtThresholdData: ContractionMultipleLimit must be null or positive";
     K := mmpCanonicalDivisorInternal R;
-    if not isCartier(a*K,IsGraded=>true) then
+    if not mmpIsCartierInternal(a*K) then
         error "canonicalContractionAtThresholdData: a*K_X is not Cartier";
     ampleData := weightedAmpleDivisorData R;
     H := ampleData#"divisor";
@@ -2218,28 +2870,243 @@ canonicalContractionData (Ring,ZZ,BasicDivisor) := o -> (R,a,H) -> (
     new HashTable from join(pairs result,{"thresholdData" => thresholdData})
     )
 
+-- The relative canonical model over an affine base, as a monograded ring the
+-- driver can carry to the next step.
+--
+-- FlipComputation's bigradedReesProjection builds the Rees algebra over an
+-- affine base as k[u_1..u_r, x_1..x_n]/I_Z and, in its own words, "leaves the
+-- grading by the u-degree implicit and computes with the standard grading" --
+-- every variable of degree one.  That presentation is not the one this package
+-- reads: here Z is Proj of a ring whose degree-zero part is the base, so the u
+-- variables carry degree one and the x variables degree zero.  Re-grade rather
+-- than rebuild: I_Z is already homogeneous for the u-degree, being a Rees
+-- ideal, and the check below is what makes that a verified fact and not an
+-- assumption.
+--
+-- This is exactly the shape of presentation the driver started from, so a flip
+-- computed over an affine base can be fed straight back into the nefness test
+-- for the next step.
+-- The target of a contraction over an affine base whose image is not the base.
+--
+-- Phi_{|MD|} is built by the linear system as a morphism to P^{n-1}, and over
+-- an affine base that is the *absolute* morphism: it forgets Spec R_0.  The
+-- relative morphism is the one to P^{n-1} x Spec R_0, and its image is Proj of
+-- the R_0-subalgebra of R generated by the section representatives.  That
+-- subalgebra is again a graded ring whose degree-zero part is R_0, so the
+-- target comes out in the same shape the driver reads and the next step can
+-- start from it.
+--
+-- The section representatives share a degree e, so the kernel of
+-- R_0[Y] --> R, Y_i |--> s_i is homogeneous when Y_i is given degree e; every
+-- monomial of a relation then has the same Y-degree, so the same generators are
+-- homogeneous for degree one as well, and it is that grading the result
+-- carries.  Multiplying every representative by a common factor does not change
+-- the kernel (R is a domain), so the artificial common factor a rational
+-- trivialization can introduce is harmless here.
+affineRelativeTargetRingInternal = (R,sections) -> (
+    if #sections == 0 then return null;
+    degrees0 := unique apply(sections, f -> (degree f)#0);
+    if #degrees0 != 1 then return null;
+    e := first degrees0;
+    if e <= 0 then return null;
+    S := ambient R;
+    svars := flatten entries vars S;
+    baseIndices := select(#svars, j -> all(degree svars#j, c -> c == 0));
+    if #baseIndices == 0 then return null;
+    baseNames := apply(baseIndices, j -> svars#j);
+    kk := coefficientRing S;
+    fibre := getSymbol "mmpRelativeTargetVariable";
+    -- The base coordinates go first, ahead of the section variables.  Nothing
+    -- downstream reads a variable by position -- the fibre and base blocks are
+    -- always selected by degree -- but the order is the tie-break of the
+    -- monomial order, and over an affine base that tie-break decides
+    -- everything: the degree-zero variables make whole strata of monomials
+    -- equal in degree, so the graded reverse lexicographic order falls through
+    -- to position on all of them.
+    --
+    -- Measured on the second model of tests/three-step-relative-mmp.m2, the
+    -- same ring presented both ways: canonicalNefThreshold takes 0.68 seconds
+    -- with the base coordinates first and 203.5 seconds with the section
+    -- variables first, a factor of three hundred on one identical question.
+    -- The three-step program as a whole goes from about 230 seconds to about
+    -- eight.  The presentation the driver hands to its own next iteration was
+    -- the slow one, while every presentation written by hand in this
+    -- repository's tests and examples is the fast one, which is why the cost
+    -- only showed up once a step had to start from a ring an earlier step had
+    -- built.
+    coarse := kk(monoid [baseNames, fibre_1 .. fibre_(#sections),
+        Degrees => join(toList(#baseIndices : {0}),toList(#sections : {e}))]);
+    phi := map(R,coarse,
+        join(apply(baseIndices, j -> sub(svars#j,R)),sections));
+    relations := ker phi;
+    fine := kk(monoid [baseNames, fibre_1 .. fibre_(#sections),
+        Degrees => join(toList(#baseIndices : {0}),toList(#sections : {1}))]);
+    J := sub(relations,fine);
+    if not isHomogeneous J then return null;
+    fine/J
+    )
+
+-- Is Phi birational onto its image?  A definite true is a certificate; false
+-- means only that this test did not find one.
+--
+-- The test needs R generated in degree one over R_0, which it checks.  Then
+-- K(X) = Frac(R)_0 is generated over Frac(R_0) by the ratios u/u_1 of the
+-- degree-one variables, and Frac(R_0) is inside Frac(T)_0 because R_0 = T_0.
+-- So Phi is birational onto its image exactly when every such ratio lies in
+-- Frac(T)_0, and one witness for that is a pair A, B in T_1 with B nonzero and
+-- u_1 A = u B, which gives u/u_1 = A/B.  T_1 is the R_0-span of the section
+-- representatives, so the pairs are the coefficients of a syzygy of one row
+-- vector, in the single degree where those coefficients have degree zero.
+--
+-- Birationality is what lets the Stein factorization be skipped: with it, and
+-- the image normal, Zariski's main theorem gives Phi_* O_X = O of the image.
+-- Without it the morphism could be generically finite of higher degree onto a
+-- perfectly normal image, and then the image is not the contraction.
+-- A ratio may need A and B of degree higher than one -- the strand T_1 is only
+-- the R_0-span of the representatives themselves -- so the search climbs
+-- through the products of m of them until it succeeds or runs out of tries.
+affineTargetBirationalInternal = method(Options => {NefSearchLimit => 3})
+affineTargetBirationalInternal (Ring,List) := o -> (R,sections) -> (
+    if #sections == 0 then return false;
+    fibreVars := select(flatten entries vars R, q -> (degree q)#0 > 0);
+    if #fibreVars == 0 then return false;
+    if any(fibreVars, q -> (degree q)#0 != 1) then return false;
+    if any(flatten entries vars R, q -> (degree q)#0 < 0) then return false;
+    u1 := first fibreVars;
+    e := (degree first sections)#0;
+    strand := m -> (
+        current := {1_R};
+        scan(m, i -> current = unique flatten apply(current,
+            f -> apply(sections, g -> f*g)));
+        select(current, f -> f != 0));
+    ratioFound := u -> (
+        answer := false;
+        scan(1..o.NefSearchLimit, m -> if not answer then (
+            products := strand m;
+            k := #products;
+            if k > 0 then (
+                row := matrix{join(apply(products, f -> u1*f),
+                    apply(products, f -> -u*f))};
+                syzygies := ker row;
+                -- basis of a submodule returns coordinates in that module's own
+                -- generators, so super is needed to read the actual vectors of
+                -- coefficients in the ambient free module.
+                witnesses := super basis({m*e+1},syzygies);
+                if any(numColumns witnesses, c ->
+                    any(k, i -> witnesses_(k+i,c) != 0)) then answer = true;
+                );
+            ));
+        answer);
+    all(fibreVars, u -> u == u1 or ratioFound u)
+    )
+
+-- Spec W, presented the way this package reads a variety: as Proj of a graded
+-- ring whose degree-zero part is W.  W[t] with deg t = 1 is that ring, and its
+-- Proj is Spec W.
+--
+-- This is what a divisorial step over an affine base has to hand back.  Its
+-- target is the affine base itself, and the driver's next iteration asks for
+-- the nefness of the canonical divisor of a Proj, so an affine ring is not
+-- something it can continue from -- dim W - 1 is 2, not 3, and the threefold
+-- gate rejects it.  Every generator of W is given degree zero, so W's ideal is
+-- homogeneous for the new grading whatever it was for the old one.
+affineTargetPresentationInternal = W -> (
+    A := ambient W;
+    kk := coefficientRing A;
+    fibre := getSymbol "mmpAffineFibreVariable";
+    graded := kk(monoid [gens A, fibre,
+        Degrees => join(toList(numgens A : {0}),{{1}})]);
+    J := sub(ideal W,graded);
+    graded/J
+    )
+
+affineRelativeModelRingInternal = P -> (
+    A := P#ambientRing;
+    us := P#fiberVariables;
+    xs := P#baseVariables;
+    kk := coefficientRing A;
+    degreeList := join(toList(#us : {1}),toList(#xs : {0}));
+    graded := kk(monoid [gens A, Degrees => degreeList]);
+    J := sub(P#definingIdeal,graded);
+    if not isHomogeneous J then
+        error("relativeCanonicalModelFromBaseData: the Rees ideal of the "
+            | "relative canonical model is not homogeneous for the fibre "
+            | "degree, so the model has no presentation over the affine base");
+    graded/J
+    )
+
 -- Algorithm 4, applied to the base W of a birational contraction.  If the
 -- canonical module already embeds as the unit ideal, its relative canonical
 -- Proj is W itself; otherwise FlipComputation constructs the model as a graph.
+--
+-- BaseIsProjective=>false is the relative setting: W is then the affine base
+-- Spec R_0 of a contraction X -> Spec R_0, so W itself is the threefold rather
+-- than a cone over one, the model is Proj over Spec W instead of over Proj W,
+-- and there is no irrelevant ideal to saturate against when asking whether the
+-- canonical blow-up ideal is already invertible.  Default true, which is every
+-- existing caller, and on that path not one line below changes.
 relativeCanonicalModelFromBaseData = method(Options => {
     RelativeCanonicalMultipliers => null,
     RelativeCanonicalMaxMultiplier => 24,
-    RelativeCanonicalVerbose => false})
+    RelativeCanonicalVerbose => false,
+    BaseIsProjective => true})
 relativeCanonicalModelFromBaseData Ring := o -> W -> (
-    if dim W-1 != 3 then
-        error "relativeCanonicalModelFromBaseData: expected a projective threefold";
+    projectiveBase := o.BaseIsProjective;
+    coneCorrection := if projectiveBase then 1 else 0;
+    if dim W-coneCorrection != 3 then
+        error(if projectiveBase
+            then "relativeCanonicalModelFromBaseData: expected a projective threefold"
+            else "relativeCanonicalModelFromBaseData: expected an affine threefold");
+    -- The relative model of an affine base is Spec W, and the driver's next
+    -- iteration reads a Proj, so hand it W[t] rather than W.  On a projective
+    -- base W already is the presentation, and this is the identical object it
+    -- always was.
+    identityRing := if projectiveBase then W else affineTargetPresentationInternal W;
+    -- A Q-Gorenstein base is its own relative canonical model, which is what
+    -- the identity branch means.  If K_W is Q-Cartier of index r then
+    -- omega^{[r]} is invertible, so the r-th Veronese of the canonical algebra
+    -- is the Rees algebra of a line bundle and its Proj is W; Proj is
+    -- insensitive to passing to a Veronese, so the model is W.
+    --
+    -- Only a positive is taken: a search that runs out of multiples says
+    -- nothing.  The check is made only when the presentation has an affine
+    -- base, so no classical caller pays for it or changes route -- and there
+    -- it is not an optimization but the only way through, since a target that
+    -- is Proj over Spec R_0 has variables of bidegree zero in FlipComputation's
+    -- Rees construction and no heft vector exists for that ring.
+    if affineBaseIrrelevantIdealInternal W =!= null then (
+        indexData := canonicalIndexData(W,CanonicalIndexSearchLimit=>12);
+        if indexData#"conclusive" then
+            return new HashTable from {
+                "conclusive" => true,
+                "baseRing" => W,
+                "relativeModelRing" => identityRing,
+                "relativeModelGraph" => null,
+                "relativeModelProjection" => null,
+                "relativeModelType" => "identity",
+                "isIdentity" => true,
+                "baseIsProjective" => projectiveBase,
+                "canonicalIndex" => indexData#"index",
+                "identityCertificate" => "K_W is Q-Cartier of index "
+                    | toString(indexData#"index")
+                    | ", so W is its own relative canonical model",
+                "sourceDimension" => dim W-coneCorrection,
+                "targetDimension" => dim W-coneCorrection
+                };
+        );
     if canonicalIdeal W == ideal 1_W then
         return new HashTable from {
             "conclusive" => true,
             "baseRing" => W,
-            "relativeModelRing" => W,
+            "relativeModelRing" => identityRing,
             "relativeModelGraph" => null,
             "relativeModelProjection" => null,
             "relativeModelType" => "identity",
             "isIdentity" => true,
+            "baseIsProjective" => projectiveBase,
             "identityCertificate" => "canonical module embeds as the unit ideal",
-            "sourceDimension" => dim W-1,
-            "targetDimension" => dim W-1
+            "sourceDimension" => dim W-coneCorrection,
+            "targetDimension" => dim W-coneCorrection
             };
     -- computeRelativeCanonicalModel raises an error when no multiplier it
     -- tried produced a small projection with an S_2 source.  Exhausting the
@@ -2263,7 +3130,7 @@ relativeCanonicalModelFromBaseData Ring := o -> W -> (
         Multipliers=>o.RelativeCanonicalMultipliers,
         MaxMultiplier=>o.RelativeCanonicalMaxMultiplier,
         ReturnGraph=>false,
-        BaseIsProjective=>true,
+        BaseIsProjective=>projectiveBase,
         Verbose=>o.RelativeCanonicalVerbose)
         else null;
     if modelProjection === null then
@@ -2283,26 +3150,42 @@ relativeCanonicalModelFromBaseData Ring := o -> W -> (
     baseCanonicalIdeal := restrictToBase(
         modelProjection,modelProjection#blownUpIdeal);
     nonFreeLocus := fittingIdeal(1,module baseCanonicalIdeal);
-    irrelevant := ideal flatten entries vars W;
-    modelIsIdentity := saturate(nonFreeLocus,irrelevant) == ideal 1_W;
+    -- On a projective base the vertex of the cone is not a point of W, so the
+    -- non-free locus is saturated against the irrelevant ideal first.  On an
+    -- affine base W is Spec of this ring and every point of it counts, so
+    -- there is nothing to saturate away.
+    modelIsIdentity := if projectiveBase then (
+        irrelevant := ideal flatten entries vars W;
+        saturate(nonFreeLocus,irrelevant) == ideal 1_W
+        ) else nonFreeLocus == ideal 1_W;
     if modelIsIdentity then
         return new HashTable from {
             "conclusive" => true,
             "baseRing" => W,
-            "relativeModelRing" => W,
+            "relativeModelRing" => identityRing,
             "relativeModelGraph" => null,
             "relativeModelProjection" => modelProjection,
             "canonicalBlowupIdeal" => baseCanonicalIdeal,
             "nonInvertibleLocus" => nonFreeLocus,
             "relativeModelType" => "identity",
             "isIdentity" => true,
-            "identityCertificate" => "the canonical blow-up ideal is locally free of rank one on Proj",
-            "sourceDimension" => dim W-1,
-            "targetDimension" => dim W-1
+            "baseIsProjective" => projectiveBase,
+            "identityCertificate" => if projectiveBase
+                then "the canonical blow-up ideal is locally free of rank one on Proj"
+                else "the canonical blow-up ideal is locally free of rank one on Spec",
+            "sourceDimension" => dim W-coneCorrection,
+            "targetDimension" => dim W-coneCorrection
             };
-    modelGraph := b2mToGraphMorphism(
-        modelProjection,Verbose=>o.RelativeCanonicalVerbose);
-    modelRing := modelGraph#sourceRing;
+    -- b2mToGraphMorphism refuses an affine base outright, and rightly: its
+    -- output is a graph of monograded varieties inside W x X, and over an
+    -- affine base there is no second cone direction to build one from.  What
+    -- the driver needs there is not a graph but the model's own presentation,
+    -- which the Rees projection already is once it is graded by the fibre
+    -- degree.
+    modelGraph := if projectiveBase then b2mToGraphMorphism(
+        modelProjection,Verbose=>o.RelativeCanonicalVerbose) else null;
+    modelRing := if projectiveBase then modelGraph#sourceRing
+        else affineRelativeModelRingInternal modelProjection;
     new HashTable from {
         "conclusive" => true,
         "baseRing" => W,
@@ -2313,9 +3196,12 @@ relativeCanonicalModelFromBaseData Ring := o -> W -> (
         "nonInvertibleLocus" => nonFreeLocus,
         "relativeModelType" => "computed",
         "isIdentity" => false,
-        "identityCertificate" => "the canonical blow-up ideal is not locally free on Proj",
+        "baseIsProjective" => projectiveBase,
+        "identityCertificate" => if projectiveBase
+            then "the canonical blow-up ideal is not locally free on Proj"
+            else "the canonical blow-up ideal is not locally free on Spec",
         "sourceDimension" => dim(modelRing)-1,
-        "targetDimension" => dim(W)-1
+        "targetDimension" => dim(W)-coneCorrection
         }
     )
 
@@ -2327,11 +3213,19 @@ relativeCanonicalModelData HashTable := o -> contraction -> (
         error "relativeCanonicalModelData: the contraction is not birational";
     if not contraction#?"steinAlgebraData" then
         error "relativeCanonicalModelData: the contraction has no Stein target ring";
+    steinData := contraction#"steinAlgebraData";
+    -- A contraction that is the structure morphism to an affine base records
+    -- its target as Spec of that ring, not Proj of it; everything downstream
+    -- has to be told which, since it changes both the dimension bookkeeping and
+    -- the Rees construction.  Absent key means projective, as it was.
+    projectiveBase := if steinData#?"baseIsProjective"
+        then steinData#"baseIsProjective" else o.BaseIsProjective;
     result := relativeCanonicalModelFromBaseData(
-        contraction#"steinAlgebraData"#"ring",
+        steinData#"ring",
         RelativeCanonicalMultipliers=>o.RelativeCanonicalMultipliers,
         RelativeCanonicalMaxMultiplier=>o.RelativeCanonicalMaxMultiplier,
-        RelativeCanonicalVerbose=>o.RelativeCanonicalVerbose);
+        RelativeCanonicalVerbose=>o.RelativeCanonicalVerbose,
+        BaseIsProjective=>projectiveBase);
     new HashTable from join(pairs result,{"contractionData" => contraction})
     )
 
@@ -2459,6 +3353,119 @@ contractionGraphSmallnessInternal = (P,J,ns,sourceDimension) -> (
         }
     )
 
+-- Smallness of the structure morphism f : X = Proj R -> Spec R_0.
+--
+-- Over an affine base the contraction at the threshold is often f itself (the
+-- one-generator case of canonicalContractionAtThresholdDataCore), and then
+-- there is no graph to feed the test above: the graph the linear system builds
+-- is the absolute morphism to P^0, which contracts everything and says nothing
+-- about f.  The criterion is the same one, applied to Spec R over Spec R_0
+-- instead of to a bigraded graph over its target.
+--
+--   Omega_{Spec R / R_0} = coker of the Jacobian of I taken with respect to the
+--   positively graded variables only -- the degree-zero variables are exactly
+--   the coordinates of R_0 and are the ones held fixed.
+--
+-- Its generic rank is the relative dimension dim R - dim R_0, which is 1 for a
+-- birational f: the single cone direction, the same "generic relative cone
+-- dimension one" the graph version asserts.  Where the rank jumps, f is not
+-- etale, and for a birational morphism of normal varieties in characteristic
+-- zero that locus, once the removed V(B) is saturated away, is the exceptional
+-- locus.  Its codimension in X decides smallness.
+--
+-- The rank is not computed from the module.  Over an affine base no heft vector
+-- exists -- a degree-zero variable cannot be given positive weight -- so
+-- Macaulay2's rank, prune and hilbertFunction all fail on such a module (see
+-- section 10 of references/AlgoMMP/RELATIVE-SETTING-AUDIT.md).  dim R - dim R_0
+-- is the same number and needs neither.
+affineContractionSmallnessInternal = R -> (
+    R0 := affineBaseRingInternal R;
+    if R0 === null then
+        error("affineContractionSmallnessData: expected a presentation with an "
+            | "affine base, i.e. with a variable of degree zero");
+    S := ambient R;
+    svars := flatten entries vars S;
+    fibreIndices := select(#svars, j -> not all(degree svars#j, c -> c == 0));
+    if #fibreIndices == 0 then
+        error "affineContractionSmallnessData: no variable of positive degree";
+    sourceDimension := dim R - 1;
+    if dim R - dim R0 != 1 then
+        error("affineContractionSmallnessData: expected generic relative cone "
+            | "dimension one, i.e. a generically finite structure morphism; "
+            | "this presentation has relative dimension "
+            | toString(dim R - dim R0 - 1));
+    exceptionalIdeal := affineExceptionalIdealInternal R;
+    if exceptionalIdeal === null then
+        error("affineContractionSmallnessData: could not build the relative "
+            | "differentials of Spec R over Spec R_0");
+    empty := exceptionalIdeal == ideal 1_R;
+    exceptionalDimension := if empty then -1 else dim(R/exceptionalIdeal)-1;
+    exceptionalCodimension := if empty then sourceDimension+1
+        else sourceDimension-exceptionalDimension;
+    new HashTable from {
+        "isSmall" => exceptionalCodimension >= 2,
+        "sourceDimension" => sourceDimension,
+        "targetDimension" => dim R0,
+        "exceptionalDimension" => exceptionalDimension,
+        "exceptionalCodimension" => exceptionalCodimension,
+        "exceptionalLocusEmpty" => empty,
+        "exceptionalIdeal" => exceptionalIdeal,
+        "fibreCurves" => affineFibreCurvesInternal R,
+        "criterion" => "codimension of support of exterior^2 of the relative "
+            | "differentials of Spec R over Spec R_0",
+        "assumptions" => "integral separable birational structure morphism "
+            | "X = Proj R -> Spec R_0 with X normal"
+        }
+    )
+
+-- Smallness of a birational morphism to an intermediate target over an affine
+-- base, given by the section representatives that define it.
+--
+-- Omega_{X/T} is the cokernel of f^*Omega_{T/R_0} --> Omega_{X/R_0}, and for a
+-- birational morphism of normal varieties in characteristic zero its support is
+-- the exceptional locus: f is an isomorphism away from Exc, where Omega
+-- vanishes, and is not one on Exc, where it does not.  On the cone this is the
+-- cokernel of the Jacobian of I taken with respect to the positively graded
+-- variables, extended by the columns of partial derivatives of the section
+-- representatives, since those generate T over R_0.
+--
+-- The cone map Spec R --> Spec T' is not itself birational.  T' contains the
+-- representatives, of degree e, so Frac(R) is degree e over Frac(T') and the
+-- map is a mu_e quotient in the cone direction.  That costs nothing: the fixed
+-- locus of mu_e is the zero section V(R_+), which lies inside V(B) and is
+-- saturated away below, so what is left is the exceptional locus of f and
+-- nothing else.  It is also why no exterior power appears here where the
+-- graph version needs one: the extension is algebraic, so Omega_{R/T'} is
+-- generically zero and its annihilator already cuts out the support.
+affineTargetSmallnessInternal = (R,sections,sourceDimension) -> (
+    S := ambient R;
+    svars := flatten entries vars S;
+    fibreIndices := select(#svars, j -> not all(degree svars#j, c -> c == 0));
+    if #fibreIndices == 0 then
+        error "affineTargetSmallnessData: no variable of positive degree";
+    B := ideal apply(fibreIndices, j -> sub(svars#j,R));
+    lifted := apply(sections, f -> lift(f,S));
+    relativeJacobian := sub(submatrix(
+        jacobian ideal R | jacobian matrix{lifted},fibreIndices,),R);
+    exceptionalIdeal := saturate(ann coker relativeJacobian,B);
+    empty := exceptionalIdeal == ideal 1_R;
+    exceptionalDimension := if empty then -1 else dim(R/exceptionalIdeal)-1;
+    exceptionalCodimension := if empty then sourceDimension+1
+        else sourceDimension-exceptionalDimension;
+    new HashTable from {
+        "isSmall" => exceptionalCodimension >= 2,
+        "sourceDimension" => sourceDimension,
+        "exceptionalDimension" => exceptionalDimension,
+        "exceptionalCodimension" => exceptionalCodimension,
+        "exceptionalLocusEmpty" => empty,
+        "exceptionalIdeal" => exceptionalIdeal,
+        "criterion" => "codimension of the support of the relative "
+            | "differentials of X over the image of the linear system",
+        "assumptions" => "integral separable birational morphism of normal "
+            | "varieties over Spec R_0"
+        }
+    )
+
 contractionGraphSmallnessData = method()
 contractionGraphSmallnessData HashTable := graph -> (
     if not graph#?"jointRing" or not graph#?"graphIdeal"
@@ -2482,6 +3489,23 @@ contractionSmallnessData HashTable := contraction -> (
         error "contractionSmallnessData: expected a conclusive contraction";
     if not contraction#?"isBirational" or not contraction#"isBirational" then
         error "contractionSmallnessData: expected a birational contraction";
+    -- Over an affine base the contraction can be the structure morphism, which
+    -- has no graph of its own; the source ring is then what the test needs.
+    if contraction#?"contractionIsStructureMorphism"
+        and contraction#"contractionIsStructureMorphism" then (
+            if not contraction#?"sourceRing" then
+                error "contractionSmallnessData: missing source ring";
+            return affineContractionSmallnessInternal contraction#"sourceRing";
+            );
+    -- And it can be a morphism to an intermediate target over that base, which
+    -- has no graph either: what determines it is the section representatives.
+    if contraction#?"relativeTargetSections" then (
+        if not contraction#?"sourceRing" then
+            error "contractionSmallnessData: missing source ring";
+        return affineTargetSmallnessInternal(
+            contraction#"sourceRing",contraction#"relativeTargetSections",
+            contraction#"sourceDimension");
+        );
     if not contraction#?"contractionGraph" then
         error "contractionSmallnessData: missing contraction graph";
     contractionGraphSmallnessData contraction#"contractionGraph"
@@ -2517,8 +3541,19 @@ mmpStepRecordData (HashTable,HashTable) := o -> (contraction,model) -> (
         error "mmpStepRecordData: expected a conclusive contraction";
     if not contraction#?"isBirational" or not contraction#"isBirational" then
         error "mmpStepRecordData: expected a birational contraction";
-    if not contraction#?"contractionGraph"
-        or not instance(contraction#"contractionGraph",GraphMorphism) then
+    -- Over an affine base the contraction is the structure morphism
+    -- X -> Spec R_0, which is not a graph morphism of monograded varieties and
+    -- is not recorded as one; the ring pair that determines it is already in
+    -- the contraction.  Every other contraction still has to carry its graph.
+    structureMorphism := contraction#?"contractionIsStructureMorphism"
+        and contraction#"contractionIsStructureMorphism";
+    -- A contraction to an intermediate target over an affine base has no graph
+    -- either: what determines it is the section representatives, and the target
+    -- ring is on the contraction.
+    relativeTarget := contraction#?"relativeTargetSections";
+    if not structureMorphism and not relativeTarget
+        and (not contraction#?"contractionGraph"
+        or not instance(contraction#"contractionGraph",GraphMorphism)) then
         error "mmpStepRecordData: expected a GraphMorphism contraction graph";
     if not model#?"conclusive" or not model#"conclusive" then
         error "mmpStepRecordData: expected a conclusive relative model";
@@ -2531,7 +3566,13 @@ mmpStepRecordData (HashTable,HashTable) := o -> (contraction,model) -> (
             small = smallnessData#"isSmall";
             );
     identity := model#"isIdentity";
-    inverseData := if identity then null
+    -- relativeModelInverseRationalMapData builds the inverse map out of the
+    -- Segre coordinates of b2mDiagonalData, which exist only over a projective
+    -- base.  Over an affine base the model has no such graph -- the projection
+    -- itself is the model's presentation -- so the certificate is not available
+    -- and is recorded as absent rather than faked.
+    affineModel := model#?"baseIsProjective" and not model#"baseIsProjective";
+    inverseData := if identity or affineModel then null
         else relativeModelInverseRationalMapData model;
     stepType := if identity then "divisorial"
         else if small === true then "flipping"
@@ -2544,11 +3585,14 @@ mmpStepRecordData (HashTable,HashTable) := o -> (contraction,model) -> (
         "contractionIsSmall" => small,
         "contractionSmallnessData" => smallnessData,
         "contractionData" => contraction,
-        "contractionGraph" => contraction#"contractionGraph",
+        "contractionGraph" => if structureMorphism or relativeTarget then null
+            else contraction#"contractionGraph",
+        "contractionIsStructureMorphism" => structureMorphism,
+        "contractionToRelativeTarget" => relativeTarget,
         "relativeModelData" => model,
         "relativeModelGraph" => model#"relativeModelGraph",
         "inverseRelativeModelData" => inverseData,
-        "inverseRelativeModelRequired" => not identity,
+        "inverseRelativeModelRequired" => not identity and not affineModel,
         "nextRing" => model#"relativeModelRing"
         }
     )
@@ -2606,7 +3650,11 @@ canonicalIndexData Ring := o -> R -> (
             seedCert := canonicalIdealSeedInvertibleInternal(R,K,m);
             if seedCert === true then true
             else if B =!= null then isCartierSaturatedInternal(candidate,B)
-            else isCartier(candidate,IsGraded=>true)
+            -- mmpIsCartierInternal is the same isCartier call for every
+            -- classical ring and the saturated test against the presentation's
+            -- own irrelevant ideal over an affine base, where the maximal ideal
+            -- isCartier uses contains the base coordinates and is wrong.
+            else mmpIsCartierInternal candidate
             )
         );
     i := 1;
@@ -2966,7 +4014,7 @@ canonicalNefData (Ring,ZZ) := o -> (R,a) -> (
     if limit =!= null and (not instance(limit,ZZ) or limit <= 0) then
         error "canonicalNefData: NefSearchLimit must be null or positive";
     K := mmpCanonicalDivisorInternal R;
-    if not isCartier(a*K,IsGraded=>true) then
+    if not mmpIsCartierInternal(a*K) then
         error "canonicalNefData: a*K_X is not Cartier";
     ampleData := weightedAmpleDivisorData R;
     H := ampleData#"divisor";
@@ -3108,6 +4156,8 @@ Node
     :Start here: run the program
     threefoldMMPData
     canonicalIndexData
+    :X over an affine base
+    "the relative setting over an affine base"
     :Short answers
     isCanonicalNef
     canonicalNefThreshold
@@ -4672,6 +5722,180 @@ Node
       @TO canonicalNefThresholdData@ on a multigraded presentation.  The option is
       declared here only because the option list is inherited with
       {\tt options canonicalNefThresholdData}.
+
+Node
+  Key
+    "the relative setting over an affine base"
+  Headline
+    X = Proj R projective over the affine Spec R_0, where R_0 need not be a field
+  Description
+    Text
+      Section 3 of the paper takes $X = \operatorname{Proj} R$ with $R_0 = k$,
+      so that $X$ is projective over a point.  Giving an ambient variable
+      degree zero puts its coordinate into $R_0$ instead, and
+      $X = \operatorname{Proj} R$ becomes projective over the affine
+      $\operatorname{Spec} R_0$.  There is no option to set: every entry point
+      reads the case off the presentation, by looking for an ambient variable
+      all of whose degrees are zero, and every part of the relative reading is
+      inert when $R_0 = k$.  So a presentation with degree-zero variables is
+      the whole interface.
+
+      This is where the standard three-fold flips are.  A flipping contraction
+      contracts a curve to a point of an affine variety, so it is not a
+      morphism of projective varieties and does not appear in the absolute
+      setting unless it is compactified first.
+
+      How long a relative minimal model program can be turns on which target the
+      contraction
+      at the threshold has.  If it is $\operatorname{Spec} R_0$ itself then
+      Algorithm 4 returns the whole relative canonical model at once and the MMP
+      is over; contracting to an intermediate variety over
+      $\operatorname{Spec} R_0$ instead is what lets one step hand a ring on to
+      the next, and that is what makes a relative MMP more than one
+      birational step long.
+
+      The smallest input is the blow-up of the origin in $\mathbb{A}^3$, as
+      $\operatorname{Proj}$ of the Rees algebra of $(a,b,c)$.  There
+      $K = 2E$ and $\mathcal{O}_X(1) = -E$, so $K + tH = (2-t)E$ is nef exactly
+      for $t \geq 2$.  The contraction at the threshold is the structure
+      morphism $X \to \operatorname{Spec} R_0$, its exceptional locus is a
+      surface in a threefold, so the step is divisorial and the MMP stops
+      at $\mathbb{A}^3$.  Load the package as in @TO MMPComputation@ first; the
+      examples below carry on from one another.
+    Example
+      reesRing = QQ[a,b,c,x,y,z, Degrees => {0,0,0,1,1,1}];
+      blowup = reesRing/minors(2,matrix{{a,b,c},{x,y,z}});
+      canonicalNefThreshold(blowup,1)
+      blowupProgram = threefoldMMPData(blowup,1);
+      blowupProgram#"terminationType"
+      apply(blowupProgram#"steps", record -> record#"stepType")
+      flatten degrees blowupProgram#"finalRing"
+    Text
+      The final ring has three variables of degree zero and one of degree one.
+      A contraction to the affine base has $\operatorname{Spec} R_0$ for its
+      target, which is not a $\operatorname{Proj}$ and so not something the next
+      iteration could read; it is handed back as $\operatorname{Proj}$ of
+      $R_0[t]$, whose $\operatorname{Proj}$ is $\operatorname{Spec} R_0$ again.
+
+      A contraction result says which kind of target it found.  The structure
+      morphism to the base records @TT "contractionIsStructureMorphism"@,
+      @TT "affineBaseDimension"@, and a @TT "steinFactorizationType"@ of
+      {\tt "structure morphism to the affine base"}.  A target that is neither
+      the base nor a point records @TT "relativeTargetRing"@ -- again a graded
+      ring whose degree-zero part is $R_0$, so the next step starts from it
+      directly -- and a @TT "steinFactorizationType"@ of
+      {\tt "trivial: birational onto a normal image over the affine base"}.
+      That second one is a certificate rather than a computation: the morphism
+      is certified birational onto its image by an explicit ratio of sections
+      for each coordinate, the image is checked normal, and Zariski's main
+      theorem then gives $\Phi_* \mathcal{O}_X = \mathcal{O}$ of the image, so
+      the Stein factorization is trivial and is skipped rather than assumed.
+
+      Here is a flip, found from the ring alone.  Take the four toric rays with
+      the relation $v_1 + v_2 = 2v_3 + v_4$ in $N = \mathbb{Z}^3$ with $v_1 = (1,0,0)$,
+      $v_2 = (0,1,0)$, $v_3 = (0,0,1)$ and $v_4 = (1,1,-2)$, and let
+      $\operatorname{Spec} R_0 = \operatorname{Spec} k[\sigma^\vee \cap M]$ for
+      $\sigma = \operatorname{cone}(v_1,v_2,v_3,v_4)$, an affine threefold that
+      is not $\mathbb{Q}$-Gorenstein.  The two triangulations of those rays are its two small
+      modifications; on the one below, $Y$, the wall curve has
+      $K \cdot C = -1$, so $Y \to \operatorname{Spec} R_0$ is a flipping
+      contraction.  $Y$ has one $\tfrac12(1,1,1)$ point, so its canonical index
+      is 2, and the package finds the threshold, checks that the contraction
+      is small -- exceptional locus of dimension one in a threefold -- and then
+      flips.
+    Example
+      monomialRing = QQ[ea,eb,ec,et];
+      baseGenerators = {eb, eb^2*ec, ea, ea*eb*ec, ea^2*ec};
+      flippingSide = QQ[p_1 .. p_5, q_1, q_2, Degrees => {0,0,0,0,0,1,1}];
+      Y = flippingSide/ker map(monomialRing, flippingSide,
+          baseGenerators | {ea^2*eb^2*ec^2*et, ea^2*eb^2*ec^3*et});
+      (canonicalIndexData Y)#"index"
+      canonicalNefThreshold(Y,2)
+      flipProgram = threefoldMMPData(Y,2);
+      flipProgram#"terminationType"
+      apply(flipProgram#"steps", record -> record#"stepType")
+      apply(flipProgram#"steps", record -> record#"contractionIsSmall")
+    Text
+      A flipping step is the one place where Algorithm 4 constructs rather than
+      recognizes: read @TT "isIdentity"@ off the step's
+      @TT "relativeModelData"@, which is false here and true for a divisorial
+      step onto a $\mathbb{Q}$-Gorenstein target.
+
+      Programs over an affine base can be longer.  Take the toric surface
+      $S_3$ obtained from $\mathbb{A}^2$ by blowing up the origin and then a
+      torus-fixed point of each successive exceptional curve, and let
+      $X = S_3 \times \mathbb{A}^1$ over $\mathbb{A}^3$.  Its three exceptional
+      curves have $K \cdot E = 0, 0, -1$, and the same holds again after each contraction, so the MMP is
+      forced to contract them one at a time and
+      takes three divisorial steps to reach $\mathbb{A}^3$.
+    Example
+      threeStepAmbient = QQ[a3,b3,c3,w_0,w_1,w_2,w_3,
+          Degrees => {0,0,0,1,1,1,1}];
+      threeStep = threeStepAmbient/ker map(monomialRing, threeStepAmbient,
+          {ea,eb,ec, ea^3*et, ea^2*eb*et, ea*eb^3*et, eb^6*et});
+      threeStepProgram = threefoldMMPData(threeStep,1);
+      threeStepProgram#"numberOfSteps"
+      apply(threeStepProgram#"steps", record -> record#"stepType")
+      apply(threeStepProgram#"steps", record -> flatten degrees record#"nextRing")
+    Text
+      An MMP can also be three steps long and end in a flip; that one is
+      {\tt examples/09-three-step-flip.m2} in the repository, and it takes a
+      couple of minutes rather than seconds.  The flip has to be its last step,
+      and that is a property of the setting rather than of the input.  The
+      flipping contraction this package can carry out is the structure
+      morphism, which is the contraction at the threshold only when the
+      relative Picard rank is one; a flip onto an intermediate target would ask
+      @TO relativeCanonicalModelFromBaseData@ for the relative canonical model
+      of a base that is itself a $\operatorname{Proj}$ over
+      $\operatorname{Spec} R_0$, whose Rees construction has degree-zero fibre
+      variables and no heft vector.  So the relative Picard rank has to be
+      spent on divisorial steps first.
+
+      Four things are worth knowing before presenting an input this way.
+
+      {\em Give every positive-degree generator degree one.}  On a weighted
+      presentation $\operatorname{Spec} R \setminus V(B)$ is not a torsor over
+      $X$, so a divisor can be locally free on the punctured cone without being
+      invertible on $X$ -- the same thing that happens to $\mathcal{O}(1)$ on
+      $\mathbb{P}(1,1,2)$ -- and the Cartier test over-reports: on a
+      presentation of the $Y$ above that needs a degree-two generator, the
+      canonical index comes back as 1 where it is 2.  A Veronese presentation
+      avoids it, and is what the example above uses.
+
+      {\em Fibre-type contractions onto an intermediate target are refused.}
+      Certifying that their fibres are connected needs the $A$-module version
+      of the section-ring lemma, which is not implemented; the refusal names it
+      rather than assuming the Stein factorization is trivial.
+
+      {\em Section counts have to be taken with the basis command.}  A
+      degree-zero variable cannot be given a positive weight, so $R$ has no
+      heft vector, and @TO rank@, @TO prune@ and @TO hilbertFunction@ all fail
+      on modules over it where @TO basis@ still works.  This matters if you
+      compute alongside the package rather than only through it.
+
+      {\em A Weil divisor of $\operatorname{Spec} R$ can have components that
+      are not on $X$.}  Over an affine base the irrelevant ideal $B$ has height
+      one exactly when $X \to \operatorname{Spec} R_0$ is birational, and then a
+      divisor can have prime components inside $V(B)$, which
+      $\operatorname{Proj}$ removes.  They change every section count taken from
+      the graded module, and the package drops them from the canonical divisor
+      at the source.
+
+      What the implementation needed, item by item, is in
+      {\tt docs/IMPLEMENTATION-STATUS.md} under "The relative setting"; what
+      the paper's statements need is audited in
+      {\tt references/AlgoMMP/RELATIVE-SETTING-AUDIT.md}.  The worked examples
+      are {\tt examples/07-affine-base-flip.m2},
+      {\tt examples/08-three-step-program.m2} and
+      {\tt examples/09-three-step-flip.m2}, and the regressions are
+      {\tt tests/relative-affine-flip-mmp.m2},
+      {\tt tests/three-step-relative-mmp.m2} and
+      {\tt tests/three-step-flip-mmp.m2}.
+  SeeAlso
+    threefoldMMPData
+    canonicalContractionData
+    relativeCanonicalModelData
+    contractionSmallnessData
 
 ///
 

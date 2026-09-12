@@ -79,3 +79,71 @@ Completed:
 
 Every milestone should add worked examples whose expected geometry is known
 independently of the implementation.
+
+## Milestone 5: the relative setting, over an affine base
+
+The paper's Definition 2.1 has `R_0 = k`, so `X = Proj R` is projective over a
+point.  Giving some ambient variables degree zero puts their coordinates in
+`R_0` and makes `X` projective over the affine `Spec R_0`.  This is where the
+standard three-fold flips live without being compactified first, and it removes
+both of the walls the compact search ran into: no compactification has to be
+found, and no Segre flattening is needed to raise the dimension.
+`references/AlgoMMP/RELATIVE-SETTING-AUDIT.md` audits what the paper's
+statements need there; this milestone is what the code needs.
+
+1. **Implemented:** decide canonical nefness over an affine base.  A
+   degree-zero variable is a coordinate on the base, not a malformed input:
+   `weightedAmpleDivisorData` takes the lcm of the positive weights only, and
+   `multigradedBlockData` assigns such a variable to no block.
+2. **Implemented:** contract to the affine base.  In the one-section case the
+   morphism is the structure morphism `X -> Spec R_0`, whose target has
+   dimension `dim R_0` and not zero.
+3. **Implemented:** normalize divisors by the irrelevant ideal.  Over an affine
+   base `ht(B)` can be one, and then a divisor of `Spec R` can have components
+   inside `V(B)` that are not on `X` but do change the graded module and every
+   section count taken from it (section 9.1 of the audit).
+4. **Implemented:** the Cartier test, the canonical index, and the
+   canonical-ideal seed over an affine base.  `isCartier`'s graded branch
+   saturates against the homogeneous maximal ideal, which there contains the
+   base coordinates and discards the point over the origin of `Spec R_0`; the
+   seed embeds `omega_R`, which is the unnormalized divisor's module.
+5. **Implemented:** smallness of the structure morphism, from the relative
+   differentials of `Spec R` over `Spec R_0`, and the relative canonical model
+   over an affine base, re-graded from FlipComputation's Rees presentation into
+   the form the driver reads.
+6. **Implemented:** a negative-curve certificate for the relative setting.
+   Every curve proper over `k` lies in a fibre, and for a birational structure
+   morphism the positive-dimensional fibres are its exceptional locus, so the
+   search range is that locus; the two intersection numbers with `a*K` and `H`
+   are computed once and every threshold candidate is then decided by
+   arithmetic.  Without it the threshold search does not finish.
+7. **Implemented for the birational case:** a contraction whose target is
+   neither the base nor a point.  The relative target is `Proj` over
+   `Spec R_0` of the `R_0`-algebra the section representatives generate, which
+   is again a presentation of the shape the driver reads.  Stein factorization
+   is skipped only on a certificate: the morphism is certified birational onto
+   its image, from an explicit ratio of sections for each coordinate, and the
+   image is checked normal, so Zariski's main theorem applies.  This is what
+   makes a relative MMP more than one birational step long; before it, the only
+   contraction the code could build was the one to the base, and Algorithm 4
+   returns the whole relative canonical model there in one go.
+8. **Not implemented:** the fibre-type case of item 7, where connected fibres
+   need the `A`-module version of `lem:section-ring-over-k` (sections 5 and 6
+   of the audit); it is refused with a warning naming that lemma.  The cost of
+   item 7 is also open: `isNormal` on the target of the toric two-step input
+   ran for four hours and seventeen minutes at 6 GB without finishing.  The cost
+   is intrinsic and not a redundant presentation -- none of that target's eight
+   fibre variables is removable by a unit-coefficient relation, so the
+   thirteen-variable presentation is already minimal and `R1` needs size-nine
+   minors of a 13 by 49 Jacobian.  `R1` cannot simply be dropped either:
+   birationality only makes the codimension-one points of the image have finite
+   fibres, which does not stop the image from being singular there.  This is
+   what keeps the two-step program that contains a *flip*
+   (`X --divisorial--> Y --flip--> Z` on the same toric circuit) out of reach,
+   while the two-step program in the worked example, whose target is
+   `A^2 x P^1` and so needs no work to normalize, runs in eighteen seconds.
+9. **Not implemented:** an exact Cartier test for weighted gradings.  On a
+   weighted presentation `Spec R - V(B)` is not a torsor over `X`, so a divisor
+   can be locally free on the punctured cone without being invertible on `X`,
+   and the test over-reports.  A Veronese presentation avoids it; see
+   `examples/07-affine-base-flip.m2`.
